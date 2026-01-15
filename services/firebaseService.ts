@@ -133,7 +133,36 @@ export interface CloudPreset {
     updatedAt: number;
 }
 
-// Save preset to Firestore
+// Helper to upload base64 image and return URL
+const uploadPresetImage = async (base64Data: string, presetId: string, prefix: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `presets/${presetId}/${prefix}_${index}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload preset image ${prefix}_${index}:`, e);
+        return base64Data; // Return original on error
+    }
+};
+
+// Upload all images in an array to Storage
+const uploadImagesArray = async (images: string[], presetId: string, prefix: string): Promise<string[]> => {
+    const results: string[] = [];
+    for (let i = 0; i < images.length; i++) {
+        const url = await uploadPresetImage(images[i], presetId, prefix, i);
+        results.push(url);
+    }
+    return results;
+};
+
+// Save preset to Firestore (with images uploaded to Storage)
 export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => {
     if (!db) {
         console.log('saveCloudPreset: db is null');
@@ -141,11 +170,36 @@ export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => 
     }
     try {
         console.log(`Saving preset to Firestore: ${preset.name} (${preset.id})`);
-        const docRef = doc(db, 'presets', preset.id);
-        await setDoc(docRef, {
-            ...preset,
+
+        // Upload images to Storage first to avoid Firestore 1MB limit
+        const [characterImageUrls, referenceImageUrls, storeLogoUrls] = await Promise.all([
+            uploadImagesArray(preset.characterImages || [], preset.id, 'char'),
+            uploadImagesArray(preset.referenceImages || [], preset.id, 'ref'),
+            uploadImagesArray(preset.storeLogoImages || [], preset.id, 'logo')
+        ]);
+
+        // Upload product images
+        const productsWithUrls = await Promise.all(preset.products.map(async (product, pIndex) => {
+            const productImageUrls = await uploadImagesArray(product.images || [], preset.id, `prod${pIndex}`);
+            return { ...product, images: productImageUrls };
+        }));
+
+        // Save to Firestore with URLs instead of base64
+        const presetData = {
+            id: preset.id,
+            name: preset.name,
+            products: productsWithUrls,
+            settings: preset.settings,
+            characterImages: characterImageUrls,
+            characterClothingMode: preset.characterClothingMode,
+            referenceImages: referenceImageUrls,
+            storeLogoImages: storeLogoUrls,
+            createdAt: preset.createdAt || Date.now(),
             updatedAt: Date.now()
-        });
+        };
+
+        const docRef = doc(db, 'presets', preset.id);
+        await setDoc(docRef, presetData);
         console.log('Preset saved successfully');
         return true;
     } catch (e) {
