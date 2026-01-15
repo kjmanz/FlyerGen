@@ -579,7 +579,7 @@ ${header.length + uint8Array.length + 20}
 
         {/* Preset Management Section */}
         {showPresetList && (
-          <div className="bg-white/40 backdrop-blur-md border border-indigo-100 rounded-lg p-8 mb-10 animate-slide-up shadow-indigo-500/5">
+          <div className="bg-white/40 backdrop-blur-md border border-indigo-100 rounded-lg p-5 sm:p-8 mb-6 sm:mb-10 animate-slide-up shadow-indigo-500/5">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📂</span>
@@ -972,7 +972,7 @@ ${header.length + uint8Array.length + 20}
       {/* Save Preset Modal */}
       {isSaveModalOpen && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-slide-up border border-white">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
             <div className="w-12 h-12 bg-indigo-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-indigo-100">💾</div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">プリセット保存</h3>
             <p className="text-sm font-medium text-slate-400 mb-8">現在の設定を保存します。</p>
@@ -1021,7 +1021,7 @@ ${header.length + uint8Array.length + 20}
       {/* Settings Modal */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-slide-up border border-white">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
             <div className="w-12 h-12 bg-amber-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-amber-100">🔑</div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">API設定</h3>
             <p className="text-sm font-medium text-slate-400 mb-8">Gemini AIへの接続を設定します。</p>
@@ -1067,7 +1067,7 @@ ${header.length + uint8Array.length + 20}
       {/* Preset Load Confirmation Modal */}
       {presetToLoad && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 animate-slide-up border border-white">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
             <div className="w-12 h-12 bg-indigo-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-indigo-100">📥</div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">プリセット読み込み</h3>
             <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">
