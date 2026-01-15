@@ -4,10 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
-  const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1];
-  const basePath = mode === 'production'
-    ? (repoName ? `/${repoName}/` : './')
-    : '/';
+  const basePath = mode === 'production' ? '/FlyerGen/' : '/';
   return {
     base: basePath,
     server: {
