@@ -53,6 +53,7 @@ const App: React.FC = () => {
   // Save Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [savePresetName, setSavePresetName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -412,51 +413,60 @@ ${header.length + uint8Array.length + 20}
       return;
     }
 
-    let targetId = uuidv4();
-    if (!asNew && currentPresetId) {
-      targetId = currentPresetId;
+    setIsSaving(true);
+
+    try {
+      let targetId = uuidv4();
+      if (!asNew && currentPresetId) {
+        targetId = currentPresetId;
+      }
+
+      const now = Date.now();
+
+      // Clone data to avoid reference issues
+      const newPreset: Preset = {
+        id: targetId,
+        name: savePresetName,
+        products: JSON.parse(JSON.stringify(products)),
+        characterImages: [...characterImages],
+        characterClothingMode: characterClothingMode,
+        referenceImages: [...referenceImages],
+        storeLogoImages: [...storeLogoImages],
+        settings: { ...settings },
+        createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
+        updatedAt: now
+      };
+
+      let updatedPresets: Preset[];
+      // Check if updating existing or adding new
+      if (presets.some(p => p.id === targetId)) {
+        updatedPresets = presets.map(p => p.id === targetId ? newPreset : p);
+      } else {
+        updatedPresets = [newPreset, ...presets];
+      }
+
+      setPresets(updatedPresets);
+      setCurrentPresetId(targetId);
+
+      // Save to local storage
+      await set(DB_KEY_PRESETS, updatedPresets);
+
+      // Save to Firebase if enabled
+      if (firebaseEnabled) {
+        await saveCloudPreset({
+          ...newPreset,
+          characterClothingMode: newPreset.characterClothingMode
+        });
+      }
+
+      setIsSaveModalOpen(false);
+      alert(`「${savePresetName}」を保存しました${firebaseEnabled ? '（クラウド同期済み）' : ''}`);
+    } catch (e) {
+      console.error('Save error:', e);
+      alert('保存中にエラーが発生しました');
+    } finally {
+      setIsSaving(false);
     }
-
-    const now = Date.now();
-
-    // Clone data to avoid reference issues
-    const newPreset: Preset = {
-      id: targetId,
-      name: savePresetName,
-      products: JSON.parse(JSON.stringify(products)),
-      characterImages: [...characterImages],
-      characterClothingMode: characterClothingMode,
-      referenceImages: [...referenceImages],
-      storeLogoImages: [...storeLogoImages],
-      settings: { ...settings },
-      createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
-      updatedAt: now
-    };
-
-    let updatedPresets: Preset[];
-    // Check if updating existing or adding new
-    if (presets.some(p => p.id === targetId)) {
-      updatedPresets = presets.map(p => p.id === targetId ? newPreset : p);
-    } else {
-      updatedPresets = [newPreset, ...presets];
-    }
-
-    setPresets(updatedPresets);
-    setCurrentPresetId(targetId);
-
-    // Save to local storage
-    await set(DB_KEY_PRESETS, updatedPresets);
-
-    // Save to Firebase if enabled
-    if (firebaseEnabled) {
-      await saveCloudPreset({
-        ...newPreset,
-        characterClothingMode: newPreset.characterClothingMode
-      });
-    }
-
-    setIsSaveModalOpen(false);
-    alert(`「${savePresetName}」を保存しました${firebaseEnabled ? '（クラウド同期済み）' : ''}`);
   };
 
   const handleLoadPreset = (preset: Preset) => {
@@ -974,20 +984,23 @@ ${header.length + uint8Array.length + 20}
               {currentPresetId && (
                 <button
                   onClick={() => executeSavePreset(false)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold tracking-wide text-xs py-4 px-6 rounded-md shadow-indigo-600/20 transition-all active:scale-95"
+                  disabled={isSaving}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold tracking-wide text-xs py-4 px-6 rounded-md shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  上書き保存
+                  {isSaving ? '保存中...' : '上書き保存'}
                 </button>
               )}
               <button
                 onClick={() => executeSavePreset(true)}
-                className={`w-full font-semibold tracking-wide text-xs py-4 px-6 rounded-md transition-all border-2 active:scale-95 ${currentPresetId ? 'bg-white text-indigo-600 border-indigo-600 hover:bg-indigo-50' : 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent shadow-indigo-600/20'}`}
+                disabled={isSaving}
+                className={`w-full font-semibold tracking-wide text-xs py-4 px-6 rounded-md transition-all border-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${currentPresetId ? 'bg-white text-indigo-600 border-indigo-600 hover:bg-indigo-50' : 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent shadow-indigo-600/20'}`}
               >
-                {currentPresetId ? '新規プリセットとして保存' : '保存'}
+                {isSaving ? '保存中...' : (currentPresetId ? '新規プリセットとして保存' : '保存')}
               </button>
               <button
                 onClick={() => setIsSaveModalOpen(false)}
-                className="w-full mt-2 text-slate-400 hover:text-slate-600 text-xs font-semibold tracking-[0.2em] py-2 transition-colors"
+                disabled={isSaving}
+                className="w-full mt-2 text-slate-400 hover:text-slate-600 text-xs font-semibold tracking-[0.2em] py-2 transition-colors disabled:opacity-50"
               >
                 キャンセル
               </button>
