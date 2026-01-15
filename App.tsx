@@ -873,7 +873,7 @@ ${header.length + uint8Array.length + 20}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {history.map((item, idx) => (
-                <div key={item.id} className="group flex flex-col bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                <div key={item.id} className="group flex flex-col bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm">
                   <div className="bg-slate-50/50 p-4 text-center text-[10px] font-semibold tracking-wide text-slate-400 border-b border-slate-50 flex justify-between items-center px-5">
                     <span className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
@@ -885,7 +885,7 @@ ${header.length + uint8Array.length + 20}
                   </div>
 
                   <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
-                    <img src={item.data} alt="Generated Flyer" className="w-full h-full object-contain transform transition-transform duration-700 group-hover:scale-110" />
+                    <img src={item.data} alt="Generated Flyer" className="w-full h-full object-contain" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6 justify-center">
                       <button
                         onClick={() => {
