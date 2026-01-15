@@ -147,35 +147,47 @@ const App: React.FC = () => {
     }
   };
 
-  // Helper for robust file downloads - "Maximum Compatibility" Version
-  // Helper for robust file downloads - "Maximum Compatibility" Version
+  // Helper for robust file downloads with maximum browser compatibility
   const triggerDownload = (blob: Blob, filename: string, mimeType: string) => {
-    // Force specific MIME type
-    const downloadBlob = new Blob([blob], { type: mimeType });
+    // Ensure filename has extension - critical for Safari/macOS
+    const hasExtension = /\.[a-zA-Z0-9]+$/.test(filename);
+    if (!hasExtension) {
+      const ext = mimeType.includes('pdf') ? '.pdf' : '.jpg';
+      filename = filename + ext;
+    }
+
+    // Force specific MIME type - use octet-stream for maximum compatibility
+    const downloadBlob = new Blob([blob], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(downloadBlob);
     const link = document.createElement('a');
 
-    // Set attributes
+    // Set href and download attributes
     link.href = url;
     link.download = filename;
-    link.setAttribute('download', filename);
 
-    // Safari/macOS sometimes requires the link to be in the DOM
+    // Additional attributes for Safari compatibility
+    link.setAttribute('download', filename);
+    link.setAttribute('target', '_blank');
+    link.rel = 'noopener noreferrer';
+
+    // Safari/macOS requires the link to be in the DOM
     link.style.display = 'none';
+    link.style.position = 'absolute';
+    link.style.left = '-9999px';
     document.body.appendChild(link);
 
-    // Small delay and click
+    // Trigger download with slight delay for Safari
     setTimeout(() => {
       link.click();
 
-      // Cleanup
+      // Cleanup after a longer delay to ensure download starts
       setTimeout(() => {
         if (document.body && document.body.contains(link)) {
           document.body.removeChild(link);
         }
         URL.revokeObjectURL(url);
-      }, 60000);
-    }, 50);
+      }, 100);
+    }, 10);
   };
 
   const formatDateForFilename = (timestamp: number) => {
