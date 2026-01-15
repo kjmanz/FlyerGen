@@ -70,6 +70,7 @@ export const generateFlyerImage = async (
     
     【出力仕様】
     - レイアウト: ${settings.orientation === 'vertical' ? 'A4縦 (210mm × 297mm)' : 'A4横 (297mm × 210mm)'}
+    - 出力解像度: ${settings.imageSize}（1K=約1024px、2K=約2048px、4K=約4096px。A4比率を維持して高解像度で生成）
     - 言語: 日本語（自然で正確な表現）
     - 雰囲気: 地域密着の信頼できる「街の電気屋さん」。元気で親しみやすく、信頼感のあるデザイン。
     - ${backgroundInstruction}
