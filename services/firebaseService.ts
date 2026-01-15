@@ -6,14 +6,14 @@ import { initializeApp } from 'firebase/app';
 import { getStorage, ref, uploadString, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
 import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 
-// Firebase configuration - ユーザーが自分のFirebaseプロジェクトの設定に置き換える
+// Firebase configuration - FlyerGen Project
 const firebaseConfig = {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyC2CSyXStxRbMY3qsKZlZYoYV3KKe82vJw",
+    authDomain: "flyergemini.firebaseapp.com",
+    projectId: "flyergemini",
+    storageBucket: "flyergemini.firebasestorage.app",
+    messagingSenderId: "37463797390",
+    appId: "1:37463797390:web:cdd3adbb738434b17ae3df"
 };
 
 let app: ReturnType<typeof initializeApp> | null = null;

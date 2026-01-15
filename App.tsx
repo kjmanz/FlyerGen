@@ -5,10 +5,24 @@ import { Product, FlyerSettings, GeneratedImage, Preset } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
 import { generateFlyerImage } from './services/geminiService';
+import {
+  initFirebase,
+  isFirebaseConfigured,
+  uploadImage,
+  getCloudImages,
+  saveCloudPreset,
+  getCloudPresets,
+  deleteCloudPreset,
+  CloudImage,
+  CloudPreset
+} from './services/firebaseService';
 
 const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
+
+// Initialize Firebase on app load
+const firebaseEnabled = initFirebase();
 
 const App: React.FC = () => {
   // State
@@ -53,21 +67,57 @@ const App: React.FC = () => {
 
 
 
-  // Load History, Presets & API Key from IDB on mount
+  // Load History, Presets & API Key on mount (Firebase + local fallback)
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [savedHistory, savedPresets, savedApiKey] = await Promise.all([
-          get<GeneratedImage[]>(DB_KEY_HISTORY),
-          get<Preset[]>(DB_KEY_PRESETS),
-          get<string>(DB_KEY_API_KEY)
-        ]);
-
-        if (savedHistory) setHistory(savedHistory);
-        if (savedPresets) setPresets(savedPresets);
+        // Load API Key from local storage
+        const savedApiKey = await get<string>(DB_KEY_API_KEY);
         if (savedApiKey) {
           setApiKey(savedApiKey);
           setTempApiKey(savedApiKey);
+        }
+
+        // Try to load from Firebase first
+        if (firebaseEnabled) {
+          console.log('Loading from Firebase...');
+          const [cloudImages, cloudPresets] = await Promise.all([
+            getCloudImages(),
+            getCloudPresets()
+          ]);
+
+          if (cloudImages.length > 0) {
+            const historyFromCloud: GeneratedImage[] = cloudImages.map(img => ({
+              id: img.id,
+              data: img.url,
+              createdAt: img.createdAt
+            }));
+            setHistory(historyFromCloud);
+          }
+
+          if (cloudPresets.length > 0) {
+            const presetsFromCloud: Preset[] = cloudPresets.map(p => ({
+              id: p.id,
+              name: p.name,
+              products: p.products,
+              settings: p.settings,
+              characterImages: p.characterImages || [],
+              characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
+              referenceImages: p.referenceImages || [],
+              storeLogoImages: p.storeLogoImages || [],
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt
+            }));
+            setPresets(presetsFromCloud);
+          }
+        } else {
+          // Fallback to local storage
+          const [savedHistory, savedPresets] = await Promise.all([
+            get<GeneratedImage[]>(DB_KEY_HISTORY),
+            get<Preset[]>(DB_KEY_PRESETS)
+          ]);
+          if (savedHistory) setHistory(savedHistory);
+          if (savedPresets) setPresets(savedPresets);
         }
       } catch (e) {
         console.error("Failed to load data", e);
@@ -112,14 +162,31 @@ const App: React.FC = () => {
     try {
       const results = await generateFlyerImage(products, settings, characterImages, characterClothingMode, referenceImages, storeLogoImages, apiKey);
 
-      const newItems: GeneratedImage[] = results.map(data => ({
-        id: uuidv4(),
-        data,
-        createdAt: Date.now()
-      }));
+      const newItems: GeneratedImage[] = [];
+
+      for (const data of results) {
+        const id = uuidv4();
+        const timestamp = Date.now();
+
+        // Upload to Firebase if enabled
+        if (firebaseEnabled) {
+          const filename = `flyer_${timestamp}_${id}.png`;
+          const cloudUrl = await uploadImage(data, filename);
+          if (cloudUrl) {
+            newItems.push({ id, data: cloudUrl, createdAt: timestamp });
+          } else {
+            // Fallback to local if upload fails
+            newItems.push({ id, data, createdAt: timestamp });
+          }
+        } else {
+          newItems.push({ id, data, createdAt: timestamp });
+        }
+      }
 
       const updatedHistory = [...newItems, ...history];
       setHistory(updatedHistory);
+
+      // Also save to local storage as backup
       await set(DB_KEY_HISTORY, updatedHistory);
 
     } catch (e) {
@@ -350,6 +417,8 @@ ${header.length + uint8Array.length + 20}
       targetId = currentPresetId;
     }
 
+    const now = Date.now();
+
     // Clone data to avoid reference issues
     const newPreset: Preset = {
       id: targetId,
@@ -360,7 +429,8 @@ ${header.length + uint8Array.length + 20}
       referenceImages: [...referenceImages],
       storeLogoImages: [...storeLogoImages],
       settings: { ...settings },
-      updatedAt: Date.now()
+      createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
+      updatedAt: now
     };
 
     let updatedPresets: Preset[];
@@ -373,11 +443,20 @@ ${header.length + uint8Array.length + 20}
 
     setPresets(updatedPresets);
     setCurrentPresetId(targetId);
+
+    // Save to local storage
     await set(DB_KEY_PRESETS, updatedPresets);
 
+    // Save to Firebase if enabled
+    if (firebaseEnabled) {
+      await saveCloudPreset({
+        ...newPreset,
+        characterClothingMode: newPreset.characterClothingMode
+      });
+    }
+
     setIsSaveModalOpen(false);
-    // Optional: Show a toast or small notification instead of alert
-    alert(`「${savePresetName}」を保存しました`);
+    alert(`「${savePresetName}」を保存しました${firebaseEnabled ? '（クラウド同期済み）' : ''}`);
   };
 
   const handleLoadPreset = (preset: Preset) => {
