@@ -23,14 +23,21 @@ let db: ReturnType<typeof getFirestore> | null = null;
 // Initialize Firebase only if config is set
 export const initFirebase = (config?: typeof firebaseConfig) => {
     const cfg = config || firebaseConfig;
+    console.log('Firebase init with config:', {
+        projectId: cfg.projectId,
+        storageBucket: cfg.storageBucket,
+        hasApiKey: !!cfg.apiKey
+    });
+
     if (!cfg.apiKey || !cfg.projectId) {
-        console.log('Firebase not configured');
+        console.log('Firebase not configured - missing apiKey or projectId');
         return false;
     }
     try {
         app = initializeApp(cfg);
         storage = getStorage(app);
         db = getFirestore(app);
+        console.log('Firebase initialized successfully');
         return true;
     } catch (e) {
         console.error('Firebase init error:', e);
@@ -53,11 +60,16 @@ export interface CloudImage {
 
 // Upload image to Firebase Storage
 export const uploadImage = async (base64Data: string, filename: string): Promise<string | null> => {
-    if (!storage) return null;
+    if (!storage) {
+        console.log('uploadImage: storage is null');
+        return null;
+    }
     try {
+        console.log(`Uploading image: ${filename}`);
         const imageRef = ref(storage, `flyers/${filename}`);
         await uploadString(imageRef, base64Data, 'data_url');
         const url = await getDownloadURL(imageRef);
+        console.log(`Image uploaded successfully: ${url.substring(0, 50)}...`);
         return url;
     } catch (e) {
         console.error('Upload error:', e);
@@ -123,13 +135,18 @@ export interface CloudPreset {
 
 // Save preset to Firestore
 export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => {
-    if (!db) return false;
+    if (!db) {
+        console.log('saveCloudPreset: db is null');
+        return false;
+    }
     try {
+        console.log(`Saving preset to Firestore: ${preset.name} (${preset.id})`);
         const docRef = doc(db, 'presets', preset.id);
         await setDoc(docRef, {
             ...preset,
             updatedAt: Date.now()
         });
+        console.log('Preset saved successfully');
         return true;
     } catch (e) {
         console.error('Save preset error:', e);
@@ -139,13 +156,18 @@ export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => 
 
 // Get all presets from Firestore
 export const getCloudPresets = async (): Promise<CloudPreset[]> => {
-    if (!db) return [];
+    if (!db) {
+        console.log('getCloudPresets: db is null');
+        return [];
+    }
     try {
+        console.log('Fetching presets from Firestore...');
         const querySnapshot = await getDocs(collection(db, 'presets'));
         const presets: CloudPreset[] = [];
         querySnapshot.forEach((doc) => {
             presets.push({ id: doc.id, ...doc.data() } as CloudPreset);
         });
+        console.log(`Fetched ${presets.length} presets from Firestore`);
         return presets.sort((a, b) => b.updatedAt - a.updatedAt);
     } catch (e) {
         console.error('Get presets error:', e);
