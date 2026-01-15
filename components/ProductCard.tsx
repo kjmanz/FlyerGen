@@ -37,103 +37,110 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative mb-6">
-      <div className="absolute top-4 left-4 bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-        機種 {index + 1}
-      </div>
-      <button
-        onClick={onRemove}
-        className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
-        title="削除"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
+    <div className="bg-white p-8 rounded-[32px] shadow-premium border border-slate-100 relative mb-8 animate-slide-up overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="flex items-center justify-between mb-8 relative">
+        <div className="flex items-center gap-3">
+          <div className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-indigo-600/20">
+            Product {index + 1}
+          </div>
+          {product.productName && (
+            <h4 className="text-sm font-black text-slate-400 truncate max-w-[200px]">{product.productName}</h4>
+          )}
+        </div>
+        <button
+          onClick={onRemove}
+          className="w-8 h-8 rounded-xl bg-slate-50 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center border border-slate-100 active:scale-95"
+          title="Remove"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative">
         <div>
+          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Product Media</label>
           <ImageUploader
-            label="商品画像"
+            label="Product image"
             images={product.images}
             onImagesChange={(imgs) => onChange({ ...product, images: imgs })}
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">品番</label>
-            <div className="flex mt-1">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Model Number</label>
+            <div className="flex shadow-sm rounded-2xl overflow-hidden border-2 border-slate-100 focus-within:border-indigo-600 transition-all">
               <input
                 type="text"
                 value={product.productCode}
                 onChange={(e) => onChange({ ...product, productCode: e.target.value })}
-                placeholder="例: CS-LX405D2"
-                className="flex-1 block w-full rounded-l-md border-gray-300 border shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white text-gray-900"
+                placeholder="PROD-ID00X"
+                className="flex-1 block w-full py-3 px-4 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleSearch}
                 disabled={isSearching || !product.productCode}
-                className="inline-flex items-center px-4 py-2 border border-l-0 border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"
+                className="inline-flex items-center px-6 py-3 border-l border-slate-100 text-xs font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-slate-300 active:scale-[0.98]"
               >
                 {isSearching ? (
                   <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 ) : (
-                  <>
-                    <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    検索
-                  </>
+                  "Magic Search"
                 )}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">商品名</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Display Name</label>
             <input
               type="text"
               value={product.productName}
               onChange={(e) => onChange({ ...product, productName: e.target.value })}
-              placeholder="例: ルームエアコン LXシリーズ"
-              className="mt-1 block w-full rounded-md border-gray-300 border shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white text-gray-900"
+              placeholder="Full Product Name"
+              className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 transition-all hover:border-slate-200"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">通常価格</label>
-              <div className="mt-1 relative rounded-md shadow-sm">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">List Price</label>
+              <div className="relative">
                 <input
                   type="number"
                   value={product.originalPrice}
                   onChange={(e) => onChange({ ...product, originalPrice: e.target.valueAsNumber || '' })}
-                  className="focus:ring-blue-500 focus:border-blue-500 block w-full pr-8 sm:text-sm border-gray-300 border rounded-md p-2 bg-white text-gray-900"
+                  placeholder="0"
+                  className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-3 pl-4 pr-10 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 transition-all hover:border-slate-200"
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">円</span>
+                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                  <span className="text-[10px] font-black text-slate-400">JPY</span>
                 </div>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-red-700 font-bold">特価設定</label>
-              <div className="mt-1 space-y-2">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-rose-500 mb-2 ml-1">Special Offer</label>
+              <div className="space-y-3">
                 <input
                   type="text"
                   value={product.salePriceLabel || ''}
                   onChange={(e) => onChange({ ...product, salePriceLabel: e.target.value })}
-                  placeholder="ラベル: (例) 下取り特価"
-                  title="空欄の場合は「特価」と表示されます"
-                  className="block w-full sm:text-xs border-gray-300 border rounded-md p-2 bg-red-50 text-gray-900 placeholder-gray-400"
+                  placeholder="Offer Label (e.g. Member Disc)"
+                  className="block w-full text-[10px] font-black uppercase tracking-widest border-rose-100 border-2 rounded-xl py-2 px-3 bg-rose-50/30 text-rose-600 placeholder:text-rose-200 focus:border-rose-300 focus:ring-0 transition-all"
                 />
-                <div className="relative rounded-md shadow-sm">
+                <div className="relative">
                   <input
                     type="number"
                     value={product.salePrice}
                     onChange={(e) => onChange({ ...product, salePrice: e.target.valueAsNumber || '' })}
-                    placeholder="価格"
-                    className="focus:ring-red-500 focus:border-red-500 block w-full pr-8 sm:text-sm border-red-300 border rounded-md p-2 bg-red-50 text-gray-900"
+                    placeholder="Offer Price"
+                    className="block w-full rounded-2xl border-rose-100 border-2 py-3 pl-4 pr-10 shadow-sm focus:border-rose-400 focus:ring-0 sm:text-sm bg-rose-50/50 text-rose-900 font-black placeholder:text-rose-200 transition-all"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">円</span>
+                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                    <span className="text-[10px] font-black text-rose-300">JPY</span>
                   </div>
                 </div>
               </div>
@@ -141,26 +148,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">キャッチコピー (任意)</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Marketing Hook</label>
             <input
               type="text"
               value={product.catchCopy}
               onChange={(e) => onChange({ ...product, catchCopy: e.target.value })}
-              placeholder="例: 今が買い時！"
-              className="mt-1 block w-full rounded-md border-gray-300 border shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white text-gray-900"
+              placeholder="e.g. Limited Edition • Sale ends soon!"
+              className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 transition-all hover:border-slate-200"
             />
           </div>
         </div>
       </div>
 
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700">主要スペック / 特徴</label>
+      <div className="mt-8 relative">
+        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Technical Specs & Features</label>
         <textarea
           rows={3}
           value={product.specs}
           onChange={(e) => onChange({ ...product, specs: e.target.value })}
-          placeholder="検索機能で自動入力、または手動で入力"
-          className="mt-1 block w-full rounded-md border-gray-300 border shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-white text-gray-900"
+          placeholder="Detailed specs will appear here after searching..."
+          className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-4 px-5 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-200"
         />
       </div>
     </div>

@@ -47,29 +47,31 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   };
 
   return (
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-      
-      <div className="grid grid-cols-4 gap-4 mb-2">
+    <div className="mb-0">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {images.map((img, idx) => (
-          <div key={idx} className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-            <img src={img} alt="preview" className="w-full h-full object-cover" />
-            <button
-              onClick={() => removeImage(idx)}
-              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-              title="削除"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+          <div key={idx} className="relative group aspect-square bg-slate-50 rounded-2xl overflow-hidden border-2 border-slate-100 transition-all hover:border-indigo-200">
+            <img src={img} alt="preview" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+              <button
+                onClick={() => removeImage(idx)}
+                className="bg-rose-500 text-white rounded-xl p-2.5 shadow-xl transform scale-90 group-hover:scale-100 transition-all hover:bg-rose-600 active:scale-90"
+                title="Remove"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
           </div>
         ))}
-        
+
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex flex-col items-center justify-center aspect-square border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors bg-white"
+          className="flex flex-col items-center justify-center aspect-square border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:border-indigo-500 hover:bg-indigo-50/30 hover:text-indigo-600 transition-all bg-slate-50/50 group active:scale-[0.98]"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-          <span className="text-xs mt-1">画像を追加</span>
+          <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-2 group-hover:shadow-md transition-shadow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest">Add Media</span>
         </button>
       </div>
 
