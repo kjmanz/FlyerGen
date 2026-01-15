@@ -898,9 +898,11 @@ ${header.length + uint8Array.length + 20}
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6 justify-center">
                       <button
                         onClick={() => {
-                          const blob = dataUrlToBlob(item.data, 'image/png');
-                          const url = URL.createObjectURL(blob);
-                          window.open(url, '_blank');
+                          const w = window.open('', '_blank');
+                          if (w) {
+                            w.document.write(`<html><head><title>Full Screen Flyer</title></head><body style="margin:0;background:#1e293b;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${item.data}" style="max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 0 20px rgba(0,0,0,0.5);" /></body></html>`);
+                            w.document.close();
+                          }
                         }}
                         className="bg-white/90 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white transition-all shadow-lg"
                       >
