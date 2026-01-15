@@ -147,6 +147,42 @@ const App: React.FC = () => {
     }
   };
 
+  // Helper for robust file downloads - "Maximum Compatibility" Version
+  const triggerDownload = (blob: Blob, filename: string) => {
+    // Force octet-stream MIME type to prevent browser internal viewers from overriding the download
+    const downloadBlob = new Blob([blob], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(downloadBlob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.setAttribute('download', filename);
+    link.download = filename;
+
+    document.body.appendChild(link);
+    link.click();
+
+    // Long delay for revocation (60s) to guarantee hand-off to the browser's download manager
+    setTimeout(() => {
+      if (typeof document !== 'undefined' && document.body && document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+      URL.revokeObjectURL(url);
+    }, 60000);
+  };
+
+  const formatDateForFilename = (timestamp: number) => {
+    let date = new Date(timestamp);
+    if (isNaN(date.getTime())) date = new Date();
+
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    // Simplified filename format to avoid any OS character issues
+    return `${y}${m}${d}_${h}${min}`;
+  };
+
   const handleDownloadJpg = (imageData: string, timestamp: number) => {
     const img = new Image();
     img.onload = () => {
@@ -158,36 +194,51 @@ const App: React.FC = () => {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
-        const jpgDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-        const link = document.createElement('a');
-        link.href = jpgDataUrl;
-        link.download = `flyer-${timestamp}.jpg`;
-        link.click();
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const filename = `Flyer_${formatDateForFilename(timestamp)}.jpg`;
+            triggerDownload(blob, filename);
+          }
+        }, 'image/jpeg', 0.95);
       }
     };
     img.src = imageData;
     setOpenDownloadMenu(null);
   };
 
-  const handleDownloadPdf = async (imageData: string, timestamp: number) => {
+  const handleDownloadPdf = (imageData: string, timestamp: number) => {
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => {
       const width = img.width;
       const height = img.height;
-
-      // A4 dimensions in points (72 dpi): 595.28 x 841.89
       const a4Width = 595.28;
       const a4Height = 841.89;
-
-      // Scale image to fit A4
       const scale = Math.min(a4Width / width, a4Height / height);
       const scaledWidth = width * scale;
       const scaledHeight = height * scale;
       const offsetX = (a4Width - scaledWidth) / 2;
       const offsetY = (a4Height - scaledHeight) / 2;
 
-      // Create PDF manually (minimal PDF structure)
-      const pdfContent = `%PDF-1.4
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const base64 = dataUrl.split(',')[1];
+      const binary = atob(base64);
+      const uint8Array = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        uint8Array[i] = binary.charCodeAt(i);
+      }
+
+      const pdfHeader = `%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
 endobj
@@ -207,29 +258,11 @@ Q
 endstream
 endobj
 5 0 obj
-<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length IMAGE_LENGTH >>
+<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${uint8Array.length} >>
 stream
 `;
-      // Convert base64 to binary for JPEG
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const arrayBuffer = reader.result as ArrayBuffer;
-              const uint8Array = new Uint8Array(arrayBuffer);
-
-              // Build PDF with embedded JPEG
-              const header = new TextEncoder().encode(pdfContent.replace('IMAGE_LENGTH', String(uint8Array.length)));
-              const footer = new TextEncoder().encode(`
+      const header = new TextEncoder().encode(pdfHeader);
+      const footer = new TextEncoder().encode(`
 endstream
 endobj
 xref
@@ -246,18 +279,9 @@ startxref
 ${header.length + uint8Array.length + 20}
 %%EOF`);
 
-              const pdfBlob = new Blob([header, uint8Array, footer], { type: 'application/pdf' });
-              const url = URL.createObjectURL(pdfBlob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `flyer-${timestamp}.pdf`;
-              link.click();
-              URL.revokeObjectURL(url);
-            };
-            reader.readAsArrayBuffer(blob);
-          }
-        }, 'image/jpeg', 0.95);
-      }
+      const pdfBlob = new Blob([header, uint8Array, footer], { type: 'application/pdf' });
+      const filename = `Flyer_${formatDateForFilename(timestamp)}.pdf`;
+      triggerDownload(pdfBlob, filename);
     };
     img.src = imageData;
     setOpenDownloadMenu(null);
