@@ -122,23 +122,51 @@ export const generateFlyerImage = async (
   `;
 
   // 2. Prepare content parts (Text + Images)
+  // 2. Prepare content parts (Text + Images)
   const parts: any[] = [{ text: prompt }];
 
-  const addImageToParts = (imgBase64: string) => {
-    const cleanBase64 = imgBase64.split(',')[1] || imgBase64;
-    parts.push({
+  const processImage = async (imgData: string) => {
+    let base64Data = imgData;
+
+    // If it's a URL, fetch it and convert to base64
+    if (imgData.startsWith('http')) {
+      try {
+        const resp = await fetch(imgData);
+        const blob = await resp.blob();
+        base64Data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error('Failed to fetch image from URL:', e);
+        return null;
+      }
+    }
+
+    const cleanBase64 = base64Data.split(',')[1] || base64Data;
+    return {
       inlineData: {
         mimeType: 'image/png',
         data: cleanBase64
       }
-    });
+    };
   };
 
-  // Add all images
-  products.forEach((p) => p.images.forEach(addImageToParts));
-  characterImages.forEach(addImageToParts);
-  referenceImages.forEach(addImageToParts);
-  storeLogoImages.forEach(addImageToParts);
+  // Collect all images to process
+  const imagesToProcess: string[] = [];
+  products.forEach((p) => imagesToProcess.push(...p.images));
+  imagesToProcess.push(...characterImages);
+  imagesToProcess.push(...referenceImages);
+  imagesToProcess.push(...storeLogoImages);
+
+  // Process all images concurrently
+  const processedImages = await Promise.all(imagesToProcess.map(processImage));
+
+  // Add valid images to parts
+  processedImages.forEach(img => {
+    if (img) parts.push(img);
+  });
 
   // 3. Create batch requests (one per pattern)
   const batchRequests = Array.from({ length: settings.patternCount }).map(() => ({
