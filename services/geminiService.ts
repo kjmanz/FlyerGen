@@ -164,7 +164,14 @@ export const generateFlyerImage = async (
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Batch API error: ${response.status}`);
+    let errorMessage = errorData.message || errorData.error || `Batch API error: ${response.status}`;
+
+    // Append details if available
+    if (errorData.details && Array.isArray(errorData.details)) {
+      errorMessage += '\nDetails:\n' + errorData.details.map((d: any) => d.error || JSON.stringify(d)).join('\n');
+    }
+
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();

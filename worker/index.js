@@ -49,7 +49,7 @@ export default {
                 requests.map(async (r, index) => {
                     try {
                         const response = await fetch(
-                            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+                            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent',
                             {
                                 method: 'POST',
                                 headers: {
@@ -68,7 +68,8 @@ export default {
                         if (!response.ok) {
                             const errorText = await response.text();
                             console.error(`Request ${index + 1} failed:`, errorText);
-                            return null;
+                            // エラー詳細を返すために例外を投げる
+                            throw new Error(`Google API Error (${response.status}): ${errorText}`);
                         }
 
                         const data = await response.json();
@@ -82,15 +83,27 @@ export default {
                         return null;
                     } catch (e) {
                         console.error(`Request ${index + 1} error:`, e.message);
-                        return null;
+                        return { error: e.message }; // エラーオブジェクトを返す
                     }
                 })
             );
 
-            const validResults = results.filter(r => r !== null);
+            // エラーチェック
+            const errors = results.filter(r => r && r.error);
+            if (errors.length > 0) {
+                return new Response(JSON.stringify({
+                    error: 'Generation failed',
+                    details: errors
+                }), {
+                    status: 500,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            const validResults = results.filter(r => r && !r.error);
 
             if (validResults.length === 0) {
-                return new Response(JSON.stringify({ error: 'All requests failed' }), {
+                return new Response(JSON.stringify({ error: 'All requests failed', details: errors }), {
                     status: 500,
                     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                 });
@@ -103,8 +116,9 @@ export default {
         } catch (error) {
             console.error('Worker error:', error);
             return new Response(JSON.stringify({
-                error: 'Internal error',
-                message: error.message
+                error: 'Internal Worker Error',
+                message: error.message,
+                stack: error.stack // デバッグ用にスタックトレースも含める
             }), {
                 status: 500,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
