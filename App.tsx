@@ -148,26 +148,34 @@ const App: React.FC = () => {
   };
 
   // Helper for robust file downloads - "Maximum Compatibility" Version
-  const triggerDownload = (blob: Blob, filename: string) => {
-    // Force octet-stream MIME type to prevent browser internal viewers from overriding the download
-    const downloadBlob = new Blob([blob], { type: 'application/octet-stream' });
+  // Helper for robust file downloads - "Maximum Compatibility" Version
+  const triggerDownload = (blob: Blob, filename: string, mimeType: string) => {
+    // Force specific MIME type
+    const downloadBlob = new Blob([blob], { type: mimeType });
     const url = URL.createObjectURL(downloadBlob);
     const link = document.createElement('a');
 
+    // Set attributes
     link.href = url;
-    link.setAttribute('download', filename);
     link.download = filename;
+    link.setAttribute('download', filename);
 
+    // Safari/macOS sometimes requires the link to be in the DOM
+    link.style.display = 'none';
     document.body.appendChild(link);
-    link.click();
 
-    // Long delay for revocation (60s) to guarantee hand-off to the browser's download manager
+    // Small delay and click
     setTimeout(() => {
-      if (typeof document !== 'undefined' && document.body && document.body.contains(link)) {
-        document.body.removeChild(link);
-      }
-      URL.revokeObjectURL(url);
-    }, 60000);
+      link.click();
+
+      // Cleanup
+      setTimeout(() => {
+        if (document.body && document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+        URL.revokeObjectURL(url);
+      }, 60000);
+    }, 50);
   };
 
   const formatDateForFilename = (timestamp: number) => {
@@ -197,8 +205,9 @@ const App: React.FC = () => {
 
         canvas.toBlob((blob) => {
           if (blob) {
+            // Explicit filename and MIME type
             const filename = `Flyer_${formatDateForFilename(timestamp)}.jpg`;
-            triggerDownload(blob, filename);
+            triggerDownload(blob, filename, 'image/jpeg');
           }
         }, 'image/jpeg', 0.95);
       }
@@ -281,7 +290,7 @@ ${header.length + uint8Array.length + 20}
 
       const pdfBlob = new Blob([header, uint8Array, footer], { type: 'application/pdf' });
       const filename = `Flyer_${formatDateForFilename(timestamp)}.pdf`;
-      triggerDownload(pdfBlob, filename);
+      triggerDownload(pdfBlob, filename, 'application/pdf');
     };
     img.src = imageData;
     setOpenDownloadMenu(null);
