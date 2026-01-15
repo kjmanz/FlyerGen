@@ -45,6 +45,12 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
 
+  // Download Dropdown State
+  const [openDownloadMenu, setOpenDownloadMenu] = useState<string | null>(null);
+
+  // Preset Load Confirmation Modal State
+  const [presetToLoad, setPresetToLoad] = useState<Preset | null>(null);
+
 
 
   // Load History, Presets & API Key from IDB on mount
@@ -141,6 +147,122 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDownloadJpg = (imageData: string, timestamp: number) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        const jpgDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        const link = document.createElement('a');
+        link.href = jpgDataUrl;
+        link.download = `flyer-${timestamp}.jpg`;
+        link.click();
+      }
+    };
+    img.src = imageData;
+    setOpenDownloadMenu(null);
+  };
+
+  const handleDownloadPdf = async (imageData: string, timestamp: number) => {
+    const img = new Image();
+    img.onload = () => {
+      const width = img.width;
+      const height = img.height;
+
+      // A4 dimensions in points (72 dpi): 595.28 x 841.89
+      const a4Width = 595.28;
+      const a4Height = 841.89;
+
+      // Scale image to fit A4
+      const scale = Math.min(a4Width / width, a4Height / height);
+      const scaledWidth = width * scale;
+      const scaledHeight = height * scale;
+      const offsetX = (a4Width - scaledWidth) / 2;
+      const offsetY = (a4Height - scaledHeight) / 2;
+
+      // Create PDF manually (minimal PDF structure)
+      const pdfContent = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${a4Width} ${a4Height}] /Contents 4 0 R /Resources << /XObject << /Im1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 100 >>
+stream
+q
+${scaledWidth} 0 0 ${scaledHeight} ${offsetX} ${offsetY} cm
+/Im1 Do
+Q
+endstream
+endobj
+5 0 obj
+<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length IMAGE_LENGTH >>
+stream
+`;
+      // Convert base64 to binary for JPEG
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const arrayBuffer = reader.result as ArrayBuffer;
+              const uint8Array = new Uint8Array(arrayBuffer);
+
+              // Build PDF with embedded JPEG
+              const header = new TextEncoder().encode(pdfContent.replace('IMAGE_LENGTH', String(uint8Array.length)));
+              const footer = new TextEncoder().encode(`
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000270 00000 n 
+0000000420 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+${header.length + uint8Array.length + 20}
+%%EOF`);
+
+              const pdfBlob = new Blob([header, uint8Array, footer], { type: 'application/pdf' });
+              const url = URL.createObjectURL(pdfBlob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `flyer-${timestamp}.pdf`;
+              link.click();
+              URL.revokeObjectURL(url);
+            };
+            reader.readAsArrayBuffer(blob);
+          }
+        }, 'image/jpeg', 0.95);
+      }
+    };
+    img.src = imageData;
+    setOpenDownloadMenu(null);
+  };
+
   // --- Preset Logic ---
 
   const openSaveModal = () => {
@@ -195,28 +317,36 @@ const App: React.FC = () => {
   };
 
   const handleLoadPreset = (preset: Preset) => {
-    if (window.confirm(`プリセット「${preset.name}」を読み込みますか？\n現在の入力内容は破棄されます。`)) {
-      // Deep clone to ensure we have fresh mutable data and prevent reference issues
-      const data = JSON.parse(JSON.stringify(preset));
+    setPresetToLoad(preset);
+  };
 
-      setProducts(data.products || []);
-      setCharacterImages(data.characterImages || []);
-      setCharacterClothingMode(data.characterClothingMode || 'fixed');
-      setReferenceImages(data.referenceImages || []);
-      setStoreLogoImages(data.storeLogoImages || []);
+  const confirmLoadPreset = () => {
+    if (!presetToLoad) return;
 
-      // Ensure settings has all required fields with defaults
-      setSettings({
-        orientation: data.settings?.orientation || 'vertical',
-        imageSize: data.settings?.imageSize || '2K',
-        patternCount: data.settings?.patternCount || 1,
-        backgroundMode: data.settings?.backgroundMode || 'creative',
-        additionalInstructions: data.settings?.additionalInstructions || ''
-      });
+    const preset = presetToLoad;
+    // Deep clone to ensure we have fresh mutable data and prevent reference issues
+    const data = JSON.parse(JSON.stringify(preset));
 
-      setCurrentPresetId(data.id);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    setProducts(data.products || []);
+    setCharacterImages(data.characterImages || []);
+    setCharacterClothingMode(data.characterClothingMode || 'fixed');
+    setReferenceImages(data.referenceImages || []);
+    setStoreLogoImages(data.storeLogoImages || []);
+
+    // Ensure settings has all required fields with defaults
+    setSettings({
+      orientation: data.settings?.orientation || 'vertical',
+      imageSize: data.settings?.imageSize || '2K',
+      patternCount: data.settings?.patternCount || 1,
+      backgroundMode: data.settings?.backgroundMode || 'creative',
+      additionalInstructions: data.settings?.additionalInstructions || ''
+    });
+
+    setCurrentPresetId(data.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Close modal
+    setPresetToLoad(null);
   };
 
   const handleDeletePreset = async (id: string, e: React.MouseEvent) => {
@@ -552,24 +682,58 @@ const App: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="aspect-[3/4] bg-gray-100 relative group">
+                  <div className="aspect-[3/4] bg-gray-100">
                     <img src={item.data} alt="Generated Flyer" className="w-full h-full object-contain" />
+                  </div>
 
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 p-4">
-                      <a
-                        href={item.data}
-                        download={`flyer-${item.createdAt}.png`}
-                        className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold shadow-sm"
-                      >
-                        ダウンロード
-                      </a>
+                  {/* Action Buttons - Below Image */}
+                  <div className="p-3 bg-white border-t border-gray-200 flex gap-2">
+                    {/* Download Button with Dropdown */}
+                    <div className="relative flex-1">
                       <button
-                        onClick={() => handleUseAsReference(item.data)}
-                        className="w-full text-center bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-md font-bold shadow-sm"
+                        onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
+                        className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold text-sm shadow-sm transition-colors"
                       >
-                        参考画像にする
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        ダウンロード
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${openDownloadMenu === item.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
                       </button>
+
+                      {/* Dropdown Menu - appears above button */}
+                      {openDownloadMenu === item.id && (
+                        <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                          <button
+                            onClick={() => handleDownloadJpg(item.data, item.createdAt)}
+                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-3"
+                          >
+                            <span className="w-10 h-6 bg-gradient-to-r from-orange-400 to-orange-500 text-white text-xs font-bold rounded flex items-center justify-center shadow-sm">JPG</span>
+                            <span>JPEG 画像でダウンロード</span>
+                          </button>
+                          <button
+                            onClick={() => handleDownloadPdf(item.data, item.createdAt)}
+                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-3 border-t border-gray-100"
+                          >
+                            <span className="w-10 h-6 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded flex items-center justify-center shadow-sm">PDF</span>
+                            <span>PDF ドキュメントでダウンロード</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Reference Button */}
+                    <button
+                      onClick={() => handleUseAsReference(item.data)}
+                      className="flex-1 flex items-center justify-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md font-bold text-sm transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      参考にする
+                    </button>
                   </div>
                 </div>
               ))}
@@ -651,6 +815,35 @@ const App: React.FC = () => {
               <button
                 onClick={() => setIsSettingsOpen(false)}
                 className="w-full mt-2 text-gray-600 hover:text-gray-800 py-2"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preset Load Confirmation Modal */}
+      {presetToLoad && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-scale-in">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">プリセットの読み込み</h3>
+            <p className="text-gray-700 mb-6">
+              プリセット「<span className="font-bold">{presetToLoad.name}</span>」を読み込みますか？<br />
+              <span className="text-red-600 text-sm font-bold mt-2 block">※現在の入力内容はすべて破棄されます。</span>
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={confirmLoadPreset}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition-colors"
+                autoFocus
+              >
+                読み込む
+              </button>
+              <button
+                onClick={() => setPresetToLoad(null)}
+                className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded transition-colors"
               >
                 キャンセル
               </button>
