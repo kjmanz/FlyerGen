@@ -42,5 +42,6 @@ export interface Preset {
   referenceImages: string[];
   storeLogoImages: string[];
   settings: FlyerSettings;
+  createdAt: number;
   updatedAt: number;
 }

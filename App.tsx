@@ -13,6 +13,7 @@ import {
   saveCloudPreset,
   getCloudPresets,
   deleteCloudPreset,
+  deleteCloudImage,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -204,6 +205,10 @@ const App: React.FC = () => {
     const updatedHistory = history.filter(item => item.id !== id);
     setHistory(updatedHistory);
     await set(DB_KEY_HISTORY, updatedHistory);
+
+    if (firebaseEnabled) {
+      await deleteCloudImage(id);
+    }
   };
 
   const handleUseAsReference = (imageData: string) => {
@@ -512,6 +517,10 @@ ${header.length + uint8Array.length + 20}
       setPresets(updatedPresets);
       if (currentPresetId === id) setCurrentPresetId(null);
       await set(DB_KEY_PRESETS, updatedPresets);
+
+      if (firebaseEnabled) {
+        await deleteCloudPreset(id);
+      }
     }
   };
 
