@@ -799,8 +799,12 @@ ${header.length + uint8Array.length + 20}
                     <img src={item.data} alt="Generated Flyer" className="w-full h-full object-contain transform transition-transform duration-700 group-hover:scale-110" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6 justify-center">
                       <button
-                        onClick={() => window.open(item.data, '_blank')}
-                        className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-indigo-600 transition-all shadow-xl"
+                        onClick={() => {
+                          const blob = dataUrlToBlob(item.data, 'image/png');
+                          const url = URL.createObjectURL(blob);
+                          window.open(url, '_blank');
+                        }}
+                        className="bg-white/90 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white transition-all shadow-lg"
                       >
                         フルスクリーン
                       </button>
