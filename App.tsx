@@ -190,6 +190,18 @@ const App: React.FC = () => {
     }, 10);
   };
 
+  const dataUrlToBlob = (dataUrl: string, fallbackMimeType: string) => {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header?.match(/data:(.*?);base64/);
+    const mimeType = mimeMatch?.[1] || fallbackMimeType;
+    const binary = atob(base64 || '');
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mimeType });
+  };
+
   const formatDateForFilename = (timestamp: number) => {
     let date = new Date(timestamp);
     if (isNaN(date.getTime())) date = new Date();
@@ -225,6 +237,13 @@ const App: React.FC = () => {
       }
     };
     img.src = imageData;
+    setOpenDownloadMenu(null);
+  };
+
+  const handleDownloadPng = (imageData: string, timestamp: number) => {
+    const blob = dataUrlToBlob(imageData, 'image/png');
+    const filename = `Flyer_${formatDateForFilename(timestamp)}.png`;
+    triggerDownload(blob, filename, 'image/png');
     setOpenDownloadMenu(null);
   };
 
@@ -752,8 +771,15 @@ ${header.length + uint8Array.length + 20}
                       {openDownloadMenu === item.id && (
                         <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
                           <button
-                            onClick={() => handleDownloadJpg(item.data, item.createdAt)}
+                            onClick={() => handleDownloadPng(item.data, item.createdAt)}
                             className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-3"
+                          >
+                            <span className="w-10 h-6 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs font-bold rounded flex items-center justify-center shadow-sm">PNG</span>
+                            <span>PNG 画像でダウンロード（推奨）</span>
+                          </button>
+                          <button
+                            onClick={() => handleDownloadJpg(item.data, item.createdAt)}
+                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-3 border-t border-gray-100"
                           >
                             <span className="w-10 h-6 bg-gradient-to-r from-orange-400 to-orange-500 text-white text-xs font-bold rounded flex items-center justify-center shadow-sm">JPG</span>
                             <span>JPEG 画像でダウンロード</span>
