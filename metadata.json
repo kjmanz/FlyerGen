@@ -1,0 +1,5 @@
+{
+  "name": "FlyerGen AI - Kyoshin",
+  "description": "AI-powered promotional flyer generator for Sumairu Denki Kan Kyoshin using Gemini 3 Pro Image.",
+  "requestFramePermissions": []
+}
