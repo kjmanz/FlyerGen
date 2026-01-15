@@ -233,7 +233,7 @@ const App: React.FC = () => {
             const filename = `Flyer_${formatDateForFilename(timestamp)}.jpg`;
             triggerDownload(blob, filename, 'image/jpeg');
           }
-        }, 'image/jpeg', 0.95);
+        }, 'image/jpeg', 1.0);
       }
     };
     img.src = imageData;
@@ -471,7 +471,7 @@ ${header.length + uint8Array.length + 20}
               className={`text-sm px-4 py-1.5 rounded-full font-bold flex items-center gap-2 transition-all ${apiKey ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}
             >
               <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
-              {apiKey ? 'API Active' : 'API Key Required'}
+              {apiKey ? 'API 接続中' : 'APIキー未設定'}
             </button>
           </div>
         </div>
@@ -485,18 +485,18 @@ ${header.length + uint8Array.length + 20}
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📂</span>
-                <h2 className="text-xl font-black text-slate-900">Saved Presets</h2>
+                <h2 className="text-xl font-black text-slate-900">保存済みプリセット</h2>
               </div>
               <button
                 onClick={handleNewProject}
                 className="text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-full transition-all"
               >
-                ＋ Create New
+                ＋ 新規作成
               </button>
             </div>
             {presets.length === 0 ? (
               <div className="text-center py-10 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                <p className="text-slate-400 text-sm font-medium">No presets saved yet.</p>
+                <p className="text-slate-400 text-sm font-medium">プリセットがありません</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -511,11 +511,11 @@ ${header.length + uint8Array.length + 20}
                         <h3 className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">{preset.name}</h3>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-2 flex items-center gap-1">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          Updated {new Date(preset.updatedAt).toLocaleDateString()}
+                          更新: {new Date(preset.updatedAt).toLocaleDateString('ja-JP')}
                         </p>
                         <div className="flex gap-2 mt-3">
-                          <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.products?.length || 0} Products</span>
-                          <span className="px-2 py-0.5 bg-indigo-50 text-[10px] font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? 'Portrait' : 'Landscape'}</span>
+                          <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
+                          <span className="px-2 py-0.5 bg-indigo-50 text-[10px] font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
                         </div>
                       </div>
                       <div className="pl-2">
@@ -540,13 +540,13 @@ ${header.length + uint8Array.length + 20}
           <div className="flex items-center gap-4">
             <div className={`w-3 h-3 rounded-full ${currentPresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Current Status</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">現在の状態</p>
               {currentPresetId ? (
                 <p className="font-extrabold text-indigo-700">
-                  Editing: {presets.find(p => p.id === currentPresetId)?.name || 'Unsaved Preset'}
+                  編集中: {presets.find(p => p.id === currentPresetId)?.name || '未保存のプリセット'}
                 </p>
               ) : (
-                <p className="font-extrabold text-slate-700">New Project (Unsaved)</p>
+                <p className="font-extrabold text-slate-700">新規プロジェクト（未保存）</p>
               )}
             </div>
           </div>
@@ -555,7 +555,7 @@ ${header.length + uint8Array.length + 20}
             className="btn-premium flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-indigo-600/20 active:scale-95"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-            Save Preset
+            保存
           </button>
         </div>
 
@@ -565,28 +565,28 @@ ${header.length + uint8Array.length + 20}
 
           <div className="flex items-center gap-3 mb-8 relative">
             <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
-            <h2 className="text-xl font-black text-slate-900">Output Configuration</h2>
+            <h2 className="text-xl font-black text-slate-900">出力設定</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 relative">
             {/* Background Mode */}
             <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Background Mode</label>
+              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">背景モード</label>
               <div className="flex gap-4">
                 <label className={`flex-1 flex flex-col gap-3 p-4 border-2 rounded-2xl cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 shadow-md ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                   <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-lg shadow-inner">✨</div>
                   <div>
-                    <div className="text-sm font-black text-slate-900">Creative</div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">AI Recommendations</div>
+                    <div className="text-sm font-black text-slate-900">クリエイティブ</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">AIおすすめ</div>
                   </div>
                 </label>
                 <label className={`flex-1 flex flex-col gap-3 p-4 border-2 rounded-2xl cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 shadow-md ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                   <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
                   <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-lg shadow-sm border border-slate-200">⬜</div>
                   <div>
-                    <div className="text-sm font-black text-slate-900">White</div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">Clean & Simple</div>
+                    <div className="text-sm font-black text-slate-900">ホワイト</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">シンプル</div>
                   </div>
                 </label>
               </div>
@@ -594,17 +594,17 @@ ${header.length + uint8Array.length + 20}
 
             {/* Orientation */}
             <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Flyer Format</label>
+              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">チラシ形式</label>
               <div className="flex gap-4">
                 <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-2xl cursor-pointer transition-all ${settings.orientation === 'vertical' ? 'border-indigo-600 bg-indigo-50/50 shadow-md ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                   <input type="radio" name="orientation" className="sr-only" checked={settings.orientation === 'vertical'} onChange={() => setSettings({ ...settings, orientation: 'vertical' })} />
                   <div className="w-6 h-9 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
-                  <span className="text-sm font-black text-slate-900">Portrait</span>
+                  <span className="text-sm font-black text-slate-900">縦向き</span>
                 </label>
                 <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-2xl cursor-pointer transition-all ${settings.orientation === 'horizontal' ? 'border-indigo-600 bg-indigo-50/50 shadow-md ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                   <input type="radio" name="orientation" className="sr-only" checked={settings.orientation === 'horizontal'} onChange={() => setSettings({ ...settings, orientation: 'horizontal' })} />
                   <div className="w-9 h-6 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
-                  <span className="text-sm font-black text-slate-900">Landscape</span>
+                  <span className="text-sm font-black text-slate-900">横向き</span>
                 </label>
               </div>
             </div>
@@ -612,16 +612,16 @@ ${header.length + uint8Array.length + 20}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative">
             <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Resolution & Quality</label>
+              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">解像度・画質</label>
               <div className="relative">
                 <select
                   value={settings.imageSize}
                   onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as any })}
                   className="block w-full rounded-2xl border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
                 >
-                  <option value="1K">1K (Standard • Fast)</option>
-                  <option value="2K">2K (High Definition)</option>
-                  <option value="4K">4K (Premium Ultra)</option>
+                  <option value="1K">1K（標準・高速）</option>
+                  <option value="2K">2K（高画質）</option>
+                  <option value="4K">4K（最高画質）</option>
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
@@ -629,7 +629,7 @@ ${header.length + uint8Array.length + 20}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Variations</label>
+              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">バリエーション</label>
               <div className="relative">
                 <select
                   value={settings.patternCount}
@@ -637,7 +637,7 @@ ${header.length + uint8Array.length + 20}
                   className="block w-full rounded-2xl border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
                 >
                   {[1, 2, 3, 4, 5].map(v => (
-                    <option key={v} value={v}>{v} {v === 1 ? 'Pattern' : 'Patterns'}</option>
+                    <option key={v} value={v}>{v} パターン</option>
                   ))}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -653,13 +653,13 @@ ${header.length + uint8Array.length + 20}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📱</div>
-              <h2 className="text-xl font-black text-slate-900">Featured Products</h2>
+              <h2 className="text-xl font-black text-slate-900">掲載商品</h2>
             </div>
             <button
               onClick={addProduct}
               className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-2xl text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
             >
-              ＋ Add Product
+              ＋ 商品追加
             </button>
           </div>
 
@@ -682,24 +682,24 @@ ${header.length + uint8Array.length + 20}
           <div className="bg-white rounded-[32px] shadow-premium border border-slate-100 p-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">👤</div>
-              <h3 className="text-lg font-black text-slate-900">Characters</h3>
+              <h3 className="text-lg font-black text-slate-900">キャラクター</h3>
             </div>
             <ImageUploader
-              label="Store characters, mascots, or illustrations"
+              label="店舗キャラクター、マスコットなど"
               images={characterImages}
               onImagesChange={setCharacterImages}
             />
             {characterImages.length > 0 && (
               <div className="mt-6 p-5 bg-slate-50/80 rounded-2xl border border-slate-100">
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Character Outfit Mode</label>
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">キャラクター衣装モード</label>
                 <div className="flex gap-3">
                   <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-xl cursor-pointer transition-all text-xs font-bold ${characterClothingMode === 'fixed' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                     <input type="radio" name="clothingMode" className="sr-only" checked={characterClothingMode === 'fixed'} onChange={() => setCharacterClothingMode('fixed')} />
-                    <span>👔 Keep Original</span>
+                    <span>👔 そのまま</span>
                   </label>
                   <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-xl cursor-pointer transition-all text-xs font-bold ${characterClothingMode === 'match' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                     <input type="radio" name="clothingMode" className="sr-only" checked={characterClothingMode === 'match'} onChange={() => setCharacterClothingMode('match')} />
-                    <span>🎨 Match Flyer Design</span>
+                    <span>🎨 チラシに合わせる</span>
                   </label>
                 </div>
               </div>
@@ -708,10 +708,10 @@ ${header.length + uint8Array.length + 20}
           <div id="reference-section" className="bg-white rounded-[32px] shadow-premium border border-slate-100 p-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🖼️</div>
-              <h3 className="text-lg font-black text-slate-900">Reference Designs</h3>
+              <h3 className="text-lg font-black text-slate-900">参考デザイン</h3>
             </div>
             <ImageUploader
-              label="Flyers for design inspiration"
+              label="デザイン参考にするチラシ画像"
               images={referenceImages}
               onImagesChange={setReferenceImages}
             />
@@ -722,11 +722,11 @@ ${header.length + uint8Array.length + 20}
         <div className="bg-white rounded-[32px] shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🏪</div>
-            <h3 className="text-lg font-black text-slate-900">Store Branding</h3>
+            <h3 className="text-lg font-black text-slate-900">店舗ロゴ</h3>
           </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-6 ml-11">Appears at the footer of the flyer</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-6 ml-11">チラシの下部に表示されます</p>
           <ImageUploader
-            label="Upload store logo image"
+            label="店舗ロゴ画像"
             images={storeLogoImages}
             onImagesChange={setStoreLogoImages}
             multiple={false}
@@ -737,11 +737,11 @@ ${header.length + uint8Array.length + 20}
         <div className="bg-white rounded-[32px] shadow-premium border border-slate-100 p-8 mb-16">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📝</div>
-            <h3 className="text-lg font-black text-slate-900">Special Instructions</h3>
+            <h3 className="text-lg font-black text-slate-900">追加指示</h3>
           </div>
           <textarea
             rows={4}
-            placeholder="e.g. Winter appliance sale, warm design tones, focused on family..."
+            placeholder="例: 冬の家電セール、温かみのあるデザイン、家族向け..."
             value={settings.additionalInstructions}
             onChange={(e) => setSettings({ ...settings, additionalInstructions: e.target.value })}
             className="block w-full rounded-2xl border-slate-200 border-2 py-4 px-5 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
@@ -761,12 +761,12 @@ ${header.length + uint8Array.length + 20}
             {isGenerating ? (
               <>
                 <svg className="animate-spin -ml-1 mr-4 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span className="tracking-tight uppercase">Generating Magic...</span>
+                <span className="tracking-tight uppercase">生成中...</span>
               </>
             ) : (
               <>
                 <span className="mr-3 text-2xl">✨</span>
-                <span className="tracking-tight uppercase">Generate Flyer</span>
+                <span className="tracking-tight uppercase">チラシ生成</span>
               </>
             )}
           </button>
@@ -778,7 +778,7 @@ ${header.length + uint8Array.length + 20}
             <div className="flex items-center justify-between mb-10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-lg">📁</div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Generation Gallery <span className="text-indigo-600 ml-2">({history.length})</span></h2>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-2">({history.length})</span></h2>
               </div>
             </div>
 
@@ -802,7 +802,7 @@ ${header.length + uint8Array.length + 20}
                         onClick={() => window.open(item.data, '_blank')}
                         className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-indigo-600 transition-all shadow-xl"
                       >
-                        View Fullscreen
+                        フルスクリーン
                       </button>
                     </div>
                   </div>
@@ -815,7 +815,7 @@ ${header.length + uint8Array.length + 20}
                         onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
                         className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/10 transition-all active:scale-95"
                       >
-                        Download
+                        ダウンロード
                         <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-300 ${openDownloadMenu === item.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -829,21 +829,21 @@ ${header.length + uint8Array.length + 20}
                             className="w-full text-left px-5 py-4 text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4"
                           >
                             <span className="w-10 h-6 bg-emerald-500 text-white text-[9px] font-black rounded flex items-center justify-center">PNG</span>
-                            <span>HQ IMAGE</span>
+                            <span>高画質画像</span>
                           </button>
                           <button
                             onClick={() => handleDownloadJpg(item.data, item.createdAt)}
                             className="w-full text-left px-5 py-4 text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
                           >
                             <span className="w-10 h-6 bg-amber-500 text-white text-[9px] font-black rounded flex items-center justify-center">JPG</span>
-                            <span>OPTIMIZED</span>
+                            <span>最適化画像</span>
                           </button>
                           <button
                             onClick={() => handleDownloadPdf(item.data, item.createdAt)}
                             className="w-full text-left px-5 py-4 text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
                           >
                             <span className="w-10 h-6 bg-rose-500 text-white text-[9px] font-black rounded flex items-center justify-center">PDF</span>
-                            <span>DOCUMENT</span>
+                            <span>ドキュメント</span>
                           </button>
                         </div>
                       )}
@@ -872,16 +872,16 @@ ${header.length + uint8Array.length + 20}
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-[32px] shadow-2xl max-w-md w-full p-8 animate-slide-up border border-white">
             <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-xl mb-6 shadow-inner border border-indigo-100">💾</div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Save Preset</h3>
-            <p className="text-sm font-medium text-slate-400 mb-8">Store current configuration for future use.</p>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">プリセット保存</h3>
+            <p className="text-sm font-medium text-slate-400 mb-8">現在の設定を保存します。</p>
 
             <div className="mb-8">
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Preset Name</label>
+              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">プリセット名</label>
               <input
                 type="text"
                 value={savePresetName}
                 onChange={(e) => setSavePresetName(e.target.value)}
-                placeholder="e.g. Winter Sale 2026"
+                placeholder="例: 2026年冬セール"
                 className="w-full border-2 border-slate-100 rounded-2xl shadow-sm py-4 px-5 focus:ring-0 focus:border-indigo-600 bg-slate-50/50 text-slate-900 font-bold placeholder:text-slate-300 transition-all auto-focus"
                 autoFocus
               />
@@ -893,20 +893,20 @@ ${header.length + uint8Array.length + 20}
                   onClick={() => executeSavePreset(false)}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs py-4 px-6 rounded-2xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
                 >
-                  Overwrite Existing
+                  上書き保存
                 </button>
               )}
               <button
                 onClick={() => executeSavePreset(true)}
                 className={`w-full font-black uppercase tracking-widest text-xs py-4 px-6 rounded-2xl transition-all border-2 active:scale-95 ${currentPresetId ? 'bg-white text-indigo-600 border-indigo-600 hover:bg-indigo-50' : 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent shadow-lg shadow-indigo-600/20'}`}
               >
-                {currentPresetId ? 'Save as New Preset' : 'Save Prescription'}
+                {currentPresetId ? '新規プリセットとして保存' : '保存'}
               </button>
               <button
                 onClick={() => setIsSaveModalOpen(false)}
                 className="w-full mt-2 text-slate-400 hover:text-slate-600 text-xs font-black uppercase tracking-[0.2em] py-2 transition-colors"
               >
-                Dismiss
+                キャンセル
               </button>
             </div>
           </div>
@@ -918,8 +918,8 @@ ${header.length + uint8Array.length + 20}
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-[32px] shadow-2xl max-w-md w-full p-8 animate-slide-up border border-white">
             <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-xl mb-6 shadow-inner border border-amber-100">🔑</div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">API Connection</h3>
-            <p className="text-sm font-medium text-slate-400 mb-8">Secure your access to Gemini AI services.</p>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">API設定</h3>
+            <p className="text-sm font-medium text-slate-400 mb-8">Gemini AIへの接続を設定します。</p>
 
             <div className="mb-8">
               <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Gemini API Key</label>
@@ -927,7 +927,7 @@ ${header.length + uint8Array.length + 20}
                 type="password"
                 value={tempApiKey}
                 onChange={(e) => setTempApiKey(e.target.value)}
-                placeholder="Paste your API key here..."
+                placeholder="APIキーを貼り付け..."
                 className="w-full border-2 border-slate-100 rounded-2xl shadow-sm py-4 px-5 focus:ring-0 focus:border-indigo-600 bg-slate-50/50 text-slate-900 font-bold placeholder:text-slate-300 transition-all"
                 autoFocus
               />
@@ -935,7 +935,7 @@ ${header.length + uint8Array.length + 20}
                 <p className="text-[11px] font-bold text-indigo-700 leading-relaxed flex items-start gap-3">
                   <span className="text-lg">💡</span>
                   <span>
-                    Get your free API key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-black">Google AI Studio</a>. Keys are stored locally on your device.
+                    無料のAPIキーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-black">Google AI Studio</a> で取得できます。キーはローカルに保存されます。
                   </span>
                 </p>
               </div>
@@ -946,13 +946,13 @@ ${header.length + uint8Array.length + 20}
                 onClick={handleSaveApiKey}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs py-4 px-6 rounded-2xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
               >
-                Secure & Connect
+                保存して接続
               </button>
               <button
                 onClick={() => setIsSettingsOpen(false)}
                 className="w-full mt-2 text-slate-400 hover:text-slate-600 text-xs font-black uppercase tracking-[0.2em] py-2 transition-colors"
               >
-                Discard Changes
+                キャンセル
               </button>
             </div>
           </div>
@@ -964,10 +964,10 @@ ${header.length + uint8Array.length + 20}
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-[32px] shadow-2xl max-w-md w-full p-8 animate-slide-up border border-white">
             <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-xl mb-6 shadow-inner border border-indigo-100">📥</div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Load Preset</h3>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">プリセット読み込み</h3>
             <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">
-              Applying "<span className="text-indigo-600 font-black">{presetToLoad.name}</span>".
-              Existing unsaved data will be replaced.
+              「<span className="text-indigo-600 font-black">{presetToLoad.name}</span>」を読み込みます。
+              現在の未保存データは置き換わります。
             </p>
 
             <div className="flex flex-col gap-3">
@@ -976,13 +976,13 @@ ${header.length + uint8Array.length + 20}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs py-4 px-6 rounded-2xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
                 autoFocus
               >
-                Confirm Load
+                読み込み実行
               </button>
               <button
                 onClick={() => setPresetToLoad(null)}
                 className="w-full mt-2 bg-slate-50 hover:bg-slate-100 text-slate-500 font-black uppercase tracking-widest text-xs py-4 px-6 rounded-2xl transition-all active:scale-95"
               >
-                Nevermind
+                キャンセル
               </button>
             </div>
           </div>

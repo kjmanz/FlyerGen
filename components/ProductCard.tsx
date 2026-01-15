@@ -43,7 +43,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
       <div className="flex items-center justify-between mb-8 relative">
         <div className="flex items-center gap-3">
           <div className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-indigo-600/20">
-            Product {index + 1}
+            商品 {index + 1}
           </div>
           {product.productName && (
             <h4 className="text-sm font-black text-slate-400 truncate max-w-[200px]">{product.productName}</h4>
@@ -60,9 +60,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative">
         <div>
-          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Product Media</label>
+          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">商品画像</label>
           <ImageUploader
-            label="Product image"
+            label="商品画像"
             images={product.images}
             onImagesChange={(imgs) => onChange({ ...product, images: imgs })}
           />
@@ -70,13 +70,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
 
         <div className="space-y-6">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Model Number</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">品番</label>
             <div className="flex shadow-sm rounded-2xl overflow-hidden border-2 border-slate-100 focus-within:border-indigo-600 transition-all">
               <input
                 type="text"
                 value={product.productCode}
                 onChange={(e) => onChange({ ...product, productCode: e.target.value })}
-                placeholder="PROD-ID00X"
+                placeholder="例: CS-X403D2"
                 className="flex-1 block w-full py-3 px-4 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 focus:outline-none"
               />
               <button
@@ -88,26 +88,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
                 {isSearching ? (
                   <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 ) : (
-                  "Magic Search"
+                  "🔍 検索"
                 )}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Display Name</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">商品名</label>
             <input
               type="text"
               value={product.productName}
               onChange={(e) => onChange({ ...product, productName: e.target.value })}
-              placeholder="Full Product Name"
+              placeholder="商品の正式名称"
               className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 transition-all hover:border-slate-200"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">List Price</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">通常価格</label>
               <div className="relative">
                 <input
                   type="number"
@@ -117,18 +117,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
                   className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-3 pl-4 pr-10 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 transition-all hover:border-slate-200"
                 />
                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                  <span className="text-[10px] font-black text-slate-400">JPY</span>
+                  <span className="text-[10px] font-black text-slate-400">円</span>
                 </div>
               </div>
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-rose-500 mb-2 ml-1">Special Offer</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-rose-500 mb-2 ml-1">特価</label>
               <div className="space-y-3">
                 <input
                   type="text"
                   value={product.salePriceLabel || ''}
                   onChange={(e) => onChange({ ...product, salePriceLabel: e.target.value })}
-                  placeholder="Offer Label (e.g. Member Disc)"
+                  placeholder="ラベル（例: 会員価格）"
                   className="block w-full text-[10px] font-black uppercase tracking-widest border-rose-100 border-2 rounded-xl py-2 px-3 bg-rose-50/30 text-rose-600 placeholder:text-rose-200 focus:border-rose-300 focus:ring-0 transition-all"
                 />
                 <div className="relative">
@@ -136,11 +136,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
                     type="number"
                     value={product.salePrice}
                     onChange={(e) => onChange({ ...product, salePrice: e.target.valueAsNumber || '' })}
-                    placeholder="Offer Price"
+                    placeholder="販売価格"
                     className="block w-full rounded-2xl border-rose-100 border-2 py-3 pl-4 pr-10 shadow-sm focus:border-rose-400 focus:ring-0 sm:text-sm bg-rose-50/50 text-rose-900 font-black placeholder:text-rose-200 transition-all"
                   />
                   <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                    <span className="text-[10px] font-black text-rose-300">JPY</span>
+                    <span className="text-[10px] font-black text-rose-300">円</span>
                   </div>
                 </div>
               </div>
@@ -148,12 +148,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Marketing Hook</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">キャッチコピー</label>
             <input
               type="text"
               value={product.catchCopy}
               onChange={(e) => onChange({ ...product, catchCopy: e.target.value })}
-              placeholder="e.g. Limited Edition • Sale ends soon!"
+              placeholder="例: 数量限定・在庫限り！"
               className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-bold placeholder:text-slate-300 transition-all hover:border-slate-200"
             />
           </div>
@@ -161,12 +161,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
       </div>
 
       <div className="mt-8 relative">
-        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Technical Specs & Features</label>
+        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">スペック・特徴</label>
         <textarea
           rows={3}
           value={product.specs}
           onChange={(e) => onChange({ ...product, specs: e.target.value })}
-          placeholder="Detailed specs will appear here after searching..."
+          placeholder="検索後、スペックが自動入力されます..."
           className="mt-1 block w-full rounded-2xl border-slate-100 border-2 py-4 px-5 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-200"
         />
       </div>

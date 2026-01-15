@@ -71,7 +71,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mb-2 group-hover:shadow-md transition-shadow">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest">Add Media</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">＋ 追加</span>
         </button>
       </div>
 
