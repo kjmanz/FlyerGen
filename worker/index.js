@@ -3,6 +3,20 @@
  * Cloudflare Workerで動作するGemini API & Replicate API プロキシ
  */
 
+/**
+ * Convert ArrayBuffer to Base64 string (handles large files without stack overflow)
+ */
+function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSize = 32768; // Process in 32KB chunks to avoid stack overflow
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+        binary += String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binary);
+}
+
 export default {
     async fetch(request, env) {
         // CORS設定
@@ -116,7 +130,7 @@ async function handleUpscale(request, corsHeaders) {
         // 画像をBase64に変換してフロントに返す
         const imageResponse = await fetch(outputUrl);
         const imageBlob = await imageResponse.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(imageBlob)));
+        const base64 = arrayBufferToBase64(imageBlob);
 
         console.log('Upscale completed successfully');
 
@@ -152,7 +166,7 @@ async function handleUpscale(request, corsHeaders) {
                 const outputUrl = status.output;
                 const imageResponse = await fetch(outputUrl);
                 const imageBlob = await imageResponse.arrayBuffer();
-                const base64 = btoa(String.fromCharCode(...new Uint8Array(imageBlob)));
+                const base64 = arrayBufferToBase64(imageBlob);
 
                 console.log('Upscale completed after polling');
 
