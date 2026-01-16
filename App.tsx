@@ -628,37 +628,38 @@ ${header.length + uint8Array.length + 20}
               FlyerGen <span className="text-indigo-600">AI</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={handleGenerate}
               disabled={isGenerating}
-              className={`text-sm px-4 py-1.5 rounded-full font-bold flex items-center gap-2 transition-all ${isGenerating ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
+              className={`text-sm px-3 sm:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all ${isGenerating ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
             >
               {isGenerating ? (
                 <>
                   <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  生成中...
+                  <span className="hidden sm:inline">生成中...</span>
                 </>
               ) : (
                 <>
                   <span>✨</span>
-                  チラシ作成
+                  <span className="hidden sm:inline">チラシ作成</span>
                 </>
               )}
             </button>
             <button
               onClick={() => setShowPresetList(!showPresetList)}
-              className="text-sm font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-1.5 transition-colors group"
+              className="p-2 sm:px-3 sm:py-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+              title="プリセット"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400 group-hover:text-indigo-500 transition-colors" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
-              プリセット
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
             </button>
             <button
-              onClick={() => { setTempApiKey(apiKey); setIsSettingsOpen(true); }}
-              className={`text-sm px-4 py-1.5 rounded-full font-bold flex items-center gap-2 transition-all ${apiKey ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}
+              onClick={() => { setTempApiKey(apiKey); setTempReplicateApiKey(replicateApiKey); setIsSettingsOpen(true); }}
+              className={`p-2 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5 transition-all ${apiKey ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'}`}
+              title={apiKey ? 'API 接続中' : 'APIキー未設定'}
             >
-              <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
-              {apiKey ? 'API 接続中' : 'APIキー未設定'}
+              <div className={`w-2.5 h-2.5 rounded-full ${apiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
+              <span className="hidden sm:inline text-xs font-bold">{apiKey ? '接続中' : '未設定'}</span>
             </button>
           </div>
         </div>

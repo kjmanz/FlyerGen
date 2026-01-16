@@ -29,7 +29,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
       onChange({
         ...product,
         productName: result.productName,
-        specs: combinedSpecs
+        specs: combinedSpecs,
+        targetCustomer: result.targetCustomer || product.targetCustomer || '',
+        benefits: result.benefits || product.benefits || ''
       });
     } catch (e) {
       alert("スペック検索に失敗しました。もう一度お試しください。");
@@ -202,6 +204,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
               value={product.specs}
               onChange={(e) => onChange({ ...product, specs: e.target.value })}
               placeholder="検索後、スペックが自動入力されます..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Target Customer */}
+          <div className="mt-4">
+            <label className="block text-xs font-semibold text-gray-500 mb-1">お客様像（この商品を使う方）</label>
+            <input
+              type="text"
+              value={product.targetCustomer || ''}
+              onChange={(e) => onChange({ ...product, targetCustomer: e.target.value })}
+              placeholder="例: 一人暮らしの方、共働きの忙しいご家庭"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Benefits */}
+          <div className="mt-4">
+            <label className="block text-xs font-semibold text-gray-500 mb-1">機種の良いところ・ベネフィット</label>
+            <textarea
+              rows={2}
+              value={product.benefits || ''}
+              onChange={(e) => onChange({ ...product, benefits: e.target.value })}
+              placeholder="例: 電気代が安くなる、お手入れが簡単"
               className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-indigo-500"
             />
           </div>

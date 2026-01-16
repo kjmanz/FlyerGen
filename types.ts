@@ -8,6 +8,8 @@ export interface Product {
   salePrice: number | '';
   salePriceLabel?: string;
   catchCopy: string;
+  targetCustomer?: string; // この商品を使うお客様像
+  benefits?: string; // 機種の良いところ・ベネフィット
 }
 
 export type ImageSize = '1K' | '2K' | '4K';
@@ -25,6 +27,8 @@ export interface SpecSearchResult {
   productName: string;
   specs: string;
   features?: string[];
+  targetCustomer?: string; // この商品を使うお客様像
+  benefits?: string; // 機種の良いところ・ベネフィット
 }
 
 export interface GeneratedImage {

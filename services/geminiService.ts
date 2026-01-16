@@ -15,6 +15,8 @@ export const searchProductSpecs = async (productCode: string, apiKey: string): P
     1. "productName": 商品の正式名称（日本語）
     2. "specs": 主要スペックの簡潔な要約（畳数、サイズ、消費電力など、日本語）
     3. "features": 3〜5つの主なセールスポイント（箇条書き配列、日本語）
+    4. "targetCustomer": この商品を使うお客様像（例：「一人暮らしの方」「共働きの忙しいご家庭」など）
+    5. "benefits": この機種の良いところ・ベネフィット（例：「電気代が安くなる」「お手入れが簡単」など）
   `;
 
   try {
@@ -29,7 +31,9 @@ export const searchProductSpecs = async (productCode: string, apiKey: string): P
           properties: {
             productName: { type: Type.STRING },
             specs: { type: Type.STRING },
-            features: { type: Type.ARRAY, items: { type: Type.STRING } }
+            features: { type: Type.ARRAY, items: { type: Type.STRING } },
+            targetCustomer: { type: Type.STRING },
+            benefits: { type: Type.STRING }
           },
           required: ["productName", "specs"]
         }
