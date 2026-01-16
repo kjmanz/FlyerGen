@@ -19,7 +19,7 @@ export const searchProductSpecs = async (productCode: string, apiKey: string): P
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
