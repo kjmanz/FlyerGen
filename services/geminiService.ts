@@ -41,7 +41,33 @@ export const searchProductSpecs = async (productCode: string, apiKey: string): P
     });
 
     const text = response.text;
-    if (!text) throw new Error("AIからの応答がありません");
+    if (!text) {
+      // Retry once if empty response
+      console.log("Empty response, retrying...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const retryResponse = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              productName: { type: Type.STRING },
+              specs: { type: Type.STRING },
+              features: { type: Type.ARRAY, items: { type: Type.STRING } },
+              customerReviews: { type: Type.STRING },
+              benefits: { type: Type.STRING }
+            },
+            required: ["productName", "specs"]
+          }
+        }
+      });
+      const retryText = retryResponse.text;
+      if (!retryText) throw new Error("AIからの応答がありません。品番を確認してください。");
+      return JSON.parse(retryText) as SpecSearchResult;
+    }
     return JSON.parse(text) as SpecSearchResult;
 
   } catch (error) {
