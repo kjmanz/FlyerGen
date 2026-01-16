@@ -292,38 +292,17 @@ const App: React.FC = () => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      // Calculate target dimensions based on imageSize setting
-      const targetShortSide = settings.imageSize === '4K' ? 4096 : settings.imageSize === '2K' ? 2048 : 0;
-
-      let targetWidth = img.width;
-      let targetHeight = img.height;
-
-      // Only upscale if target is larger than original
-      if (targetShortSide > 0) {
-        const shortSide = Math.min(img.width, img.height);
-        if (shortSide < targetShortSide) {
-          const scale = targetShortSide / shortSide;
-          targetWidth = Math.round(img.width * scale);
-          targetHeight = Math.round(img.height * scale);
-        }
-      }
-
       const canvas = document.createElement('canvas');
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
+      canvas.width = img.width;
+      canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Enable high-quality image scaling
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+        ctx.drawImage(img, 0, 0);
 
         canvas.toBlob((blob) => {
           if (blob) {
-            // Explicit filename and MIME type
             const filename = `Flyer_${formatDateForFilename(timestamp)}.jpg`;
             triggerDownload(blob, filename, 'image/jpeg');
           }
@@ -335,45 +314,9 @@ const App: React.FC = () => {
   };
 
   const handleDownloadPng = (imageData: string, timestamp: number) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      // Calculate target dimensions based on imageSize setting
-      const targetShortSide = settings.imageSize === '4K' ? 4096 : settings.imageSize === '2K' ? 2048 : 0;
-
-      let targetWidth = img.width;
-      let targetHeight = img.height;
-
-      // Only upscale if target is larger than original
-      if (targetShortSide > 0) {
-        const shortSide = Math.min(img.width, img.height);
-        if (shortSide < targetShortSide) {
-          const scale = targetShortSide / shortSide;
-          targetWidth = Math.round(img.width * scale);
-          targetHeight = Math.round(img.height * scale);
-        }
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Enable high-quality image scaling
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const filename = `Flyer_${formatDateForFilename(timestamp)}.png`;
-            triggerDownload(blob, filename, 'image/png');
-          }
-        }, 'image/png');
-      }
-    };
-    img.src = imageData;
+    const blob = dataUrlToBlob(imageData, 'image/png');
+    const filename = `Flyer_${formatDateForFilename(timestamp)}.png`;
+    triggerDownload(blob, filename, 'image/png');
     setOpenDownloadMenu(null);
   };
 

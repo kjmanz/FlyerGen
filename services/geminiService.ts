@@ -168,12 +168,15 @@ export const generateFlyerImage = async (
     if (img) parts.push(img);
   });
 
+  // Determine aspect ratio based on orientation (A4 ratio)
+  const aspectRatio = settings.orientation === 'vertical' ? '3:4' : '4:3';
+
   // 3. Create batch requests (one per pattern)
   const batchRequests = Array.from({ length: settings.patternCount }).map(() => ({
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} request(s) to API...`);
+  console.log(`Sending ${batchRequests.length} request(s) to API with imageSize: ${settings.imageSize}, aspectRatio: ${aspectRatio}...`);
 
   // API endpoint: use Worker URL in production, localhost in development
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -186,7 +189,9 @@ export const generateFlyerImage = async (
     },
     body: JSON.stringify({
       apiKey,
-      requests: batchRequests
+      requests: batchRequests,
+      imageSize: settings.imageSize,
+      aspectRatio: aspectRatio
     })
   });
 

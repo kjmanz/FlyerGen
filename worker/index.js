@@ -26,7 +26,7 @@ export default {
         }
 
         try {
-            const { apiKey, requests } = await request.json();
+            const { apiKey, requests, imageSize, aspectRatio } = await request.json();
 
             if (!apiKey) {
                 return new Response(JSON.stringify({ error: 'API key is required' }), {
@@ -42,7 +42,11 @@ export default {
                 });
             }
 
-            console.log(`Processing ${requests.length} request(s)...`);
+            // Validate imageSize (must be uppercase K)
+            const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
+            const validAspectRatio = aspectRatio || '3:4';
+
+            console.log(`Processing ${requests.length} request(s) with imageSize: ${validImageSize}, aspectRatio: ${validAspectRatio}...`);
 
             // 並列で画像生成リクエストを処理
             const results = await Promise.all(
@@ -59,7 +63,11 @@ export default {
                                 body: JSON.stringify({
                                     contents: [r.contents],
                                     generationConfig: {
-                                        responseModalities: ['Text', 'Image']
+                                        responseModalities: ['Text', 'Image'],
+                                        imageConfig: {
+                                            imageSize: validImageSize,
+                                            aspectRatio: validAspectRatio
+                                        }
                                     }
                                 })
                             }
