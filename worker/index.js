@@ -213,7 +213,7 @@ async function handleUpscale(request, corsHeaders) {
 }
 
 /**
- * バッチ画像生成処理（Gemini API）
+ * バッチ画像生成処理（Gemini Batch API - 50%コスト削減）
  */
 async function handleBatchGenerate(request, corsHeaders) {
     const { apiKey, requests, imageSize, aspectRatio } = await request.json();
@@ -235,7 +235,144 @@ async function handleBatchGenerate(request, corsHeaders) {
     const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
     const validAspectRatio = aspectRatio || '3:4';
 
-    console.log(`Processing ${requests.length} request(s) with imageSize: ${validImageSize}, aspectRatio: ${validAspectRatio}...`);
+    console.log(`Starting Batch API with ${requests.length} request(s), imageSize: ${validImageSize}, aspectRatio: ${validAspectRatio}...`);
+
+    // Batch APIのインラインリクエストを構築
+    const inlineRequests = requests.map((r, index) => ({
+        key: `request_${index}`,
+        request: {
+            contents: [r.contents],
+            generationConfig: {
+                responseModalities: ['Text', 'Image'],
+                imageConfig: {
+                    imageSize: validImageSize,
+                    aspectRatio: validAspectRatio
+                }
+            }
+        }
+    }));
+
+    try {
+        // Step 1: バッチジョブを作成
+        const batchResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:batchGenerateContent`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    requests: inlineRequests.map(r => r.request)
+                })
+            }
+        );
+
+        if (!batchResponse.ok) {
+            const errorText = await batchResponse.text();
+            console.error('Batch API creation failed:', errorText);
+
+            // Batch APIが利用できない場合は同期APIにフォールバック
+            console.log('Falling back to synchronous API...');
+            return await handleSyncGenerate(apiKey, requests, validImageSize, validAspectRatio, corsHeaders);
+        }
+
+        const batchResult = await batchResponse.json();
+
+        // batchGenerateContentは即座に結果を返す場合がある
+        if (batchResult.responses) {
+            console.log('Batch API returned immediate results');
+            const images = [];
+
+            for (const response of batchResult.responses) {
+                if (response.candidates?.[0]?.content?.parts) {
+                    for (const part of response.candidates[0].content.parts) {
+                        if (part.inlineData) {
+                            images.push(`data:image/png;base64,${part.inlineData.data}`);
+                        }
+                    }
+                }
+            }
+
+            if (images.length > 0) {
+                return new Response(JSON.stringify({ images }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
+        // 非同期ジョブの場合はジョブ名を取得してポーリング
+        if (batchResult.name) {
+            console.log('Batch job created:', batchResult.name);
+
+            // ポーリングで結果を待つ（最大5分）
+            const maxAttempts = 60;
+            let attempts = 0;
+
+            while (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機
+                attempts++;
+
+                const statusResponse = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/${batchResult.name}`,
+                    {
+                        headers: { 'x-goog-api-key': apiKey }
+                    }
+                );
+
+                if (!statusResponse.ok) {
+                    console.error('Status check failed:', await statusResponse.text());
+                    continue;
+                }
+
+                const status = await statusResponse.json();
+                console.log(`Batch job status: ${status.state}`);
+
+                if (status.state === 'JOB_STATE_SUCCEEDED') {
+                    // 結果を取得
+                    const images = [];
+                    if (status.response?.responses) {
+                        for (const response of status.response.responses) {
+                            if (response.candidates?.[0]?.content?.parts) {
+                                for (const part of response.candidates[0].content.parts) {
+                                    if (part.inlineData) {
+                                        images.push(`data:image/png;base64,${part.inlineData.data}`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    return new Response(JSON.stringify({ images }), {
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+                }
+
+                if (status.state === 'JOB_STATE_FAILED') {
+                    throw new Error(`Batch job failed: ${status.error?.message || 'Unknown error'}`);
+                }
+            }
+
+            throw new Error('Batch job timeout after 5 minutes');
+        }
+
+        // 結果が空の場合は同期APIにフォールバック
+        console.log('No results from Batch API, falling back to synchronous API...');
+        return await handleSyncGenerate(apiKey, requests, validImageSize, validAspectRatio, corsHeaders);
+
+    } catch (error) {
+        console.error('Batch API error:', error.message);
+        // エラー時は同期APIにフォールバック
+        console.log('Error occurred, falling back to synchronous API...');
+        return await handleSyncGenerate(apiKey, requests, validImageSize, validAspectRatio, corsHeaders);
+    }
+}
+
+/**
+ * 同期画像生成処理（フォールバック用）
+ */
+async function handleSyncGenerate(apiKey, requests, imageSize, aspectRatio, corsHeaders) {
+    console.log(`Sync generation: ${requests.length} request(s)...`);
 
     const results = await Promise.all(
         requests.map(async (r, index) => {
@@ -253,8 +390,8 @@ async function handleBatchGenerate(request, corsHeaders) {
                             generationConfig: {
                                 responseModalities: ['Text', 'Image'],
                                 imageConfig: {
-                                    imageSize: validImageSize,
-                                    aspectRatio: validAspectRatio
+                                    imageSize: imageSize,
+                                    aspectRatio: aspectRatio
                                 }
                             }
                         })
@@ -306,3 +443,4 @@ async function handleBatchGenerate(request, corsHeaders) {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 }
+
