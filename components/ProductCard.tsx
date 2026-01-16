@@ -62,7 +62,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
       )}
       {/* Header - always visible */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600"
@@ -74,11 +74,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
           <span className="px-2 py-0.5 bg-indigo-600 text-white text-xs font-semibold rounded">
             商品 {index + 1}
           </span>
-          <span className="text-sm text-gray-600 truncate max-w-[250px]">
+          <span className="text-sm text-gray-600 truncate max-w-[100px] sm:max-w-[180px] md:max-w-[250px]">
             {getSummary()}
           </span>
           {product.salePrice && (
-            <span className="text-sm font-bold text-rose-600">
+            <span className="text-xs sm:text-sm font-bold text-rose-600 whitespace-nowrap">
               ¥{typeof product.salePrice === 'number' ? product.salePrice.toLocaleString() : product.salePrice}
             </span>
           )}
