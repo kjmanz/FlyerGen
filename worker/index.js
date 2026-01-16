@@ -90,7 +90,8 @@ async function handleUpscale(request, corsHeaders) {
 
     console.log(`Starting upscale with scale: ${upscaleScale}x...`);
 
-    // Replicate API呼び出し（Real-ESRGAN）
+    // Replicate API呼び出し（Real-ESRGAN with tile processing for large images）
+    // Using model version that supports tiled processing for large images
     const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
         method: 'POST',
         headers: {
@@ -99,11 +100,13 @@ async function handleUpscale(request, corsHeaders) {
             'Prefer': 'wait'  // 同期的に結果を待つ
         },
         body: JSON.stringify({
-            version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa',
+            // Using nightmareai/real-esrgan which supports larger images with tiling
+            version: '42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c1d7b',
             input: {
                 image: imageData,
                 scale: upscaleScale,
-                face_enhance: false
+                face_enhance: false,
+                tile: 400  // Enable tiled processing for large images
             }
         })
     });
