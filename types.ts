@@ -31,6 +31,7 @@ export interface GeneratedImage {
   id: string;
   data: string; // Base64 string
   createdAt: number;
+  isUpscaled?: boolean; // Flag to indicate if image has been upscaled
 }
 
 export interface Preset {
