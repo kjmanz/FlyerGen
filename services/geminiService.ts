@@ -178,11 +178,12 @@ export const generateFlyerImage = async (
 
   console.log(`Sending ${batchRequests.length} request(s) to API with imageSize: ${settings.imageSize}, aspectRatio: ${aspectRatio}...`);
 
-  // API endpoint: use Worker URL in production, localhost in development
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
+  // API BASE URL
+  const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/api\/batch-generate$/, '');
 
-  // Call API server
-  const response = await fetch(apiUrl, {
+  // 1. Create Batch Job
+  console.log(`Creating batch job for ${batchRequests.length} request(s)...`);
+  const createResponse = await fetch(`${baseUrl}/api/batch/create`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -195,24 +196,52 @@ export const generateFlyerImage = async (
     })
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    let errorMessage = errorData.message || errorData.error || `Batch API error: ${response.status}`;
+  if (!createResponse.ok) {
+    const errorData = await createResponse.json().catch(() => ({}));
+    throw new Error(errorData.error || `Batch creation failed: ${createResponse.status}`);
+  }
 
-    // Append details if available
-    if (errorData.details && Array.isArray(errorData.details)) {
-      errorMessage += '\nDetails:\n' + errorData.details.map((d: any) => d.error || JSON.stringify(d)).join('\n');
+  const { jobId } = await createResponse.json();
+  console.log(`Batch job created: ${jobId}. Polling for results...`);
+
+  // 2. Poll for results (Max 5 minutes)
+  // Google Batch API for image generation might take time.
+  const maxAttempts = 60; // 5 seconds * 60 = 300 seconds (5 min)
+
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, 5000)); // Wait 5 seconds
+
+    try {
+      const checkResponse = await fetch(`${baseUrl}/api/batch/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, jobId })
+      });
+
+      if (!checkResponse.ok) {
+        console.warn(`Status check failed (${checkResponse.status}), retrying...`);
+        continue;
+      }
+
+      const status = await checkResponse.json();
+      console.log(`Batch Status (${i + 1}/${maxAttempts}): ${status.state}`);
+
+      if (status.complete) {
+        if (status.error) {
+          throw new Error(`Batch job failed: ${status.error}`);
+        }
+        if (status.images && status.images.length > 0) {
+          console.log(`Received ${status.images.length} image(s) from Batch API`);
+          return status.images;
+        }
+        throw new Error('Batch completed but no images returned');
+      }
+    } catch (e) {
+      console.error("Polling error:", e);
+      // Determine if we should stop or continue polling on error
+      if (i === maxAttempts - 1) throw e;
     }
-
-    throw new Error(errorMessage);
   }
 
-  const result = await response.json();
-
-  if (!result.images || result.images.length === 0) {
-    throw new Error("画像の生成に失敗しました。");
-  }
-
-  console.log(`Received ${result.images.length} image(s) from Batch API`);
-  return result.images;
+  throw new Error('生成がタイムアウトしました。処理はバックグラウンドで継続している可能性がありますが、応答待ち時間を超過しました。時間を置いて再試行してください。');
 };

@@ -49,6 +49,16 @@ export default {
                 return await handleUpscale(request, corsHeaders);
             }
 
+            // Google Batch API: ジョブ作成
+            if (path === '/api/batch/create') {
+                return await handleCreateBatch(request, corsHeaders);
+            }
+
+            // Google Batch API: ステータス確認
+            if (path === '/api/batch/check') {
+                return await handleCheckBatch(request, corsHeaders);
+            }
+
             // デフォルト: バッチ生成エンドポイント（後方互換性）
             return await handleBatchGenerate(request, corsHeaders);
 
@@ -303,6 +313,152 @@ async function handleBatchGenerate(request, corsHeaders) {
     }
 
     return new Response(JSON.stringify({ images: validResults }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+/**
+ * Handle Batch Creation (Google Batch API)
+ */
+async function handleCreateBatch(request, corsHeaders) {
+    const { apiKey, requests, imageSize, aspectRatio } = await request.json();
+
+    if (!apiKey) return errorResponse('API key is required', 400, corsHeaders);
+    if (!requests || requests.length === 0) return errorResponse('Requests required', 400, corsHeaders);
+
+    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
+    const validAspectRatio = aspectRatio || '3:4';
+
+    // Construct Inline Batch Requests
+    const inlineRequests = requests.map((r, i) => ({
+        request: {
+            contents: [r.contents],
+            generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+                imageConfig: {
+                    imageSize: validImageSize,
+                    aspectRatio: validAspectRatio
+                }
+            }
+        }
+    }));
+
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:batchGenerateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requests: inlineRequests })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error('Batch Create Error:', data);
+            return errorResponse(data.error?.message || 'Batch creation failed', response.status, corsHeaders);
+        }
+
+        return new Response(JSON.stringify({ jobId: data.name }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+
+    } catch (e) {
+        console.error('Batch Create Exception:', e);
+        return errorResponse(e.message, 500, corsHeaders);
+    }
+}
+
+/**
+ * Handle Batch Status Check & Result Retrieval
+ */
+async function handleCheckBatch(request, corsHeaders) {
+    const { apiKey, jobId } = await request.json();
+
+    if (!apiKey || !jobId) return errorResponse('API key and Job ID required', 400, corsHeaders);
+
+    try {
+        const statusResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/${jobId}?key=${apiKey}`
+        );
+        const statusData = await statusResponse.json();
+
+        if (!statusResponse.ok) {
+            return errorResponse(statusData.error?.message || 'Status check failed', statusResponse.status, corsHeaders);
+        }
+
+        const state = statusData.state;
+
+        if (state !== 'JOB_STATE_SUCCEEDED') {
+            // FAILED or CANCELLED
+            if (state === 'JOB_STATE_FAILED' || state === 'JOB_STATE_CANCELLED' || state === 'JOB_STATE_EXPIRED') {
+                return new Response(JSON.stringify({
+                    state,
+                    complete: true,
+                    error: statusData.error?.message || `Job finished with state: ${state}`
+                }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            // Pending or Running
+            return new Response(JSON.stringify({ state, complete: false }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const outputFileName = statusData.dest?.fileName;
+
+        if (!outputFileName) {
+            return errorResponse('Output file not found in completed job', 500, corsHeaders);
+        }
+
+        const fileResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/${outputFileName}:download?alt=media&key=${apiKey}`
+        );
+
+        if (!fileResponse.ok) {
+            return errorResponse('Failed to download result file', fileResponse.status, corsHeaders);
+        }
+
+        const textContent = await fileResponse.text();
+        const lines = textContent.split('\n').filter(line => line.trim());
+        const images = [];
+
+        for (const line of lines) {
+            try {
+                const item = JSON.parse(line);
+                const candidates = item.response?.candidates || [];
+                for (const cand of candidates) {
+                    for (const part of cand.content?.parts || []) {
+                        if (part.inlineData) {
+                            images.push(`data:image/png;base64,${part.inlineData.data}`);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('JSONL Parse Error:', e);
+            }
+        }
+
+        return new Response(JSON.stringify({
+            state,
+            complete: true,
+            images
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+
+    } catch (e) {
+        console.error('Batch Check Exception:', e);
+        return errorResponse(e.message, 500, corsHeaders);
+    }
+}
+
+function errorResponse(message, status, corsHeaders) {
+    return new Response(JSON.stringify({ error: message }), {
+        status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 }
