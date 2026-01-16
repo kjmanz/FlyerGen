@@ -11,12 +11,12 @@ export const searchProductSpecs = async (productCode: string, apiKey: string): P
 
   const prompt = `
     家電製品の品番 "${productCode}" のスペック情報を検索してください。
-    簡潔に以下のJSON形式で出力：
+    以下のJSON形式で出力：
     1. "productName": 商品の正式名称（50文字以内）
-    2. "specs": 主要スペック要約（100文字以内）
-    3. "features": 主な特徴3つ（各20文字以内の配列）
-    4. "customerReviews": 実際のユーザーの声を3件程度まとめて（100文字以内）
-    5. "benefits": ベネフィット要約（50文字以内）
+    2. "specs": 主要スペック要約（300文字以内）
+    3. "features": 主な特徴5つ（各50文字以内の配列）
+    4. "customerReviews": 実際のユーザーの声を5件程度まとめて（300文字以内）
+    5. "benefits": ベネフィット要約（150文字以内）
   `;
 
   try {
