@@ -30,7 +30,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
         ...product,
         productName: result.productName,
         specs: combinedSpecs,
-        targetCustomer: result.targetCustomer || product.targetCustomer || '',
+        customerReviews: result.customerReviews || product.customerReviews || '',
         benefits: result.benefits || product.benefits || ''
       });
     } catch (e) {
@@ -208,14 +208,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
             />
           </div>
 
-          {/* Target Customer */}
+          {/* Customer Reviews */}
           <div className="mt-4">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">お客様像（この商品を使う方）</label>
-            <input
-              type="text"
-              value={product.targetCustomer || ''}
-              onChange={(e) => onChange({ ...product, targetCustomer: e.target.value })}
-              placeholder="例: 一人暮らしの方、共働きの忙しいご家庭"
+            <label className="block text-xs font-semibold text-gray-500 mb-1">お客様の声・レビュー</label>
+            <textarea
+              rows={2}
+              value={product.customerReviews || ''}
+              onChange={(e) => onChange({ ...product, customerReviews: e.target.value })}
+              placeholder="SNSやECサイトの口コミが自動入力されます..."
               className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:border-indigo-500"
             />
           </div>

@@ -8,7 +8,7 @@ export interface Product {
   salePrice: number | '';
   salePriceLabel?: string;
   catchCopy: string;
-  targetCustomer?: string; // この商品を使うお客様像
+  customerReviews?: string; // SNSやECサイトのお客様レビュー・口コミ
   benefits?: string; // 機種の良いところ・ベネフィット
 }
 
@@ -27,7 +27,7 @@ export interface SpecSearchResult {
   productName: string;
   specs: string;
   features?: string[];
-  targetCustomer?: string; // この商品を使うお客様像
+  customerReviews?: string; // SNSやECサイトのお客様レビュー・口コミ
   benefits?: string; // 機種の良いところ・ベネフィット
 }
 
