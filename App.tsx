@@ -107,7 +107,7 @@ const App: React.FC = () => {
               id: img.id,
               data: img.url,
               createdAt: img.createdAt
-            }));
+            })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
           }
 
@@ -132,7 +132,10 @@ const App: React.FC = () => {
             get<GeneratedImage[]>(DB_KEY_HISTORY),
             get<Preset[]>(DB_KEY_PRESETS)
           ]);
-          if (savedHistory) setHistory(savedHistory);
+          if (savedHistory) {
+            const sortedHistory = savedHistory.sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
+            setHistory(sortedHistory);
+          }
           if (savedPresets) setPresets(savedPresets);
         }
       } catch (e) {
@@ -972,7 +975,7 @@ ${header.length + uint8Array.length + 20}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {history.map((item, idx) => (
+              {[...history].sort((a, b) => b.createdAt - a.createdAt).map((item, idx) => (
                 <div key={item.id} className="group flex flex-col bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm">
                   <div className="bg-slate-50/50 p-4 text-center text-[10px] font-semibold tracking-wide text-slate-400 border-b border-slate-50 flex justify-between items-center px-5">
                     <span className="flex items-center gap-1.5">
