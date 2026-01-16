@@ -166,6 +166,17 @@ const App: React.FC = () => {
     setProducts(products.map(p => p.id === updated.id ? updated : p));
   };
 
+  const duplicateProduct = (product: Product) => {
+    const duplicated: Product = {
+      ...JSON.parse(JSON.stringify(product)),
+      id: uuidv4()
+    };
+    const index = products.findIndex(p => p.id === product.id);
+    const newProducts = [...products];
+    newProducts.splice(index + 1, 0, duplicated);
+    setProducts(newProducts);
+  };
+
   const handleGenerate = async () => {
     if (!apiKey) {
       setIsSettingsOpen(true);
@@ -831,6 +842,7 @@ ${header.length + uint8Array.length + 20}
                 product={p}
                 onChange={updateProduct}
                 onRemove={() => removeProduct(p.id)}
+                onDuplicate={() => duplicateProduct(p)}
                 apiKey={apiKey}
               />
             ))}
