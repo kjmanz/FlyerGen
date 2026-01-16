@@ -15,8 +15,8 @@ export const searchProductSpecs = async (productCode: string, apiKey: string): P
     1. "productName": 商品の正式名称（50文字以内）
     2. "specs": 主要スペック要約（300文字以内）
     3. "features": 主な特徴5つ（各50文字以内の配列）
-    4. "customerReviews": 実際のユーザーの声を5件程度まとめて（300文字以内）
-    5. "benefits": ベネフィット要約（150文字以内）
+    4. "customerReviews": 実際のユーザーの声を5〜7件程度まとめて（600文字以内）
+    5. "benefits": ベネフィット要約（300文字以内）
   `;
 
   try {
