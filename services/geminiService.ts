@@ -292,3 +292,63 @@ export const generateFlyerImage = async (
   console.log(`Received ${result.images.length} image(s) from Batch API`);
   return result.images;
 };
+
+// Generate category tags from product information using Gemini Flash
+export const generateTagsFromProducts = async (
+  products: Product[],
+  apiKey: string
+): Promise<string[]> => {
+  const ai = getClient(apiKey);
+
+  // Create a summary of products for tag generation
+  const productSummary = products.map(p =>
+    `${p.productName} ${p.productCode} ${p.specs}`
+  ).join('\n');
+
+  const prompt = `
+    以下の商品情報から、大きなカテゴリのタグを抽出してください。
+    
+    【商品情報】
+    ${productSummary}
+    
+    【ルール】
+    - 商品カテゴリ名のみ（例: エアコン, テレビ, 冷蔵庫, 洗濯機, 掃除機）
+    - 品番や型番は含めない
+    - ブランド名は含めない
+    - 最大5個まで
+    - 重複禁止
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            tags: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "商品カテゴリのタグ配列"
+            }
+          },
+          required: ["tags"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      console.warn("Tag generation returned empty response");
+      return [];
+    }
+
+    const result = JSON.parse(text);
+    return result.tags || [];
+  } catch (error) {
+    console.error("Tag generation failed:", error);
+    return []; // Return empty array on error to not block the main flow
+  }
+};

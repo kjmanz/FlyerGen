@@ -4,7 +4,7 @@ import { get, set } from 'idb-keyval';
 import { Product, FlyerSettings, GeneratedImage, Preset } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
-import { generateFlyerImage } from './services/geminiService';
+import { generateFlyerImage, generateTagsFromProducts } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -73,6 +73,9 @@ const App: React.FC = () => {
   const [replicateApiKey, setReplicateApiKey] = useState<string>("");
   const [tempReplicateApiKey, setTempReplicateApiKey] = useState<string>("");
   const [upscalingImageId, setUpscalingImageId] = useState<string | null>(null);
+
+  // Tag Filter State
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
 
 
@@ -208,10 +211,19 @@ const App: React.FC = () => {
       return;
     }
 
+    // Confirmation dialog to prevent accidental clicks
+    if (!window.confirm("チラシを作成しますか？")) {
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
-      const results = await generateFlyerImage(products, settings, characterImages, characterClothingMode, referenceImages, storeLogoImages, apiKey);
+      // Generate images and tags in parallel for better performance
+      const [results, tags] = await Promise.all([
+        generateFlyerImage(products, settings, characterImages, characterClothingMode, referenceImages, storeLogoImages, apiKey),
+        generateTagsFromProducts(products, apiKey)
+      ]);
 
       const newItems: GeneratedImage[] = [];
 
@@ -237,15 +249,16 @@ const App: React.FC = () => {
             newItems.push({
               id,
               data: cloudUrl,
-              thumbnail: thumbUrl || thumbnailData, // Use uploaded URL or fallback to base64
+              thumbnail: thumbUrl || thumbnailData,
+              tags, // Add auto-generated tags
               createdAt: timestamp
             });
           } else {
             // Fallback to local if upload fails
-            newItems.push({ id, data, thumbnail: thumbnailData, createdAt: timestamp });
+            newItems.push({ id, data, thumbnail: thumbnailData, tags, createdAt: timestamp });
           }
         } else {
-          newItems.push({ id, data, thumbnail: thumbnailData, createdAt: timestamp });
+          newItems.push({ id, data, thumbnail: thumbnailData, tags, createdAt: timestamp });
         }
       }
 
@@ -1019,127 +1032,168 @@ ${header.length + uint8Array.length + 20}
         {/* History Results */}
         {history.length > 0 && (
           <div className="bg-white/60 backdrop-blur-sm rounded-lg shadow-premium border border-white/50 p-8 sm:p-12 animate-slide-up">
-            <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-950 rounded-md flex items-center justify-center text-lg">📁</div>
                 <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-2">({history.length})</span></h2>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[...history].sort((a, b) => b.createdAt - a.createdAt).map((item, idx) => (
-                <div key={item.id} className="group flex flex-col bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm">
-                  <div className="bg-slate-50/50 p-4 text-center text-[10px] font-semibold tracking-wide text-slate-400 border-b border-slate-50 flex justify-between items-center px-5">
-                    <span className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                      {new Date(item.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <button onClick={() => handleDeleteImage(item.id)} className="text-slate-300 hover:text-rose-500 transition-colors bg-white w-6 h-6 flex items-center justify-center rounded-lg shadow-sm" title="Delete">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  </div>
-
-                  <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
-                    <img src={item.thumbnail || item.data} alt="Generated Flyer" className="w-full h-full object-contain" loading="lazy" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6 justify-center">
-                      <button
-                        onClick={() => {
-                          const w = window.open('', '_blank');
-                          if (w) {
-                            w.document.write(`<html><head><title>Full Screen Flyer</title></head><body style="margin:0;background:#1e293b;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${item.data}" style="max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 0 20px rgba(0,0,0,0.5);" /></body></html>`);
-                            w.document.close();
-                          }
-                        }}
-                        className="bg-white/90 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white transition-all shadow-lg"
-                      >
-                        フルスクリーン
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons - Below Image */}
-                  <div className="p-4 bg-white flex gap-3">
-                    {/* Download Button with Dropdown */}
-                    <div className="relative flex-[2]">
-                      <button
-                        onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
-                        className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-md font-semibold text-xs tracking-wide shadow-indigo-600/10 transition-all active:scale-95"
-                      >
-                        ダウンロード
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-300 ${openDownloadMenu === item.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-
-                      {/* Dropdown Menu - appears above button */}
-                      {openDownloadMenu === item.id && (
-                        <div className="absolute bottom-full left-0 right-0 mb-3 bg-white/90 backdrop-blur-xl border border-indigo-50 rounded-md shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-slide-up">
-                          <button
-                            onClick={() => handleDownloadPng(item.data, item.createdAt)}
-                            className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4"
-                          >
-                            <span className="w-10 h-6 bg-emerald-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">PNG</span>
-                            <span>高画質画像</span>
-                          </button>
-                          <button
-                            onClick={() => handleDownloadJpg(item.data, item.createdAt)}
-                            className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
-                          >
-                            <span className="w-10 h-6 bg-amber-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">JPG</span>
-                            <span>最適化画像</span>
-                          </button>
-                          <button
-                            onClick={() => handleDownloadPdf(item.data, item.createdAt)}
-                            className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
-                          >
-                            <span className="w-10 h-6 bg-rose-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">PDF</span>
-                            <span>ドキュメント</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Upscale Button */}
+            {/* Tag Filter */}
+            {(() => {
+              const allTags = [...new Set(history.flatMap(item => item.tags || []))];
+              return allTags.length > 0 && (
+                <div className="mb-8 flex flex-wrap gap-2 items-center">
+                  <span className="text-xs font-bold text-slate-400 mr-2">タグで絞り込み:</span>
+                  <button
+                    onClick={() => setSelectedTag(null)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === null
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                  >
+                    すべて
+                  </button>
+                  {allTags.map(tag => (
                     <button
-                      onClick={() => handleUpscale(item)}
-                      disabled={upscalingImageId === item.id || item.isUpscaled}
-                      className={`flex-1 flex items-center justify-center p-3 rounded-md transition-all active:scale-95 border ${item.isUpscaled
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default'
-                        : upscalingImageId === item.id
-                          ? 'bg-amber-50 text-amber-600 border-amber-100 cursor-wait'
-                          : 'bg-slate-50 hover:bg-violet-50 text-slate-500 hover:text-violet-600 border-slate-100'
+                      key={tag}
+                      onClick={() => setSelectedTag(tag)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === tag
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
-                      title={item.isUpscaled ? 'アップスケール済み' : 'AIアップスケール'}
                     >
-                      {upscalingImageId === item.id ? (
-                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      ) : item.isUpscaled ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                        </svg>
-                      )}
+                      {tag}
                     </button>
-
-                    {/* Reference Button */}
-                    <button
-                      onClick={() => handleUseAsReference(item.data)}
-                      className="flex-1 flex items-center justify-center bg-slate-50 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 p-3 rounded-md transition-all active:scale-95 border border-slate-100"
-                      title="Use as Reference"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              );
+            })()}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...history]
+                .filter(item => selectedTag === null || (item.tags && item.tags.includes(selectedTag)))
+                .sort((a, b) => b.createdAt - a.createdAt)
+                .map((item, idx) => (
+                  <div key={item.id} className="group flex flex-col bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm">
+                    <div className="bg-slate-50/50 p-4 text-center text-[10px] font-semibold tracking-wide text-slate-400 border-b border-slate-50 flex justify-between items-center px-5">
+                      <span className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                        {new Date(item.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {item.tags && item.tags.length > 0 && (
+                          <span className="ml-2 flex gap-1">
+                            {item.tags.slice(0, 2).map(tag => (
+                              <span key={tag} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[8px] font-bold">{tag}</span>
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                      <button onClick={() => handleDeleteImage(item.id)} className="text-slate-300 hover:text-rose-500 transition-colors bg-white w-6 h-6 flex items-center justify-center rounded-lg shadow-sm" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+
+                    <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
+                      <img src={item.thumbnail || item.data} alt="Generated Flyer" className="w-full h-full object-contain" loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6 justify-center">
+                        <button
+                          onClick={() => {
+                            const w = window.open('', '_blank');
+                            if (w) {
+                              w.document.write(`<html><head><title>Full Screen Flyer</title></head><body style="margin:0;background:#1e293b;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${item.data}" style="max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 0 20px rgba(0,0,0,0.5);" /></body></html>`);
+                              w.document.close();
+                            }
+                          }}
+                          className="bg-white/90 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white transition-all shadow-lg"
+                        >
+                          フルスクリーン
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons - Below Image */}
+                    <div className="p-4 bg-white flex gap-3">
+                      {/* Download Button with Dropdown */}
+                      <div className="relative flex-[2]">
+                        <button
+                          onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
+                          className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-md font-semibold text-xs tracking-wide shadow-indigo-600/10 transition-all active:scale-95"
+                        >
+                          ダウンロード
+                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-300 ${openDownloadMenu === item.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        {/* Dropdown Menu - appears above button */}
+                        {openDownloadMenu === item.id && (
+                          <div className="absolute bottom-full left-0 right-0 mb-3 bg-white/90 backdrop-blur-xl border border-indigo-50 rounded-md shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-slide-up">
+                            <button
+                              onClick={() => handleDownloadPng(item.data, item.createdAt)}
+                              className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4"
+                            >
+                              <span className="w-10 h-6 bg-emerald-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">PNG</span>
+                              <span>高画質画像</span>
+                            </button>
+                            <button
+                              onClick={() => handleDownloadJpg(item.data, item.createdAt)}
+                              className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
+                            >
+                              <span className="w-10 h-6 bg-amber-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">JPG</span>
+                              <span>最適化画像</span>
+                            </button>
+                            <button
+                              onClick={() => handleDownloadPdf(item.data, item.createdAt)}
+                              className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
+                            >
+                              <span className="w-10 h-6 bg-rose-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">PDF</span>
+                              <span>ドキュメント</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Upscale Button */}
+                      <button
+                        onClick={() => handleUpscale(item)}
+                        disabled={upscalingImageId === item.id || item.isUpscaled}
+                        className={`flex-1 flex items-center justify-center p-3 rounded-md transition-all active:scale-95 border ${item.isUpscaled
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default'
+                          : upscalingImageId === item.id
+                            ? 'bg-amber-50 text-amber-600 border-amber-100 cursor-wait'
+                            : 'bg-slate-50 hover:bg-violet-50 text-slate-500 hover:text-violet-600 border-slate-100'
+                          }`}
+                        title={item.isUpscaled ? 'アップスケール済み' : 'AIアップスケール'}
+                      >
+                        {upscalingImageId === item.id ? (
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : item.isUpscaled ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                          </svg>
+                        )}
+                      </button>
+
+                      {/* Reference Button */}
+                      <button
+                        onClick={() => handleUseAsReference(item.data)}
+                        className="flex-1 flex items-center justify-center bg-slate-50 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 p-3 rounded-md transition-all active:scale-95 border border-slate-100"
+                        title="Use as Reference"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         )}
