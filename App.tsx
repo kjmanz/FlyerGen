@@ -988,7 +988,7 @@ ${header.length + uint8Array.length + 20}
                   </div>
 
                   <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
-                    <img src={item.data} alt="Generated Flyer" className="w-full h-full object-contain" />
+                    <img src={item.data} alt="Generated Flyer" className="w-full h-full object-contain" loading="lazy" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6 justify-center">
                       <button
                         onClick={() => {

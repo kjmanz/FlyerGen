@@ -84,19 +84,21 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
     try {
         const listRef = ref(storage, 'flyers');
         const result = await listAll(listRef);
-        const images: CloudImage[] = [];
 
-        for (const itemRef of result.items) {
+        // 並列でURLを取得（N+1問題の解消）
+        const imagePromises = result.items.map(async (itemRef) => {
             const url = await getDownloadURL(itemRef);
             // Extract timestamp from filename (format: flyer_TIMESTAMP.png)
             const match = itemRef.name.match(/flyer_(\d+)/);
             const timestamp = match ? parseInt(match[1]) : Date.now();
-            images.push({
+            return {
                 id: itemRef.name,
                 url,
                 createdAt: timestamp
-            });
-        }
+            };
+        });
+
+        const images = await Promise.all(imagePromises);
 
         // Sort by newest first
         return images.sort((a, b) => b.createdAt - a.createdAt);
