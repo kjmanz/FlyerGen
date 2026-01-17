@@ -426,3 +426,108 @@ export const generateTagsFromImage = async (
     return [];
   }
 };
+
+// Edit region types for image editing
+interface EditPoint {
+  id: string;
+  type: 'point';
+  x: number;
+  y: number;
+  prompt: string;
+}
+
+interface EditArea {
+  id: string;
+  type: 'area';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  prompt: string;
+}
+
+type EditRegion = EditPoint | EditArea;
+
+// Generate position description for prompt
+const getPositionDescription = (region: EditRegion): string => {
+  if (region.type === 'point') {
+    const xDesc = region.x < 33 ? '左側' : region.x > 66 ? '右側' : '中央';
+    const yDesc = region.y < 33 ? '上部' : region.y > 66 ? '下部' : '中央';
+    return `画像の${yDesc}${xDesc}（約${Math.round(region.x)}%, ${Math.round(region.y)}%の位置）`;
+  } else {
+    return `画像の範囲（${Math.round(region.x)}%〜${Math.round(region.x + region.width)}%, ${Math.round(region.y)}%〜${Math.round(region.y + region.height)}%）`;
+  }
+};
+
+// Edit image using Gemini API
+export const editImage = async (
+  imageUrl: string,
+  regions: EditRegion[],
+  apiKey: string
+): Promise<string> => {
+  const ai = getClient(apiKey);
+
+  // Build edit prompt from regions
+  const editInstructions = regions.map((region, idx) => {
+    const position = getPositionDescription(region);
+    return `${idx + 1}. ${position}: ${region.prompt}`;
+  }).join('\n');
+
+  const prompt = `
+この画像に以下の編集を行ってください。指定された箇所のみを編集し、他の部分は変更しないでください。
+
+【編集指示】
+${editInstructions}
+
+【重要】
+- 指定された箇所のみを編集してください
+- 画像全体の雰囲気やスタイルは維持してください
+- 高品質で自然な編集結果を生成してください
+`;
+
+  try {
+    // Fetch image and convert to base64 if it's a URL
+    let imageData = imageUrl;
+    if (imageUrl.startsWith('http')) {
+      const resp = await fetch(imageUrl);
+      const blob = await resp.blob();
+      imageData = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    const cleanBase64 = imageData.split(',')[1] || imageData;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-preview-image-generation',
+      contents: [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: cleanBase64
+          }
+        }
+      ],
+      config: {
+        responseModalities: ['image', 'text']
+      }
+    });
+
+    // Extract image from response
+    if (response.candidates && response.candidates[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
+      }
+    }
+
+    throw new Error('画像の生成に失敗しました');
+  } catch (error) {
+    console.error("Image edit failed:", error);
+    throw error;
+  }
+};

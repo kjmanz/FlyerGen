@@ -4,7 +4,8 @@ import { get, set } from 'idb-keyval';
 import { Product, FlyerSettings, GeneratedImage, Preset } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
-import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage } from './services/geminiService';
+import { ImageEditModal, EditRegion } from './components/ImageEditModal';
+import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -80,6 +81,10 @@ const App: React.FC = () => {
   // Tag Filter State
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isTaggingAll, setIsTaggingAll] = useState(false);
+
+  // Image Edit Modal State
+  const [editingImage, setEditingImage] = useState<GeneratedImage | null>(null);
+  const [isEditGenerating, setIsEditGenerating] = useState(false);
 
 
 
@@ -776,6 +781,68 @@ ${header.length + uint8Array.length + 20}
     }
   };
 
+  // Handle image editing
+  const handleEditImage = async (regions: EditRegion[]) => {
+    if (!editingImage || !apiKey) return;
+
+    setIsEditGenerating(true);
+
+    try {
+      // Generate edited image
+      const editedImageData = await editImage(editingImage.data, regions, apiKey);
+
+      // Create new history entry for edited image
+      const id = uuidv4();
+      const timestamp = Date.now();
+
+      // Generate thumbnail
+      const thumbnailData = await createThumbnail(editedImageData);
+
+      let newImageData = editedImageData;
+      let newThumbnail = thumbnailData;
+
+      // Upload to Firebase if enabled
+      if (firebaseEnabled) {
+        const filename = `flyer_edited_${timestamp}_${id}.png`;
+        const thumbFilename = `flyer_edited_${timestamp}_${id}_thumb.jpg`;
+
+        const [cloudUrl, thumbUrl] = await Promise.all([
+          uploadImage(editedImageData, filename),
+          uploadImage(thumbnailData, thumbFilename)
+        ]);
+
+        if (cloudUrl) {
+          newImageData = cloudUrl;
+        }
+        if (thumbUrl) {
+          newThumbnail = thumbUrl;
+        }
+      }
+
+      const newItem: GeneratedImage = {
+        id: firebaseEnabled ? `flyer_edited_${timestamp}_${id}.png` : id,
+        data: newImageData,
+        thumbnail: newThumbnail,
+        tags: editingImage.tags, // Inherit tags from original
+        createdAt: timestamp
+      };
+
+      const updatedHistory = [newItem, ...history];
+      setHistory(updatedHistory);
+      await set(DB_KEY_HISTORY, updatedHistory);
+
+      // Close modal
+      setEditingImage(null);
+
+      alert('編集が完了しました！新しい画像が履歴に追加されました。');
+    } catch (e: any) {
+      console.error('Edit failed:', e);
+      alert(`編集に失敗しました: ${e.message || '不明なエラー'}`);
+    } finally {
+      setIsEditGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
@@ -1313,6 +1380,17 @@ ${header.length + uint8Array.length + 20}
                         )}
                       </button>
 
+                      {/* Edit Button */}
+                      <button
+                        onClick={() => setEditingImage(item)}
+                        className="flex-1 flex items-center justify-center bg-slate-50 hover:bg-amber-50 text-slate-500 hover:text-amber-600 p-3 rounded-md transition-all active:scale-95 border border-slate-100"
+                        title="画像を編集"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+
                       {/* Reference Button */}
                       <button
                         onClick={() => handleUseAsReference(item.data)}
@@ -1490,6 +1568,16 @@ ${header.length + uint8Array.length + 20}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Edit Modal */}
+      {editingImage && (
+        <ImageEditModal
+          imageUrl={editingImage.data}
+          onClose={() => setEditingImage(null)}
+          onGenerate={handleEditImage}
+          isGenerating={isEditGenerating}
+        />
       )}
     </div>
   );
