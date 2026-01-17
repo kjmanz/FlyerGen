@@ -1311,43 +1311,45 @@ ${header.length + uint8Array.length + 20}
                     </div>
 
                     {/* Action Buttons - Below Image */}
-                    <div className="p-4 bg-white flex gap-3">
+                    <div className="p-4 bg-white flex gap-2">
                       {/* Download Button with Dropdown */}
-                      <div className="relative flex-[2]">
+                      <div className="relative flex-1">
                         <button
                           onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
-                          className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-md font-semibold text-xs tracking-wide shadow-indigo-600/10 transition-all active:scale-95"
+                          className="w-full flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-3 rounded-md transition-all active:scale-95 border border-indigo-100"
+                          title="ダウンロード"
                         >
-                          ダウンロード
-                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-300 ${openDownloadMenu === item.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
                         </button>
 
-                        {/* Dropdown Menu - appears above button */}
+                        {/* Dropdown Menu - icon only */}
                         {openDownloadMenu === item.id && (
-                          <div className="absolute bottom-full left-0 right-0 mb-3 bg-white/90 backdrop-blur-xl border border-indigo-50 rounded-md shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-slide-up">
-                            <button
-                              onClick={() => handleDownloadPng(item.data, item.createdAt)}
-                              className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4"
-                            >
-                              <span className="w-10 h-6 bg-emerald-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">PNG</span>
-                              <span>高画質画像</span>
-                            </button>
-                            <button
-                              onClick={() => handleDownloadJpg(item.data, item.createdAt)}
-                              className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
-                            >
-                              <span className="w-10 h-6 bg-amber-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">JPG</span>
-                              <span>最適化画像</span>
-                            </button>
-                            <button
-                              onClick={() => handleDownloadPdf(item.data, item.createdAt)}
-                              className="w-full text-left px-5 py-4 text-xs font-semibold tracking-wide text-slate-700 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-4 border-t border-slate-50"
-                            >
-                              <span className="w-10 h-6 bg-rose-500 text-white text-[9px] font-semibold rounded flex items-center justify-center">PDF</span>
-                              <span>ドキュメント</span>
-                            </button>
+                          <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-100 rounded-lg shadow-xl z-50 overflow-hidden animate-slide-up">
+                            <div className="flex">
+                              <button
+                                onClick={() => handleDownloadPng(item.data, item.createdAt)}
+                                className="flex-1 flex items-center justify-center p-3 text-emerald-600 hover:bg-emerald-50 transition-all border-r border-slate-100"
+                                title="PNG形式"
+                              >
+                                <span className="text-xs font-bold">PNG</span>
+                              </button>
+                              <button
+                                onClick={() => handleDownloadJpg(item.data, item.createdAt)}
+                                className="flex-1 flex items-center justify-center p-3 text-amber-600 hover:bg-amber-50 transition-all border-r border-slate-100"
+                                title="JPG形式"
+                              >
+                                <span className="text-xs font-bold">JPG</span>
+                              </button>
+                              <button
+                                onClick={() => handleDownloadPdf(item.data, item.createdAt)}
+                                className="flex-1 flex items-center justify-center p-3 text-rose-600 hover:bg-rose-50 transition-all"
+                                title="PDF形式"
+                              >
+                                <span className="text-xs font-bold">PDF</span>
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
