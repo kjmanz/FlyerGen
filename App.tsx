@@ -1205,7 +1205,7 @@ ${header.length + uint8Array.length + 20}
                         {/* Favorite Button */}
                         <button
                           onClick={() => toggleFavorite(item.id)}
-                          className={`w-5 h-5 flex items-center justify-center rounded transition-all ${item.isFavorite ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}
+                          className={`w-8 h-8 flex items-center justify-center rounded-lg text-lg transition-all hover:scale-110 ${item.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'}`}
                           title={item.isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
                         >
                           {item.isFavorite ? '⭐' : '☆'}
