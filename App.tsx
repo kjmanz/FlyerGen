@@ -4,7 +4,7 @@ import { get, set } from 'idb-keyval';
 import { Product, FlyerSettings, GeneratedImage, Preset } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
-import { generateFlyerImage, generateTagsFromProducts } from './services/geminiService';
+import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -15,6 +15,8 @@ import {
   getCloudPresets,
   deleteCloudPreset,
   deleteCloudImage,
+  saveFlyerMetadata,
+  updateFlyerTags,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -76,6 +78,7 @@ const App: React.FC = () => {
 
   // Tag Filter State
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isTaggingAll, setIsTaggingAll] = useState(false);
 
 
 
@@ -110,6 +113,7 @@ const App: React.FC = () => {
               id: img.id,
               data: img.url,
               thumbnail: img.thumbnail,
+              tags: img.tags,
               createdAt: img.createdAt
             })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
@@ -246,11 +250,14 @@ const App: React.FC = () => {
           ]);
 
           if (cloudUrl) {
+            // Save metadata (tags) to Firestore
+            await saveFlyerMetadata(filename, tags, timestamp);
+
             newItems.push({
-              id,
+              id: filename, // Use filename as ID to match Firestore
               data: cloudUrl,
               thumbnail: thumbUrl || thumbnailData,
-              tags, // Add auto-generated tags
+              tags,
               createdAt: timestamp
             });
           } else {
@@ -683,6 +690,63 @@ ${header.length + uint8Array.length + 20}
     }
   };
 
+  // Tag all existing history items that don't have tags
+  const tagAllExistingHistory = async () => {
+    if (!apiKey) {
+      alert("APIキーが設定されていません。");
+      return;
+    }
+
+    const untaggedItems = history.filter(item => !item.tags || item.tags.length === 0);
+    if (untaggedItems.length === 0) {
+      alert("すべての履歴にタグが付いています。");
+      return;
+    }
+
+    if (!window.confirm(`${untaggedItems.length}件の履歴にタグを付けます。Gemini APIを使用します。続行しますか？`)) {
+      return;
+    }
+
+    setIsTaggingAll(true);
+
+    try {
+      let successCount = 0;
+      const updatedHistory = [...history];
+
+      for (const item of untaggedItems) {
+        try {
+          const tags = await generateTagsFromImage(item.data, apiKey);
+          if (tags.length > 0) {
+            // Update local state
+            const index = updatedHistory.findIndex(h => h.id === item.id);
+            if (index !== -1) {
+              updatedHistory[index] = { ...updatedHistory[index], tags };
+            }
+
+            // Save to Firestore if Firebase enabled
+            if (firebaseEnabled) {
+              await updateFlyerTags(item.id, tags);
+            }
+
+            successCount++;
+          }
+        } catch (e) {
+          console.error(`Failed to tag item ${item.id}:`, e);
+        }
+      }
+
+      setHistory(updatedHistory);
+      await set(DB_KEY_HISTORY, updatedHistory);
+
+      alert(`${successCount}/${untaggedItems.length}件のタグ付けが完了しました。`);
+    } catch (e) {
+      console.error('Tagging failed:', e);
+      alert('タグ付け中にエラーが発生しました。');
+    } finally {
+      setIsTaggingAll(false);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
@@ -1037,6 +1101,19 @@ ${header.length + uint8Array.length + 20}
                 <div className="w-10 h-10 bg-slate-950 rounded-md flex items-center justify-center text-lg">📁</div>
                 <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-2">({history.length})</span></h2>
               </div>
+              {/* Tag All Button - only show if there are untagged items */}
+              {history.some(item => !item.tags || item.tags.length === 0) && (
+                <button
+                  onClick={tagAllExistingHistory}
+                  disabled={isTaggingAll}
+                  className={`text-xs font-bold px-4 py-2 rounded-full transition-all ${isTaggingAll
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                    }`}
+                >
+                  {isTaggingAll ? '🏷️ タグ付け中...' : '🏷️ 既存履歴にタグ付け'}
+                </button>
+              )}
             </div>
 
             {/* Tag Filter */}

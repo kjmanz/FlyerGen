@@ -57,6 +57,7 @@ export interface CloudImage {
     id: string;
     url: string;
     thumbnail?: string;
+    tags?: string[];
     createdAt: number;
 }
 
@@ -84,7 +85,23 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
     if (!storage) return [];
     try {
         const listRef = ref(storage, 'flyers');
-        const result = await listAll(listRef);
+
+        // Fetch images and metadata in parallel
+        const [result, metadataSnapshot] = await Promise.all([
+            listAll(listRef),
+            db ? getDocs(collection(db, 'flyer_metadata')) : Promise.resolve(null)
+        ]);
+
+        // Build metadata map
+        const metadataMap = new Map<string, string[]>();
+        if (metadataSnapshot) {
+            metadataSnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.tags) {
+                    metadataMap.set(doc.id, data.tags);
+                }
+            });
+        }
 
         // 並列でURLを取得（N+1問題の解消）
         const allFiles = await Promise.all(
@@ -108,7 +125,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
             }
         }
 
-        // フル画像にサムネイルを関連付け
+        // フル画像にサムネイルとタグを関連付け
         const images: CloudImage[] = fullImages.map((file) => {
             const match = file.name.match(/flyer_(\d+)/);
             const timestamp = match ? parseInt(match[1]) : Date.now();
@@ -117,6 +134,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                 id: file.name,
                 url: file.url,
                 thumbnail: thumbnails.get(baseName),
+                tags: metadataMap.get(file.name),
                 createdAt: timestamp
             };
         });
@@ -135,9 +153,70 @@ export const deleteCloudImage = async (filename: string): Promise<boolean> => {
     try {
         const imageRef = ref(storage, `flyers/${filename}`);
         await deleteObject(imageRef);
+        // Also delete metadata from Firestore
+        if (db) {
+            await deleteDoc(doc(db, 'flyer_metadata', filename));
+        }
         return true;
     } catch (e) {
         console.error('Delete error:', e);
+        return false;
+    }
+};
+
+// ===== FLYER METADATA (Firestore) =====
+
+export interface FlyerMetadata {
+    id: string;
+    tags: string[];
+    createdAt: number;
+}
+
+// Save flyer metadata (tags) to Firestore
+export const saveFlyerMetadata = async (id: string, tags: string[], createdAt: number): Promise<boolean> => {
+    if (!db) return false;
+    try {
+        await setDoc(doc(db, 'flyer_metadata', id), {
+            id,
+            tags,
+            createdAt,
+            updatedAt: Date.now()
+        });
+        return true;
+    } catch (e) {
+        console.error('Save flyer metadata error:', e);
+        return false;
+    }
+};
+
+// Get all flyer metadata from Firestore
+export const getFlyerMetadata = async (): Promise<Map<string, FlyerMetadata>> => {
+    if (!db) return new Map();
+    try {
+        const querySnapshot = await getDocs(collection(db, 'flyer_metadata'));
+        const metadata = new Map<string, FlyerMetadata>();
+        querySnapshot.forEach((doc) => {
+            const data = doc.data() as FlyerMetadata;
+            metadata.set(doc.id, data);
+        });
+        return metadata;
+    } catch (e) {
+        console.error('Get flyer metadata error:', e);
+        return new Map();
+    }
+};
+
+// Update tags for a specific flyer
+export const updateFlyerTags = async (id: string, tags: string[]): Promise<boolean> => {
+    if (!db) return false;
+    try {
+        await setDoc(doc(db, 'flyer_metadata', id), {
+            tags,
+            updatedAt: Date.now()
+        }, { merge: true });
+        return true;
+    } catch (e) {
+        console.error('Update flyer tags error:', e);
         return false;
     }
 };

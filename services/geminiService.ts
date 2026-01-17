@@ -352,3 +352,77 @@ export const generateTagsFromProducts = async (
     return []; // Return empty array on error to not block the main flow
   }
 };
+
+// Generate category tags from flyer image using Gemini Flash Vision
+export const generateTagsFromImage = async (
+  imageUrl: string,
+  apiKey: string
+): Promise<string[]> => {
+  const ai = getClient(apiKey);
+
+  const prompt = `
+    このチラシ画像を見て、掲載されている商品のカテゴリを抽出してください。
+    
+    【ルール】
+    - 商品カテゴリ名のみ（例: エアコン, テレビ, 冷蔵庫, 洗濯機, 掃除機）
+    - 品番や型番は含めない
+    - ブランド名は含めない
+    - 最大5個まで
+    - 重複禁止
+  `;
+
+  try {
+    // Fetch image and convert to base64 if it's a URL
+    let imageData = imageUrl;
+    if (imageUrl.startsWith('http')) {
+      const resp = await fetch(imageUrl);
+      const blob = await resp.blob();
+      imageData = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    const cleanBase64 = imageData.split(',')[1] || imageData;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: cleanBase64
+          }
+        }
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            tags: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "商品カテゴリのタグ配列"
+            }
+          },
+          required: ["tags"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      console.warn("Image tag generation returned empty response");
+      return [];
+    }
+
+    const result = JSON.parse(text);
+    return result.tags || [];
+  } catch (error) {
+    console.error("Image tag generation failed:", error);
+    return [];
+  }
+};
