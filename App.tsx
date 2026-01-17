@@ -106,6 +106,7 @@ const App: React.FC = () => {
             const historyFromCloud: GeneratedImage[] = cloudImages.map(img => ({
               id: img.id,
               data: img.url,
+              thumbnail: img.thumbnail,
               createdAt: img.createdAt
             })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
@@ -180,6 +181,26 @@ const App: React.FC = () => {
     setProducts(newProducts);
   };
 
+  // Thumbnail generation helper
+  const createThumbnail = (base64: string, maxWidth = 300): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = maxWidth / img.width;
+        canvas.width = maxWidth;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality for smaller size
+      };
+      img.onerror = () => resolve(base64); // Fallback to original on error
+      img.src = base64;
+    });
+  };
+
   const handleGenerate = async () => {
     if (!apiKey) {
       setIsSettingsOpen(true);
@@ -198,18 +219,33 @@ const App: React.FC = () => {
         const id = uuidv4();
         const timestamp = Date.now();
 
+        // Generate thumbnail
+        const thumbnailData = await createThumbnail(data);
+
         // Upload to Firebase if enabled
         if (firebaseEnabled) {
           const filename = `flyer_${timestamp}_${id}.png`;
-          const cloudUrl = await uploadImage(data, filename);
+          const thumbFilename = `flyer_${timestamp}_${id}_thumb.jpg`;
+
+          // Upload both full image and thumbnail in parallel
+          const [cloudUrl, thumbUrl] = await Promise.all([
+            uploadImage(data, filename),
+            uploadImage(thumbnailData, thumbFilename)
+          ]);
+
           if (cloudUrl) {
-            newItems.push({ id, data: cloudUrl, createdAt: timestamp });
+            newItems.push({
+              id,
+              data: cloudUrl,
+              thumbnail: thumbUrl || thumbnailData, // Use uploaded URL or fallback to base64
+              createdAt: timestamp
+            });
           } else {
             // Fallback to local if upload fails
-            newItems.push({ id, data, createdAt: timestamp });
+            newItems.push({ id, data, thumbnail: thumbnailData, createdAt: timestamp });
           }
         } else {
-          newItems.push({ id, data, createdAt: timestamp });
+          newItems.push({ id, data, thumbnail: thumbnailData, createdAt: timestamp });
         }
       }
 
@@ -259,26 +295,42 @@ const App: React.FC = () => {
     setUpscalingImageId(item.id);
 
     try {
+      // Always use full resolution image (item.data), not thumbnail
       const result = await upscaleImage(item.data, replicateApiKey, 2);
 
       // Create new upscaled image entry
       const newId = uuidv4();
       const timestamp = Date.now();
 
+      // Generate thumbnail for upscaled image
+      const thumbnailData = await createThumbnail(result.image);
+
       let newImageData = result.image;
+      let newThumbnail = thumbnailData;
 
       // Upload to Firebase if enabled
       if (firebaseEnabled) {
         const filename = `flyer_upscaled_${timestamp}_${newId}.png`;
-        const cloudUrl = await uploadImage(result.image, filename);
+        const thumbFilename = `flyer_upscaled_${timestamp}_${newId}_thumb.jpg`;
+
+        // Upload both full image and thumbnail in parallel
+        const [cloudUrl, thumbUrl] = await Promise.all([
+          uploadImage(result.image, filename),
+          uploadImage(thumbnailData, thumbFilename)
+        ]);
+
         if (cloudUrl) {
           newImageData = cloudUrl;
+        }
+        if (thumbUrl) {
+          newThumbnail = thumbUrl;
         }
       }
 
       const newItem: GeneratedImage = {
         id: newId,
         data: newImageData,
+        thumbnail: newThumbnail,
         createdAt: timestamp,
         isUpscaled: true
       };
@@ -988,7 +1040,7 @@ ${header.length + uint8Array.length + 20}
                   </div>
 
                   <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
-                    <img src={item.data} alt="Generated Flyer" className="w-full h-full object-contain" loading="lazy" />
+                    <img src={item.thumbnail || item.data} alt="Generated Flyer" className="w-full h-full object-contain" loading="lazy" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6 justify-center">
                       <button
                         onClick={() => {

@@ -33,7 +33,8 @@ export interface SpecSearchResult {
 
 export interface GeneratedImage {
   id: string;
-  data: string; // Base64 string
+  data: string; // Base64 string or URL (full resolution)
+  thumbnail?: string; // Base64 string or URL (small preview for list view)
   createdAt: number;
   isUpscaled?: boolean; // Flag to indicate if image has been upscaled
 }

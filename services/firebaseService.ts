@@ -56,6 +56,7 @@ export const isFirebaseConfigured = () => {
 export interface CloudImage {
     id: string;
     url: string;
+    thumbnail?: string;
     createdAt: number;
 }
 
@@ -86,19 +87,39 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
         const result = await listAll(listRef);
 
         // 並列でURLを取得（N+1問題の解消）
-        const imagePromises = result.items.map(async (itemRef) => {
-            const url = await getDownloadURL(itemRef);
-            // Extract timestamp from filename (format: flyer_TIMESTAMP.png)
-            const match = itemRef.name.match(/flyer_(\d+)/);
+        const allFiles = await Promise.all(
+            result.items.map(async (itemRef) => ({
+                name: itemRef.name,
+                url: await getDownloadURL(itemRef)
+            }))
+        );
+
+        // サムネイルとフル画像を分離
+        const thumbnails = new Map<string, string>();
+        const fullImages: { name: string; url: string }[] = [];
+
+        for (const file of allFiles) {
+            if (file.name.includes('_thumb.')) {
+                // サムネイルの場合、対応するフル画像のベース名をキーにする
+                const baseName = file.name.replace('_thumb.jpg', '');
+                thumbnails.set(baseName, file.url);
+            } else {
+                fullImages.push(file);
+            }
+        }
+
+        // フル画像にサムネイルを関連付け
+        const images: CloudImage[] = fullImages.map((file) => {
+            const match = file.name.match(/flyer_(\d+)/);
             const timestamp = match ? parseInt(match[1]) : Date.now();
+            const baseName = file.name.replace('.png', '').replace('.jpg', '');
             return {
-                id: itemRef.name,
-                url,
+                id: file.name,
+                url: file.url,
+                thumbnail: thumbnails.get(baseName),
                 createdAt: timestamp
             };
         });
-
-        const images = await Promise.all(imagePromises);
 
         // Sort by newest first
         return images.sort((a, b) => b.createdAt - a.createdAt);
