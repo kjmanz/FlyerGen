@@ -77,6 +77,7 @@ const App: React.FC = () => {
   const [replicateApiKey, setReplicateApiKey] = useState<string>("");
   const [tempReplicateApiKey, setTempReplicateApiKey] = useState<string>("");
   const [upscalingImageId, setUpscalingImageId] = useState<string | null>(null);
+  const [openUpscaleMenu, setOpenUpscaleMenu] = useState<string | null>(null);
 
   // Tag Filter State
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -311,8 +312,8 @@ const App: React.FC = () => {
     }
   };
 
-  // Upscale handler
-  const handleUpscale = async (item: GeneratedImage) => {
+  // Upscale handler with customizable scale (2x or 4x)
+  const handleUpscale = async (item: GeneratedImage, scale: number = 2) => {
     if (!replicateApiKey) {
       alert("アップスケール機能を使用するには、設定画面でReplicate APIキーを入力してください。");
       setIsSettingsOpen(true);
@@ -320,10 +321,11 @@ const App: React.FC = () => {
     }
 
     setUpscalingImageId(item.id);
+    setOpenUpscaleMenu(null);
 
     try {
       // Always use full resolution image (item.data), not thumbnail
-      const result = await upscaleImage(item.data, replicateApiKey, 2);
+      const result = await upscaleImage(item.data, replicateApiKey, scale);
 
       // Create new upscaled image entry
       const newId = uuidv4();
@@ -1349,33 +1351,53 @@ ${header.length + uint8Array.length + 20}
                         )}
                       </div>
 
-                      {/* Upscale Button */}
-                      <button
-                        onClick={() => handleUpscale(item)}
-                        disabled={upscalingImageId === item.id || item.isUpscaled}
-                        className={`flex-1 flex items-center justify-center p-3 rounded-md transition-all active:scale-95 border ${item.isUpscaled
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default'
-                          : upscalingImageId === item.id
-                            ? 'bg-amber-50 text-amber-600 border-amber-100 cursor-wait'
-                            : 'bg-slate-50 hover:bg-violet-50 text-slate-500 hover:text-violet-600 border-slate-100'
-                          }`}
-                        title={item.isUpscaled ? 'アップスケール済み' : 'AIアップスケール'}
-                      >
-                        {upscalingImageId === item.id ? (
-                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        ) : item.isUpscaled ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                          </svg>
+                      {/* Upscale Button with Dropdown */}
+                      <div className="relative flex-1">
+                        <button
+                          onClick={() => setOpenUpscaleMenu(openUpscaleMenu === item.id ? null : item.id)}
+                          disabled={upscalingImageId === item.id || item.isUpscaled}
+                          className={`w-full flex items-center justify-center p-3 rounded-md transition-all active:scale-95 border ${item.isUpscaled
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default'
+                            : upscalingImageId === item.id
+                              ? 'bg-amber-50 text-amber-600 border-amber-100 cursor-wait'
+                              : 'bg-slate-50 hover:bg-violet-50 text-slate-500 hover:text-violet-600 border-slate-100'
+                            }`}
+                          title={item.isUpscaled ? 'アップスケール済み' : 'AIアップスケール'}
+                        >
+                          {upscalingImageId === item.id ? (
+                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : item.isUpscaled ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Upscale Dropdown Menu */}
+                        {openUpscaleMenu === item.id && !item.isUpscaled && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-24 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden animate-slide-up">
+                            <button
+                              onClick={() => handleUpscale(item, 2)}
+                              className="w-full flex items-center justify-center p-3 text-violet-600 hover:bg-violet-50 transition-all border-b border-slate-100"
+                            >
+                              <span className="text-xs font-bold">2x</span>
+                            </button>
+                            <button
+                              onClick={() => handleUpscale(item, 4)}
+                              className="w-full flex items-center justify-center p-3 text-violet-600 hover:bg-violet-50 transition-all"
+                            >
+                              <span className="text-xs font-bold">4x</span>
+                            </button>
+                          </div>
                         )}
-                      </button>
+                      </div>
 
                       {/* Edit Button */}
                       <button
