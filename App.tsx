@@ -360,8 +360,10 @@ const App: React.FC = () => {
         id: newId,
         data: newImageData,
         thumbnail: newThumbnail,
+        tags: [`#アップスケール${scale}x`],
         createdAt: timestamp,
-        isUpscaled: true
+        isUpscaled: true,
+        upscaleScale: scale
       };
 
       const updatedHistory = [newItem, ...history];
@@ -825,8 +827,9 @@ ${header.length + uint8Array.length + 20}
         id: firebaseEnabled ? `flyer_edited_${timestamp}_${id}.png` : id,
         data: newImageData,
         thumbnail: newThumbnail,
-        tags: editingImage.tags, // Inherit tags from original
-        createdAt: timestamp
+        tags: [...(editingImage.tags || []), '#編集済み'], // Inherit tags from original + add edited tag
+        createdAt: timestamp,
+        isEdited: true
       };
 
       const updatedHistory = [newItem, ...history];
@@ -1281,9 +1284,20 @@ ${header.length + uint8Array.length + 20}
                         </button>
                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
                         {new Date(item.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {/* Status Badges */}
+                        {item.isUpscaled && (
+                          <span className="ml-2 px-1.5 py-0.5 bg-violet-100 text-violet-600 rounded text-[8px] font-bold">
+                            🔍{item.upscaleScale || 2}x
+                          </span>
+                        )}
+                        {item.isEdited && (
+                          <span className="ml-1 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-[8px] font-bold">
+                            ✏️編集済
+                          </span>
+                        )}
                         {item.tags && item.tags.length > 0 && (
                           <span className="ml-2 flex gap-1">
-                            {item.tags.slice(0, 2).map(tag => (
+                            {item.tags.filter(t => !t.startsWith('#')).slice(0, 2).map(tag => (
                               <span key={tag} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[8px] font-bold">{tag}</span>
                             ))}
                           </span>
