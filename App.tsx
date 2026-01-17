@@ -1324,32 +1324,27 @@ ${header.length + uint8Array.length + 20}
                           </svg>
                         </button>
 
-                        {/* Dropdown Menu - icon only */}
+                        {/* Dropdown Menu - fixed width to show all options */}
                         {openDownloadMenu === item.id && (
-                          <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-100 rounded-lg shadow-xl z-50 overflow-hidden animate-slide-up">
-                            <div className="flex">
-                              <button
-                                onClick={() => handleDownloadPng(item.data, item.createdAt)}
-                                className="flex-1 flex items-center justify-center p-3 text-emerald-600 hover:bg-emerald-50 transition-all border-r border-slate-100"
-                                title="PNG形式"
-                              >
-                                <span className="text-xs font-bold">PNG</span>
-                              </button>
-                              <button
-                                onClick={() => handleDownloadJpg(item.data, item.createdAt)}
-                                className="flex-1 flex items-center justify-center p-3 text-amber-600 hover:bg-amber-50 transition-all border-r border-slate-100"
-                                title="JPG形式"
-                              >
-                                <span className="text-xs font-bold">JPG</span>
-                              </button>
-                              <button
-                                onClick={() => handleDownloadPdf(item.data, item.createdAt)}
-                                className="flex-1 flex items-center justify-center p-3 text-rose-600 hover:bg-rose-50 transition-all"
-                                title="PDF形式"
-                              >
-                                <span className="text-xs font-bold">PDF</span>
-                              </button>
-                            </div>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-36 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden animate-slide-up">
+                            <button
+                              onClick={() => handleDownloadPng(item.data, item.createdAt)}
+                              className="w-full flex items-center justify-center gap-2 p-3 text-emerald-600 hover:bg-emerald-50 transition-all border-b border-slate-100"
+                            >
+                              <span className="text-xs font-bold">PNG</span>
+                            </button>
+                            <button
+                              onClick={() => handleDownloadJpg(item.data, item.createdAt)}
+                              className="w-full flex items-center justify-center gap-2 p-3 text-amber-600 hover:bg-amber-50 transition-all border-b border-slate-100"
+                            >
+                              <span className="text-xs font-bold">JPG</span>
+                            </button>
+                            <button
+                              onClick={() => handleDownloadPdf(item.data, item.createdAt)}
+                              className="w-full flex items-center justify-center gap-2 p-3 text-rose-600 hover:bg-rose-50 transition-all"
+                            >
+                              <span className="text-xs font-bold">PDF</span>
+                            </button>
                           </div>
                         )}
                       </div>

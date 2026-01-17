@@ -459,21 +459,22 @@ const getPositionDescription = (region: EditRegion): string => {
   }
 };
 
-// Edit image using Gemini API
+// API URL for worker
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
+
+// Edit image using Worker Batch API (50% cost reduction)
 export const editImage = async (
   imageUrl: string,
   regions: EditRegion[],
   apiKey: string
 ): Promise<string> => {
-  const ai = getClient(apiKey);
-
   // Build edit prompt from regions
   const editInstructions = regions.map((region, idx) => {
     const position = getPositionDescription(region);
     return `${idx + 1}. ${position}: ${region.prompt}`;
   }).join('\n');
 
-  const prompt = `
+  const editPrompt = `
 この画像に以下の編集を行ってください。指定された箇所のみを編集し、他の部分は変更しないでください。
 
 【編集指示】
@@ -498,31 +499,30 @@ ${editInstructions}
       });
     }
 
-    const cleanBase64 = imageData.split(',')[1] || imageData;
+    // Call Worker API for edit (uses Batch API - 50% cost reduction)
+    const workerUrl = API_URL.replace('/api/batch-generate', '/api/edit-image');
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
-      contents: [
-        { text: prompt },
-        {
-          inlineData: {
-            mimeType: 'image/png',
-            data: cleanBase64
-          }
-        }
-      ],
-      config: {
-        responseModalities: ['image', 'text']
-      }
+    const response = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        imageData,
+        editPrompt,
+        imageSize: '2K',
+        aspectRatio: '3:4'
+      })
     });
 
-    // Extract image from response
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        }
-      }
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || errorData.error || 'Edit failed');
+    }
+
+    const result = await response.json();
+
+    if (result.image) {
+      return result.image;
     }
 
     throw new Error('画像の生成に失敗しました');

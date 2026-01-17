@@ -49,6 +49,11 @@ export default {
                 return await handleUpscale(request, corsHeaders);
             }
 
+            // 画像編集エンドポイント（Batch API - 50%コスト削減）
+            if (path === '/api/edit-image') {
+                return await handleEditImage(request, corsHeaders);
+            }
+
             // デフォルト: バッチ生成エンドポイント（後方互換性）
             return await handleBatchGenerate(request, corsHeaders);
 
@@ -444,3 +449,181 @@ async function handleSyncGenerate(apiKey, requests, imageSize, aspectRatio, cors
     });
 }
 
+/**
+ * 画像編集処理（Batch API - 50%コスト削減）
+ */
+async function handleEditImage(request, corsHeaders) {
+    const { apiKey, imageData, editPrompt, imageSize, aspectRatio } = await request.json();
+
+    if (!apiKey) {
+        return new Response(JSON.stringify({ error: 'API key is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    if (!imageData) {
+        return new Response(JSON.stringify({ error: 'Image data is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    if (!editPrompt) {
+        return new Response(JSON.stringify({ error: 'Edit prompt is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
+    const validAspectRatio = aspectRatio || '3:4';
+
+    console.log(`Starting image edit with Batch API, imageSize: ${validImageSize}...`);
+
+    // Base64データを抽出
+    let cleanBase64 = imageData;
+    if (imageData.includes(',')) {
+        cleanBase64 = imageData.split(',')[1];
+    }
+
+    try {
+        // Batch API呼び出し
+        const batchResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:batchGenerateContent`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    requests: [{
+                        contents: [{
+                            parts: [
+                                { text: editPrompt },
+                                {
+                                    inlineData: {
+                                        mimeType: 'image/png',
+                                        data: cleanBase64
+                                    }
+                                }
+                            ]
+                        }],
+                        generationConfig: {
+                            responseModalities: ['Text', 'Image'],
+                            imageConfig: {
+                                imageSize: validImageSize,
+                                aspectRatio: validAspectRatio
+                            }
+                        }
+                    }]
+                })
+            }
+        );
+
+        if (!batchResponse.ok) {
+            const errorText = await batchResponse.text();
+            console.error('Batch API edit failed:', errorText);
+
+            // フォールバック: 同期API
+            console.log('Falling back to synchronous API for edit...');
+            return await handleSyncEdit(apiKey, editPrompt, cleanBase64, validImageSize, validAspectRatio, corsHeaders);
+        }
+
+        const batchResult = await batchResponse.json();
+
+        // 結果を取得
+        if (batchResult.responses) {
+            for (const response of batchResult.responses) {
+                if (response.candidates?.[0]?.content?.parts) {
+                    for (const part of response.candidates[0].content.parts) {
+                        if (part.inlineData) {
+                            return new Response(JSON.stringify({
+                                image: `data:image/png;base64,${part.inlineData.data}`
+                            }), {
+                                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 結果がない場合はフォールバック
+        return await handleSyncEdit(apiKey, editPrompt, cleanBase64, validImageSize, validAspectRatio, corsHeaders);
+
+    } catch (error) {
+        console.error('Edit API error:', error.message);
+        return await handleSyncEdit(apiKey, editPrompt, cleanBase64, validImageSize, validAspectRatio, corsHeaders);
+    }
+}
+
+/**
+ * 同期画像編集処理（フォールバック用）
+ */
+async function handleSyncEdit(apiKey, editPrompt, base64Data, imageSize, aspectRatio, corsHeaders) {
+    console.log('Sync edit generation...');
+
+    const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: editPrompt },
+                        {
+                            inlineData: {
+                                mimeType: 'image/png',
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    responseModalities: ['Text', 'Image'],
+                    imageConfig: {
+                        imageSize: imageSize,
+                        aspectRatio: aspectRatio
+                    }
+                }
+            })
+        }
+    );
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Sync edit failed:', errorText);
+        return new Response(JSON.stringify({
+            error: 'Image edit failed',
+            message: errorText
+        }), {
+            status: response.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    const data = await response.json();
+
+    for (const part of data.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+            return new Response(JSON.stringify({
+                image: `data:image/png;base64,${part.inlineData.data}`
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+    }
+
+    return new Response(JSON.stringify({
+        error: 'No image in response'
+    }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
