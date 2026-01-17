@@ -58,6 +58,7 @@ export interface CloudImage {
     url: string;
     thumbnail?: string;
     tags?: string[];
+    isFavorite?: boolean;
     createdAt: number;
 }
 
@@ -93,13 +94,14 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
         ]);
 
         // Build metadata map
-        const metadataMap = new Map<string, string[]>();
+        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean }>();
         if (metadataSnapshot) {
             metadataSnapshot.forEach((doc) => {
                 const data = doc.data();
-                if (data.tags) {
-                    metadataMap.set(doc.id, data.tags);
-                }
+                metadataMap.set(doc.id, {
+                    tags: data.tags,
+                    isFavorite: data.isFavorite
+                });
             });
         }
 
@@ -134,7 +136,8 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                 id: file.name,
                 url: file.url,
                 thumbnail: thumbnails.get(baseName),
-                tags: metadataMap.get(file.name),
+                tags: metadataMap.get(file.name)?.tags,
+                isFavorite: metadataMap.get(file.name)?.isFavorite,
                 createdAt: timestamp
             };
         });
@@ -169,6 +172,7 @@ export const deleteCloudImage = async (filename: string): Promise<boolean> => {
 export interface FlyerMetadata {
     id: string;
     tags: string[];
+    isFavorite?: boolean;
     createdAt: number;
 }
 
@@ -217,6 +221,21 @@ export const updateFlyerTags = async (id: string, tags: string[]): Promise<boole
         return true;
     } catch (e) {
         console.error('Update flyer tags error:', e);
+        return false;
+    }
+};
+
+// Update favorite status for a specific flyer
+export const updateFlyerFavorite = async (id: string, isFavorite: boolean): Promise<boolean> => {
+    if (!db) return false;
+    try {
+        await setDoc(doc(db, 'flyer_metadata', id), {
+            isFavorite,
+            updatedAt: Date.now()
+        }, { merge: true });
+        return true;
+    } catch (e) {
+        console.error('Update flyer favorite error:', e);
         return false;
     }
 };

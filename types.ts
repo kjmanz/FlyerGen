@@ -36,6 +36,7 @@ export interface GeneratedImage {
   data: string; // Base64 string or URL (full resolution)
   thumbnail?: string; // Base64 string or URL (small preview for list view)
   tags?: string[]; // Auto-generated category tags (e.g., "エアコン", "テレビ")
+  isFavorite?: boolean; // User-marked favorite
   createdAt: number;
   isUpscaled?: boolean; // Flag to indicate if image has been upscaled
 }

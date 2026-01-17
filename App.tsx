@@ -17,6 +17,7 @@ import {
   deleteCloudImage,
   saveFlyerMetadata,
   updateFlyerTags,
+  updateFlyerFavorite,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -114,6 +115,7 @@ const App: React.FC = () => {
               data: img.url,
               thumbnail: img.thumbnail,
               tags: img.tags,
+              isFavorite: img.isFavorite,
               createdAt: img.createdAt
             })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
@@ -690,20 +692,27 @@ ${header.length + uint8Array.length + 20}
     }
   };
 
-  // Tag all existing history items that don't have tags
-  const tagAllExistingHistory = async () => {
+  // Tag all existing history items (retagAll = true for re-tagging all items)
+  const tagAllExistingHistory = async (retagAll: boolean = false) => {
     if (!apiKey) {
       alert("APIキーが設定されていません。");
       return;
     }
 
-    const untaggedItems = history.filter(item => !item.tags || item.tags.length === 0);
-    if (untaggedItems.length === 0) {
-      alert("すべての履歴にタグが付いています。");
+    const itemsToTag = retagAll
+      ? history
+      : history.filter(item => !item.tags || item.tags.length === 0);
+
+    if (itemsToTag.length === 0) {
+      alert("タグ付け対象の履歴がありません。");
       return;
     }
 
-    if (!window.confirm(`${untaggedItems.length}件の履歴にタグを付けます。Gemini APIを使用します。続行しますか？`)) {
+    const message = retagAll
+      ? `${itemsToTag.length}件すべての履歴のタグを付け直します。Gemini APIを使用します。続行しますか？`
+      : `${itemsToTag.length}件の履歴にタグを付けます。Gemini APIを使用します。続行しますか？`;
+
+    if (!window.confirm(message)) {
       return;
     }
 
@@ -713,7 +722,7 @@ ${header.length + uint8Array.length + 20}
       let successCount = 0;
       const updatedHistory = [...history];
 
-      for (const item of untaggedItems) {
+      for (const item of itemsToTag) {
         try {
           const tags = await generateTagsFromImage(item.data, apiKey);
           if (tags.length > 0) {
@@ -738,12 +747,32 @@ ${header.length + uint8Array.length + 20}
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
 
-      alert(`${successCount}/${untaggedItems.length}件のタグ付けが完了しました。`);
+      alert(`${successCount}/${itemsToTag.length}件のタグ付けが完了しました。`);
     } catch (e) {
       console.error('Tagging failed:', e);
       alert('タグ付け中にエラーが発生しました。');
     } finally {
       setIsTaggingAll(false);
+    }
+  };
+
+  // Toggle favorite status for a flyer
+  const toggleFavorite = async (itemId: string) => {
+    const item = history.find(h => h.id === itemId);
+    if (!item) return;
+
+    const newFavoriteStatus = !item.isFavorite;
+
+    // Update local state
+    const updatedHistory = history.map(h =>
+      h.id === itemId ? { ...h, isFavorite: newFavoriteStatus } : h
+    );
+    setHistory(updatedHistory);
+    await set(DB_KEY_HISTORY, updatedHistory);
+
+    // Save to Firestore if Firebase enabled
+    if (firebaseEnabled) {
+      await updateFlyerFavorite(itemId, newFavoriteStatus);
     }
   };
 
@@ -1101,19 +1130,32 @@ ${header.length + uint8Array.length + 20}
                 <div className="w-10 h-10 bg-slate-950 rounded-md flex items-center justify-center text-lg">📁</div>
                 <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-2">({history.length})</span></h2>
               </div>
-              {/* Tag All Button - only show if there are untagged items */}
-              {history.some(item => !item.tags || item.tags.length === 0) && (
-                <button
-                  onClick={tagAllExistingHistory}
-                  disabled={isTaggingAll}
-                  className={`text-xs font-bold px-4 py-2 rounded-full transition-all ${isTaggingAll
+              {/* Tag Buttons */}
+              <div className="flex gap-2">
+                {history.some(item => !item.tags || item.tags.length === 0) && (
+                  <button
+                    onClick={() => tagAllExistingHistory(false)}
+                    disabled={isTaggingAll}
+                    className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
                       ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                       : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                      }`}
+                  >
+                    {isTaggingAll ? '🏷️ タグ付け中...' : '🏷️ タグ付け'}
+                  </button>
+                )}
+                <button
+                  onClick={() => tagAllExistingHistory(true)}
+                  disabled={isTaggingAll}
+                  className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
+                  title="すべての履歴のタグを再生成"
                 >
-                  {isTaggingAll ? '🏷️ タグ付け中...' : '🏷️ 既存履歴にタグ付け'}
+                  🔄 全て再タグ付け
                 </button>
-              )}
+              </div>
             </div>
 
             {/* Tag Filter */}
@@ -1150,11 +1192,24 @@ ${header.length + uint8Array.length + 20}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...history]
                 .filter(item => selectedTag === null || (item.tags && item.tags.includes(selectedTag)))
-                .sort((a, b) => b.createdAt - a.createdAt)
+                .sort((a, b) => {
+                  // Favorites first, then by date
+                  if (a.isFavorite && !b.isFavorite) return -1;
+                  if (!a.isFavorite && b.isFavorite) return 1;
+                  return b.createdAt - a.createdAt;
+                })
                 .map((item, idx) => (
-                  <div key={item.id} className="group flex flex-col bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm">
+                  <div key={item.id} className={`group flex flex-col bg-white border rounded-lg overflow-hidden shadow-sm ${item.isFavorite ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-100'}`}>
                     <div className="bg-slate-50/50 p-4 text-center text-[10px] font-semibold tracking-wide text-slate-400 border-b border-slate-50 flex justify-between items-center px-5">
                       <span className="flex items-center gap-1.5">
+                        {/* Favorite Button */}
+                        <button
+                          onClick={() => toggleFavorite(item.id)}
+                          className={`w-5 h-5 flex items-center justify-center rounded transition-all ${item.isFavorite ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}
+                          title={item.isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
+                        >
+                          {item.isFavorite ? '⭐' : '☆'}
+                        </button>
                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
                         {new Date(item.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         {item.tags && item.tags.length > 0 && (
