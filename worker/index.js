@@ -17,6 +17,42 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
+/**
+ * Retry fetch with exponential backoff for transient errors (503, 429, etc.)
+ */
+async function retryFetch(url, options, maxRetries = 3, initialDelayMs = 1000) {
+    let lastError;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, options);
+
+            // If success or non-retryable error, return immediately
+            if (response.ok || (response.status !== 503 && response.status !== 429 && response.status !== 500)) {
+                return response;
+            }
+
+            // Retryable error - log and continue
+            const errorText = await response.text();
+            console.log(`Attempt ${attempt + 1}/${maxRetries} failed with ${response.status}: ${errorText.substring(0, 200)}`);
+            lastError = new Error(`${response.status}: ${errorText}`);
+
+        } catch (fetchError) {
+            console.log(`Attempt ${attempt + 1}/${maxRetries} network error: ${fetchError.message}`);
+            lastError = fetchError;
+        }
+
+        // Wait before retry with exponential backoff
+        if (attempt < maxRetries - 1) {
+            const delay = initialDelayMs * Math.pow(2, attempt);
+            console.log(`Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    // All retries exhausted
+    throw lastError || new Error('All retry attempts failed');
+}
+
 export default {
     async fetch(request, env) {
         // CORS設定
@@ -563,67 +599,80 @@ async function handleEditImage(request, corsHeaders) {
  * 同期画像編集処理（フォールバック用）
  */
 async function handleSyncEdit(apiKey, editPrompt, base64Data, imageSize, aspectRatio, corsHeaders) {
-    console.log('Sync edit generation...');
+    console.log('Sync edit generation with retry...');
 
-    const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        { text: editPrompt },
-                        {
-                            inlineData: {
-                                mimeType: 'image/png',
-                                data: base64Data
+    try {
+        const response = await retryFetch(
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: editPrompt },
+                            {
+                                inlineData: {
+                                    mimeType: 'image/png',
+                                    data: base64Data
+                                }
                             }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['Text', 'Image'],
+                        imageConfig: {
+                            imageSize: imageSize,
+                            aspectRatio: aspectRatio
                         }
-                    ]
-                }],
-                generationConfig: {
-                    responseModalities: ['Text', 'Image'],
-                    imageConfig: {
-                        imageSize: imageSize,
-                        aspectRatio: aspectRatio
                     }
-                }
-            })
-        }
-    );
+                })
+            },
+            3,   // maxRetries
+            2000 // initialDelayMs (2 seconds)
+        );
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Sync edit failed:', errorText);
-        return new Response(JSON.stringify({
-            error: 'Image edit failed',
-            message: errorText
-        }), {
-            status: response.status,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-
-    const data = await response.json();
-
-    for (const part of data.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Sync edit failed:', errorText);
             return new Response(JSON.stringify({
-                image: `data:image/png;base64,${part.inlineData.data}`
+                error: 'Image edit failed',
+                message: errorText
             }), {
+                status: response.status,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
-    }
 
-    return new Response(JSON.stringify({
-        error: 'No image in response'
-    }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+        const data = await response.json();
+
+        for (const part of data.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                return new Response(JSON.stringify({
+                    image: `data:image/png;base64,${part.inlineData.data}`
+                }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
+        return new Response(JSON.stringify({
+            error: 'No image in response'
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Sync edit failed after retries:', error.message);
+        return new Response(JSON.stringify({
+            error: 'Image edit failed',
+            message: error.message
+        }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
 }
