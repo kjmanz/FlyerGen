@@ -20,6 +20,7 @@ export interface FlyerSettings {
   imageSize: ImageSize;
   patternCount: number;
   backgroundMode: 'white' | 'creative'; // New: Background mode
+  logoPosition: 'full-bottom' | 'right-bottom'; // New: Logo position mode
   additionalInstructions: string;
 }
 

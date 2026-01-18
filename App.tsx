@@ -45,6 +45,7 @@ const App: React.FC = () => {
     imageSize: '2K',
     patternCount: 1,
     backgroundMode: 'creative',
+    logoPosition: 'full-bottom',
     additionalInstructions: ''
   });
   const [isGenerating, setIsGenerating] = useState(false);
@@ -740,6 +741,7 @@ ${header.length + uint8Array.length + 20}
       imageSize: data.settings?.imageSize || '2K',
       patternCount: data.settings?.patternCount || 1,
       backgroundMode: data.settings?.backgroundMode || 'creative',
+      logoPosition: data.settings?.logoPosition || 'full-bottom',
       additionalInstructions: data.settings?.additionalInstructions || ''
     });
 
@@ -778,6 +780,7 @@ ${header.length + uint8Array.length + 20}
         imageSize: '2K',
         patternCount: 1,
         backgroundMode: 'creative',
+        logoPosition: 'full-bottom',
         additionalInstructions: ''
       });
       setCurrentPresetId(null);
@@ -1235,6 +1238,21 @@ ${header.length + uint8Array.length + 20}
             onImagesChange={setStoreLogoImages}
             multiple={false}
           />
+          {storeLogoImages.length > 0 && (
+            <div className="mt-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ロゴの表示位置</label>
+              <div className="flex gap-3">
+                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'full-bottom' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                  <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'full-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} />
+                  <span>📐 下部全幅</span>
+                </label>
+                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'right-bottom' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                  <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'right-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} />
+                  <span>↘️ 右下配置</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Additional Instructions */}
