@@ -470,7 +470,12 @@ const getPositionDescription = (region: EditRegion): string => {
     const yDesc = region.y < 33 ? '上部' : region.y > 66 ? '下部' : '中央';
     return `画像の${yDesc}${xDesc}（約${Math.round(region.x)}%, ${Math.round(region.y)}%の位置）`;
   } else {
-    return `画像の範囲（${Math.round(region.x)}%〜${Math.round(region.x + region.width)}%, ${Math.round(region.y)}%〜${Math.round(region.y + region.height)}%）`;
+    // For area: provide exact pixel-like boundaries
+    const x1 = Math.round(region.x);
+    const y1 = Math.round(region.y);
+    const x2 = Math.round(region.x + region.width);
+    const y2 = Math.round(region.y + region.height);
+    return `【厳密な範囲指定】画像の左から${x1}%〜${x2}%、上から${y1}%〜${y2}%の矩形範囲【この範囲内のみ編集可能、範囲外は絶対に変更禁止】`;
   }
 };
 

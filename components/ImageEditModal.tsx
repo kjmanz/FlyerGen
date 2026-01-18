@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 // Edit region types
@@ -44,15 +44,16 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
     const [tempArea, setTempArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const lastMoveTime = useRef<number>(0);
 
     // Get percentage position from mouse event
-    const getPercentagePosition = (e: React.MouseEvent<HTMLDivElement>) => {
+    const getPercentagePosition = useCallback((e: React.MouseEvent<HTMLDivElement> | MouseEvent) => {
         if (!containerRef.current) return { x: 0, y: 0 };
         const rect = containerRef.current.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
         return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
-    };
+    }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         if (mode === 'point') {
@@ -75,8 +76,13 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
         }
     };
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (!isDragging || !dragStart) return;
+
+        // Throttle to max 60fps for smooth performance
+        const now = Date.now();
+        if (now - lastMoveTime.current < 16) return;
+        lastMoveTime.current = now;
 
         const { x, y } = getPercentagePosition(e);
         const width = x - dragStart.x;
@@ -88,7 +94,7 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
             width: Math.abs(width),
             height: Math.abs(height)
         });
-    };
+    }, [isDragging, dragStart, getPercentagePosition]);
 
     const handleMouseUp = () => {
         if (isDragging && tempArea && tempArea.width > 2 && tempArea.height > 2) {
