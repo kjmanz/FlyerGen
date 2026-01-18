@@ -129,6 +129,9 @@ const App: React.FC = () => {
               thumbnail: img.thumbnail,
               tags: img.tags,
               isFavorite: img.isFavorite,
+              isUpscaled: img.isUpscaled,
+              upscaleScale: img.upscaleScale,
+              isEdited: img.isEdited,
               createdAt: img.createdAt
             })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
@@ -454,6 +457,14 @@ const App: React.FC = () => {
       const updatedHistory = [newItem, ...history];
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
+
+      // Save metadata to Firebase if enabled
+      if (firebaseEnabled) {
+        await saveFlyerMetadata(newId, newItem.tags || [], timestamp, {
+          isUpscaled: true,
+          upscaleScale: scale
+        });
+      }
 
       alert("アップスケールが完了しました！高画質版が履歴に追加されました。");
     } catch (e: any) {
@@ -922,6 +933,13 @@ ${header.length + uint8Array.length + 20}
       const updatedHistory = [newItem, ...history];
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
+
+      // Save metadata to Firebase if enabled
+      if (firebaseEnabled) {
+        await saveFlyerMetadata(newItem.id, newItem.tags || [], timestamp, {
+          isEdited: true
+        });
+      }
 
       // Close modal
       setEditingImage(null);

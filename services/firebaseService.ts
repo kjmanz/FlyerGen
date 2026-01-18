@@ -59,6 +59,9 @@ export interface CloudImage {
     thumbnail?: string;
     tags?: string[];
     isFavorite?: boolean;
+    isUpscaled?: boolean;
+    upscaleScale?: number;
+    isEdited?: boolean;
     createdAt: number;
 }
 
@@ -100,7 +103,10 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                 const data = doc.data();
                 metadataMap.set(doc.id, {
                     tags: data.tags,
-                    isFavorite: data.isFavorite
+                    isFavorite: data.isFavorite,
+                    isUpscaled: data.isUpscaled,
+                    upscaleScale: data.upscaleScale,
+                    isEdited: data.isEdited
                 });
             });
         }
@@ -138,6 +144,9 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                 thumbnail: thumbnails.get(baseName),
                 tags: metadataMap.get(file.name)?.tags,
                 isFavorite: metadataMap.get(file.name)?.isFavorite,
+                isUpscaled: metadataMap.get(file.name)?.isUpscaled,
+                upscaleScale: metadataMap.get(file.name)?.upscaleScale,
+                isEdited: metadataMap.get(file.name)?.isEdited,
                 createdAt: timestamp
             };
         });
@@ -173,17 +182,28 @@ export interface FlyerMetadata {
     id: string;
     tags: string[];
     isFavorite?: boolean;
+    isUpscaled?: boolean;
+    upscaleScale?: number;
+    isEdited?: boolean;
     createdAt: number;
 }
 
-// Save flyer metadata (tags) to Firestore
-export const saveFlyerMetadata = async (id: string, tags: string[], createdAt: number): Promise<boolean> => {
+// Save flyer metadata (tags and flags) to Firestore
+export const saveFlyerMetadata = async (
+    id: string,
+    tags: string[],
+    createdAt: number,
+    options?: { isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean }
+): Promise<boolean> => {
     if (!db) return false;
     try {
         await setDoc(doc(db, 'flyer_metadata', id), {
             id,
             tags,
             createdAt,
+            ...(options?.isUpscaled !== undefined && { isUpscaled: options.isUpscaled }),
+            ...(options?.upscaleScale !== undefined && { upscaleScale: options.upscaleScale }),
+            ...(options?.isEdited !== undefined && { isEdited: options.isEdited }),
             updatedAt: Date.now()
         });
         return true;
