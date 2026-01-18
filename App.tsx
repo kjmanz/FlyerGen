@@ -17,6 +17,7 @@ import {
   deleteCloudPreset,
   deleteCloudImage,
   saveFlyerMetadata,
+  updateFlyerUpscaleStatus,
   updateFlyerTags,
   updateFlyerFavorite,
   CloudImage,
@@ -456,7 +457,14 @@ const App: React.FC = () => {
         upscaleScale: UPSCALE_SCALE
       };
 
-      const updatedHistory = [newItem, ...history];
+      const updatedHistory = [
+        newItem,
+        ...history.map(existing =>
+          existing.id === item.id
+            ? { ...existing, isUpscaled: false, upscaleScale: undefined }
+            : existing
+        )
+      ];
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
 
@@ -466,6 +474,7 @@ const App: React.FC = () => {
           isUpscaled: true,
           upscaleScale: UPSCALE_SCALE
         });
+        await updateFlyerUpscaleStatus(item.id, false);
       }
 
       alert("アップスケールが完了しました！高画質版が履歴に追加されました。");
