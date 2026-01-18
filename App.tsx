@@ -83,6 +83,12 @@ const App: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isTaggingAll, setIsTaggingAll] = useState(false);
 
+  // Manual Upload State
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadTags, setUploadTags] = useState("");
+  const [uploadPreview, setUploadPreview] = useState<string>("");
+
   // Image Edit Modal State
   const [editingImage, setEditingImage] = useState<GeneratedImage | null>(null);
   const [isEditGenerating, setIsEditGenerating] = useState(false);
@@ -312,6 +318,61 @@ const App: React.FC = () => {
     }
   };
 
+  // Manual upload handlers
+  const handleUploadFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      alert("画像ファイルを選択してください。");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setUploadPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!uploadPreview) return;
+    setUploadingImage(true);
+    try {
+      const id = uuidv4();
+      const timestamp = Date.now();
+      const tags = uploadTags.split(/[,、]/).map(t => t.trim()).filter(t => t.length > 0);
+
+      const thumbnailData = await createThumbnail(uploadPreview);
+      let imageData = uploadPreview;
+      let thumbnail = thumbnailData;
+
+      if (firebaseEnabled) {
+        const [cloudUrl, thumbUrl] = await Promise.all([
+          uploadImage(uploadPreview, `upload_${timestamp}_${id}.png`),
+          uploadImage(thumbnailData, `upload_${timestamp}_${id}_thumb.jpg`)
+        ]);
+        if (cloudUrl) imageData = cloudUrl;
+        if (thumbUrl) thumbnail = thumbUrl;
+      }
+
+      const newImage: GeneratedImage = {
+        id,
+        data: imageData,
+        thumbnail,
+        tags: tags.length > 0 ? tags : undefined,
+        createdAt: timestamp
+      };
+
+      const updated = [newImage, ...history];
+      setHistory(updated);
+      await set(DB_KEY_HISTORY, updated);
+      setIsUploadModalOpen(false);
+      setUploadPreview("");
+      setUploadTags("");
+    } catch (e) {
+      console.error("Upload failed:", e);
+      alert("アップロードに失敗しました。");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   // Upscale handler with customizable scale (2x or 4x)
   const handleUpscale = async (item: GeneratedImage, scale: number = 2) => {
     if (!replicateApiKey) {
@@ -360,7 +421,7 @@ const App: React.FC = () => {
         id: newId,
         data: newImageData,
         thumbnail: newThumbnail,
-        tags: [`#アップスケール${scale}x`],
+        tags: [...(item.tags || []), `#アップスケール${scale}x`],
         createdAt: timestamp,
         isUpscaled: true,
         upscaleScale: scale
@@ -1227,6 +1288,12 @@ ${header.length + uint8Array.length + 20}
                 >
                   🔄 全て再タグ付け
                 </button>
+                <button
+                  onClick={() => { setUploadPreview(""); setUploadTags(""); setIsUploadModalOpen(true); }}
+                  className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-all"
+                >
+                  📤 画像アップロード
+                </button>
               </div>
             </div>
 
@@ -1611,6 +1678,61 @@ ${header.length + uint8Array.length + 20}
           onGenerate={handleEditImage}
           isGenerating={isEditGenerating}
         />
+      )}
+
+      {/* Manual Upload Modal */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
+            <div className="w-12 h-12 bg-emerald-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-emerald-100">📤</div>
+            <h3 className="text-2xl font-semibold text-slate-900 mb-2">画像をアップロード</h3>
+            <p className="text-sm font-medium text-slate-400 mb-6">手持ちの画像を履歴に追加します。</p>
+
+            <div className="mb-4">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2">画像を選択</label>
+              {!uploadPreview ? (
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer bg-slate-50/50 hover:bg-slate-100/50 transition-all">
+                  <input type="file" accept="image/*" onChange={handleUploadFileSelect} className="hidden" />
+                  <span className="text-3xl mb-2">🖼️</span>
+                  <span className="text-sm font-medium text-slate-400">クリックして画像を選択</span>
+                </label>
+              ) : (
+                <div className="relative">
+                  <img src={uploadPreview} alt="Preview" className="w-full h-32 object-contain rounded-lg border border-slate-200 bg-slate-50" />
+                  <button onClick={() => setUploadPreview("")} className="absolute top-2 right-2 bg-white/80 hover:bg-rose-50 text-slate-400 hover:text-rose-500 p-1.5 rounded-md shadow-sm">✕</button>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2">タグ（任意、カンマ区切り）</label>
+              <input
+                type="text"
+                value={uploadTags}
+                onChange={(e) => setUploadTags(e.target.value)}
+                placeholder="例: エアコン, 2024冬, 特価"
+                className="w-full border-2 border-slate-100 rounded-md shadow-sm py-3 px-4 focus:ring-0 focus:border-indigo-600 bg-slate-50/50 text-slate-900 font-medium placeholder:text-slate-300 text-sm"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleConfirmUpload}
+                disabled={uploadingImage || !uploadPreview}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold tracking-wide text-xs py-4 px-6 rounded-md transition-all active:scale-95 disabled:opacity-50"
+              >
+                {uploadingImage ? 'アップロード中...' : 'アップロード'}
+              </button>
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                disabled={uploadingImage}
+                className="w-full text-slate-400 hover:text-slate-600 text-xs font-semibold py-2 transition-colors"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
