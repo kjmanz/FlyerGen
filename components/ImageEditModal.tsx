@@ -139,43 +139,41 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full mx-4 max-h-[95vh] overflow-hidden flex flex-col">
-                {/* Header */}
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xl">✏️</div>
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-900">画像編集</h2>
-                            <p className="text-sm text-slate-500">画像上をクリック/ドラッグして編集箇所を指定</p>
-                        </div>
+                {/* Compact Header with Toolbar */}
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-lg">✏️</div>
+                        <h2 className="text-lg font-bold text-slate-900">画像編集</h2>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
-                </div>
 
-                {/* Toolbar */}
-                <div className="p-4 border-b border-slate-100 flex items-center gap-4">
-                    <span className="text-sm font-bold text-slate-500">モード:</span>
-                    <button
-                        onClick={() => setMode('point')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'point'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                    >
-                        📍 ポイント
-                    </button>
-                    <button
-                        onClick={() => setMode('area')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'area'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                    >
-                        ⬜ 範囲選択
-                    </button>
-                    <div className="flex-1" />
-                    <span className="text-sm text-slate-400">
-                        {regions.length}箇所を選択中
-                    </span>
+                    {/* Mode Selection - Centered */}
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => setMode('point')}
+                            className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${mode === 'point'
+                                ? 'bg-white text-indigo-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            📍 ポイント
+                        </button>
+                        <button
+                            onClick={() => setMode('area')}
+                            className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${mode === 'area'
+                                ? 'bg-white text-indigo-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            ⬜ 範囲選択
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+                            {regions.length}箇所を選択中
+                        </span>
+                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+                    </div>
                 </div>
 
                 {/* Main Content */}
@@ -306,8 +304,8 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
                             onClick={handleGenerate}
                             disabled={isGenerating || regions.length === 0}
                             className={`px-6 py-3 text-sm font-bold text-white rounded-lg transition-all ${isGenerating || regions.length === 0
-                                    ? 'bg-slate-300 cursor-not-allowed'
-                                    : 'bg-indigo-600 hover:bg-indigo-700'
+                                ? 'bg-slate-300 cursor-not-allowed'
+                                : 'bg-indigo-600 hover:bg-indigo-700'
                                 }`}
                         >
                             {isGenerating ? '生成中...' : '✨ 編集画像を作成'}
