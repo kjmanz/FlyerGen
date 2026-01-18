@@ -39,15 +39,15 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
 }) => {
     const [mode, setMode] = useState<EditMode>('point');
     const [regions, setRegions] = useState<EditRegion[]>([]);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
-    const [tempArea, setTempArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+    const [zoom, setZoom] = useState(100); // Zoom percentage
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const lastMoveTime = useRef<number>(0);
+    const tempAreaRef = useRef<HTMLDivElement>(null);
+    const isDraggingRef = useRef(false);
+    const dragStartRef = useRef<{ x: number; y: number } | null>(null);
 
     // Get percentage position from mouse event
-    const getPercentagePosition = useCallback((e: React.MouseEvent<HTMLDivElement> | MouseEvent) => {
+    const getPercentagePosition = useCallback((e: MouseEvent | React.MouseEvent) => {
         if (!containerRef.current) return { x: 0, y: 0 };
         const rect = containerRef.current.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -57,7 +57,6 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         if (mode === 'point') {
-            // Add point marker
             const { x, y } = getPercentagePosition(e);
             const newPoint: EditPoint = {
                 id: uuidv4(),
@@ -68,51 +67,72 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
             };
             setRegions([...regions, newPoint]);
         } else {
-            // Start area selection
             const { x, y } = getPercentagePosition(e);
-            setIsDragging(true);
-            setDragStart({ x, y });
-            setTempArea({ x, y, width: 0, height: 0 });
+            isDraggingRef.current = true;
+            dragStartRef.current = { x, y };
+            // Initialize temp area div
+            if (tempAreaRef.current) {
+                tempAreaRef.current.style.display = 'block';
+                tempAreaRef.current.style.left = `${x}%`;
+                tempAreaRef.current.style.top = `${y}%`;
+                tempAreaRef.current.style.width = '0%';
+                tempAreaRef.current.style.height = '0%';
+            }
         }
     };
 
-    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        if (!isDragging || !dragStart) return;
+    // Use native event listeners for better performance
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isDraggingRef.current || !dragStartRef.current || !tempAreaRef.current) return;
 
-        // Throttle to max 60fps for smooth performance
-        const now = Date.now();
-        if (now - lastMoveTime.current < 16) return;
-        lastMoveTime.current = now;
+            const { x, y } = getPercentagePosition(e);
+            const startX = dragStartRef.current.x;
+            const startY = dragStartRef.current.y;
+            const width = x - startX;
+            const height = y - startY;
 
-        const { x, y } = getPercentagePosition(e);
-        const width = x - dragStart.x;
-        const height = y - dragStart.y;
+            tempAreaRef.current.style.left = `${width >= 0 ? startX : x}%`;
+            tempAreaRef.current.style.top = `${height >= 0 ? startY : y}%`;
+            tempAreaRef.current.style.width = `${Math.abs(width)}%`;
+            tempAreaRef.current.style.height = `${Math.abs(height)}%`;
+        };
 
-        setTempArea({
-            x: width >= 0 ? dragStart.x : x,
-            y: height >= 0 ? dragStart.y : y,
-            width: Math.abs(width),
-            height: Math.abs(height)
-        });
-    }, [isDragging, dragStart, getPercentagePosition]);
+        const handleMouseUp = () => {
+            if (!isDraggingRef.current || !dragStartRef.current || !tempAreaRef.current) {
+                isDraggingRef.current = false;
+                return;
+            }
 
-    const handleMouseUp = () => {
-        if (isDragging && tempArea && tempArea.width > 2 && tempArea.height > 2) {
-            const newArea: EditArea = {
-                id: uuidv4(),
-                type: 'area',
-                x: tempArea.x,
-                y: tempArea.y,
-                width: tempArea.width,
-                height: tempArea.height,
-                prompt: ''
-            };
-            setRegions([...regions, newArea]);
-        }
-        setIsDragging(false);
-        setDragStart(null);
-        setTempArea(null);
-    };
+            const rect = tempAreaRef.current.style;
+            const x = parseFloat(rect.left);
+            const y = parseFloat(rect.top);
+            const width = parseFloat(rect.width);
+            const height = parseFloat(rect.height);
+
+            if (width > 2 && height > 2) {
+                const newArea: EditArea = {
+                    id: uuidv4(),
+                    type: 'area',
+                    x, y, width, height,
+                    prompt: ''
+                };
+                setRegions(prev => [...prev, newArea]);
+            }
+
+            tempAreaRef.current.style.display = 'none';
+            isDraggingRef.current = false;
+            dragStartRef.current = null;
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [getPercentagePosition]);
 
     const updateRegionPrompt = (id: string, prompt: string) => {
         setRegions(regions.map(r => r.id === id ? { ...r, prompt } : r));
@@ -184,70 +204,90 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
 
                 {/* Main Content */}
                 <div className="flex-1 flex overflow-hidden">
-                    {/* Image Canvas */}
-                    <div className="flex-1 p-6 bg-slate-50 flex items-center justify-center overflow-auto">
-                        <div
-                            ref={containerRef}
-                            className="relative cursor-crosshair select-none"
-                            onMouseDown={handleMouseDown}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
-                            onMouseLeave={handleMouseUp}
-                        >
-                            <img
-                                src={imageUrl}
-                                alt="Edit target"
-                                className="max-w-full max-h-[60vh] object-contain pointer-events-none"
-                                draggable={false}
+                    {/* Image Canvas with Zoom Controls */}
+                    <div className="flex-1 flex flex-col bg-slate-50">
+                        {/* Zoom Slider */}
+                        <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-3 bg-white">
+                            <button
+                                onClick={() => setZoom(Math.max(50, zoom - 25))}
+                                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-lg font-bold text-slate-600"
+                            >
+                                −
+                            </button>
+                            <input
+                                type="range"
+                                min="50"
+                                max="200"
+                                value={zoom}
+                                onChange={(e) => setZoom(parseInt(e.target.value))}
+                                className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                             />
+                            <button
+                                onClick={() => setZoom(Math.min(200, zoom + 25))}
+                                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-lg font-bold text-slate-600"
+                            >
+                                +
+                            </button>
+                            <span className="text-xs font-bold text-slate-500 w-12 text-center">{zoom}%</span>
+                        </div>
 
-                            {/* Render point markers */}
-                            {regions.filter(r => r.type === 'point').map((region, idx) => (
-                                <div
-                                    key={region.id}
-                                    className="absolute w-8 h-8 -ml-4 -mt-4 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg border-2 border-white"
-                                    style={{
-                                        left: `${region.x}%`,
-                                        top: `${region.y}%`
-                                    }}
-                                >
-                                    {regions.indexOf(region) + 1}
-                                </div>
-                            ))}
+                        {/* Scrollable Image Area */}
+                        <div className="flex-1 p-6 overflow-auto flex items-center justify-center">
+                            <div
+                                ref={containerRef}
+                                className="relative cursor-crosshair select-none"
+                                style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center center' }}
+                                onMouseDown={handleMouseDown}
+                            >
+                                <img
+                                    src={imageUrl}
+                                    alt="Edit target"
+                                    className="max-w-full max-h-[55vh] object-contain pointer-events-none"
+                                    draggable={false}
+                                />
 
-                            {/* Render area selections */}
-                            {regions.filter(r => r.type === 'area').map((region, idx) => {
-                                const area = region as EditArea;
-                                return (
+                                {/* Render point markers */}
+                                {regions.filter(r => r.type === 'point').map((region) => (
                                     <div
                                         key={region.id}
-                                        className="absolute bg-indigo-500/30 border-2 border-indigo-600 border-dashed"
+                                        className="absolute w-8 h-8 -ml-4 -mt-4 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg border-2 border-white"
                                         style={{
-                                            left: `${area.x}%`,
-                                            top: `${area.y}%`,
-                                            width: `${area.width}%`,
-                                            height: `${area.height}%`
+                                            left: `${region.x}%`,
+                                            top: `${region.y}%`
                                         }}
                                     >
-                                        <span className="absolute -top-3 -left-3 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                            {regions.indexOf(region) + 1}
-                                        </span>
+                                        {regions.indexOf(region) + 1}
                                     </div>
-                                );
-                            })}
+                                ))}
 
-                            {/* Temp area while dragging */}
-                            {tempArea && (
+                                {/* Render area selections */}
+                                {regions.filter(r => r.type === 'area').map((region) => {
+                                    const area = region as EditArea;
+                                    return (
+                                        <div
+                                            key={region.id}
+                                            className="absolute bg-indigo-500/30 border-2 border-indigo-600 border-dashed"
+                                            style={{
+                                                left: `${area.x}%`,
+                                                top: `${area.y}%`,
+                                                width: `${area.width}%`,
+                                                height: `${area.height}%`
+                                            }}
+                                        >
+                                            <span className="absolute -top-3 -left-3 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                                {regions.indexOf(region) + 1}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+
+                                {/* Temp area while dragging (ref-based) */}
                                 <div
+                                    ref={tempAreaRef}
                                     className="absolute bg-indigo-500/20 border-2 border-indigo-400 border-dashed pointer-events-none"
-                                    style={{
-                                        left: `${tempArea.x}%`,
-                                        top: `${tempArea.y}%`,
-                                        width: `${tempArea.width}%`,
-                                        height: `${tempArea.height}%`
-                                    }}
+                                    style={{ display: 'none' }}
                                 />
-                            )}
+                            </div>
                         </div>
                     </div>
 
