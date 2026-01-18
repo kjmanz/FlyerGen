@@ -76,7 +76,7 @@ const resizeImageIfNeeded = async (imageData: string): Promise<string> => {
 export const upscaleImage = async (
     imageData: string,
     replicateApiKey: string,
-    scale: number = 2
+    scale: number = 4
 ): Promise<UpscaleResult> => {
     const apiUrl = getApiUrl();
 
@@ -111,4 +111,3 @@ export const upscaleImage = async (
     console.log('Upscale completed successfully');
     return result;
 };
-

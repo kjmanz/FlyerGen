@@ -40,7 +40,7 @@ export interface GeneratedImage {
   isFavorite?: boolean; // User-marked favorite
   createdAt: number;
   isUpscaled?: boolean; // Flag to indicate if image has been upscaled
-  upscaleScale?: number; // Upscale multiplier (2 or 4)
+  upscaleScale?: number; // Upscale multiplier (4 only)
   isEdited?: boolean; // Flag to indicate if image has been edited
 }
 

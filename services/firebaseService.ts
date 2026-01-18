@@ -260,6 +260,22 @@ export const updateFlyerFavorite = async (id: string, isFavorite: boolean): Prom
     }
 };
 
+// Update upscale status for a specific flyer
+export const updateFlyerUpscaleStatus = async (id: string, isUpscaled: boolean, upscaleScale?: number): Promise<boolean> => {
+    if (!db) return false;
+    try {
+        await setDoc(doc(db, 'flyer_metadata', id), {
+            isUpscaled,
+            ...(upscaleScale !== undefined && { upscaleScale }),
+            updatedAt: Date.now()
+        }, { merge: true });
+        return true;
+    } catch (e) {
+        console.error('Update flyer upscale status error:', e);
+        return false;
+    }
+};
+
 // ===== PRESETS (Firestore) =====
 
 export interface CloudPreset {

@@ -127,7 +127,11 @@ async function handleUpscale(request, corsHeaders) {
         });
     }
 
-    const upscaleScale = scale || 2;
+    const upscaleScale = 4;
+
+    if (scale && scale !== upscaleScale) {
+        console.log(`Requested upscale scale ${scale}x overridden to ${upscaleScale}x`);
+    }
 
     console.log(`Starting upscale with scale: ${upscaleScale}x...`);
 

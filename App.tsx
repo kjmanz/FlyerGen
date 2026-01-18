@@ -19,6 +19,7 @@ import {
   saveFlyerMetadata,
   updateFlyerTags,
   updateFlyerFavorite,
+  updateFlyerUpscaleStatus,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -27,6 +28,7 @@ const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
+const UPSCALE_SCALE = 4;
 
 // Initialize Firebase on app load
 const firebaseEnabled = initFirebase();
@@ -78,7 +80,6 @@ const App: React.FC = () => {
   const [replicateApiKey, setReplicateApiKey] = useState<string>("");
   const [tempReplicateApiKey, setTempReplicateApiKey] = useState<string>("");
   const [upscalingImageId, setUpscalingImageId] = useState<string | null>(null);
-  const [openUpscaleMenu, setOpenUpscaleMenu] = useState<string | null>(null);
 
   // Tag Filter State
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -400,8 +401,9 @@ const App: React.FC = () => {
     }
   };
 
-  // Upscale handler with customizable scale (2x or 4x)
-  const handleUpscale = async (item: GeneratedImage, scale: number = 2) => {
+  // Upscale handler (4x only)
+  const handleUpscale = async (item: GeneratedImage) => {
+    if (item.isUpscaled) return;
     if (!replicateApiKey) {
       alert("アップスケール機能を使用するには、設定画面でReplicate APIキーを入力してください。");
       setIsSettingsOpen(true);
@@ -409,11 +411,10 @@ const App: React.FC = () => {
     }
 
     setUpscalingImageId(item.id);
-    setOpenUpscaleMenu(null);
 
     try {
       // Always use full resolution image (item.data), not thumbnail
-      const result = await upscaleImage(item.data, replicateApiKey, scale);
+      const result = await upscaleImage(item.data, replicateApiKey, UPSCALE_SCALE);
 
       // Create new upscaled image entry
       const newId = uuidv4();
@@ -450,13 +451,17 @@ const App: React.FC = () => {
         id: finalId,
         data: newImageData,
         thumbnail: newThumbnail,
-        tags: [...(item.tags || []), `#アップスケール${scale}x`],
+        tags: [...(item.tags || []), `#アップスケール${UPSCALE_SCALE}x`],
         createdAt: timestamp,
         isUpscaled: true,
-        upscaleScale: scale
+        upscaleScale: UPSCALE_SCALE
       };
 
-      const updatedHistory = [newItem, ...history];
+      const updatedHistory = [newItem, ...history].map((image) => (
+        image.id === item.id
+          ? { ...image, isUpscaled: true, upscaleScale: UPSCALE_SCALE }
+          : image
+      ));
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
 
@@ -464,8 +469,9 @@ const App: React.FC = () => {
       if (firebaseEnabled) {
         await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {
           isUpscaled: true,
-          upscaleScale: scale
+          upscaleScale: UPSCALE_SCALE
         });
+        await updateFlyerUpscaleStatus(item.id, true, UPSCALE_SCALE);
       }
 
       alert("アップスケールが完了しました！高画質版が履歴に追加されました。");
@@ -1413,7 +1419,7 @@ ${header.length + uint8Array.length + 20}
                         {/* Status Badges */}
                         {item.isUpscaled && (
                           <span className="ml-2 px-1.5 py-0.5 bg-violet-100 text-violet-600 rounded text-[8px] font-bold">
-                            🔍{item.upscaleScale || 2}x
+                            🔍{item.upscaleScale ?? UPSCALE_SCALE}x
                           </span>
                         )}
                         {item.isEdited && (
@@ -1491,10 +1497,10 @@ ${header.length + uint8Array.length + 20}
                         )}
                       </div>
 
-                      {/* Upscale Button with Dropdown */}
+                      {/* Upscale Button */}
                       <div className="relative flex-1">
                         <button
-                          onClick={() => !item.isUpscaled && setOpenUpscaleMenu(openUpscaleMenu === item.id ? null : item.id)}
+                          onClick={() => handleUpscale(item)}
                           disabled={upscalingImageId === item.id || item.isUpscaled}
                           className={`w-full flex items-center justify-center p-3 rounded-md transition-all border ${
                             upscalingImageId === item.id
@@ -1503,7 +1509,7 @@ ${header.length + uint8Array.length + 20}
                                 ? 'bg-green-50 text-green-600 border-green-100 cursor-not-allowed'
                                 : 'bg-slate-50 hover:bg-violet-50 text-slate-500 hover:text-violet-600 border-slate-100 active:scale-95'
                             }`}
-                          title={item.isUpscaled ? `アップスケール済み(${item.upscaleScale || 2}x)` : 'AIアップスケール'}
+                          title={item.isUpscaled ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)` : `AIアップスケール(${UPSCALE_SCALE}x)`}
                         >
                           {upscalingImageId === item.id ? (
                             <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1520,24 +1526,6 @@ ${header.length + uint8Array.length + 20}
                             </svg>
                           )}
                         </button>
-
-                        {/* Upscale Dropdown Menu */}
-                        {openUpscaleMenu === item.id && !item.isUpscaled && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-24 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden animate-slide-up">
-                            <button
-                              onClick={() => handleUpscale(item, 2)}
-                              className="w-full flex items-center justify-center p-3 text-violet-600 hover:bg-violet-50 transition-all border-b border-slate-100"
-                            >
-                              <span className="text-xs font-bold">2x</span>
-                            </button>
-                            <button
-                              onClick={() => handleUpscale(item, 4)}
-                              className="w-full flex items-center justify-center p-3 text-violet-600 hover:bg-violet-50 transition-all"
-                            >
-                              <span className="text-xs font-bold">4x</span>
-                            </button>
-                          </div>
-                        )}
                       </div>
 
                       {/* Edit Button */}
