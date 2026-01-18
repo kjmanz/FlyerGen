@@ -21,52 +21,56 @@ const MAX_DIMENSION = 1440;
 
 /**
  * Resize image if too large for the upscale API
+ * Optimized with createImageBitmap for better performance
  */
 const resizeImageIfNeeded = async (imageData: string): Promise<string> => {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-            const pixels = img.width * img.height;
+    try {
+        // Convert base64 to blob for createImageBitmap
+        const response = await fetch(imageData);
+        const blob = await response.blob();
 
-            // If image is small enough, return as-is
-            if (pixels <= MAX_PIXELS && img.width <= MAX_DIMENSION && img.height <= MAX_DIMENSION) {
-                resolve(imageData);
-                return;
-            }
+        // createImageBitmap is faster and more efficient than new Image()
+        const bitmap = await createImageBitmap(blob);
 
-            // Calculate new dimensions
-            let newWidth = img.width;
-            let newHeight = img.height;
+        const pixels = bitmap.width * bitmap.height;
 
-            const scale = Math.min(
-                MAX_DIMENSION / Math.max(img.width, img.height),
-                Math.sqrt(MAX_PIXELS / pixels)
-            );
+        // If image is small enough, return as-is
+        if (pixels <= MAX_PIXELS && bitmap.width <= MAX_DIMENSION && bitmap.height <= MAX_DIMENSION) {
+            bitmap.close();
+            return imageData;
+        }
 
-            newWidth = Math.floor(img.width * scale);
-            newHeight = Math.floor(img.height * scale);
+        // Calculate new dimensions
+        const scale = Math.min(
+            MAX_DIMENSION / Math.max(bitmap.width, bitmap.height),
+            Math.sqrt(MAX_PIXELS / pixels)
+        );
 
-            console.log(`Resizing image from ${img.width}x${img.height} to ${newWidth}x${newHeight} before upscale`);
+        const newWidth = Math.floor(bitmap.width * scale);
+        const newHeight = Math.floor(bitmap.height * scale);
 
-            // Create canvas and resize
-            const canvas = document.createElement('canvas');
-            canvas.width = newWidth;
-            canvas.height = newHeight;
-            const ctx = canvas.getContext('2d');
+        console.log(`Resizing image from ${bitmap.width}x${bitmap.height} to ${newWidth}x${newHeight} before upscale`);
 
-            if (ctx) {
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                ctx.drawImage(img, 0, 0, newWidth, newHeight);
-                resolve(canvas.toDataURL('image/png'));
-            } else {
-                resolve(imageData);
-            }
-        };
-        img.onerror = () => resolve(imageData);
-        img.src = imageData;
-    });
+        // Create canvas and resize
+        const canvas = document.createElement('canvas');
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        const ctx = canvas.getContext('2d');
+
+        if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(bitmap, 0, 0, newWidth, newHeight);
+        }
+
+        // Release bitmap memory
+        bitmap.close();
+
+        return canvas.toDataURL('image/png');
+    } catch (error) {
+        console.error('Error resizing image:', error);
+        return imageData;
+    }
 };
 
 export const upscaleImage = async (

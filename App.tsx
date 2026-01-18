@@ -202,23 +202,46 @@ const App: React.FC = () => {
     setProducts(newProducts);
   };
 
-  // Thumbnail generation helper
+  // Thumbnail generation helper - optimized with createImageBitmap + requestIdleCallback
   const createThumbnail = (base64: string, maxWidth = 300): Promise<string> => {
     return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const scale = maxWidth / img.width;
-        canvas.width = maxWidth;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Use requestIdleCallback to avoid blocking the main thread
+      const processImage = async () => {
+        try {
+          // Convert base64 to blob for createImageBitmap
+          const response = await fetch(base64);
+          const blob = await response.blob();
+
+          // createImageBitmap is faster and more efficient than new Image()
+          const bitmap = await createImageBitmap(blob);
+
+          const scale = maxWidth / bitmap.width;
+          const canvas = document.createElement('canvas');
+          canvas.width = maxWidth;
+          canvas.height = Math.round(bitmap.height * scale);
+
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          }
+
+          // Release bitmap memory
+          bitmap.close();
+
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        } catch {
+          // Fallback to original on error
+          resolve(base64);
         }
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality for smaller size
       };
-      img.onerror = () => resolve(base64); // Fallback to original on error
-      img.src = base64;
+
+      // Schedule processing during idle time, with 2 second timeout fallback
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => processImage(), { timeout: 2000 });
+      } else {
+        // Fallback for browsers without requestIdleCallback (Safari)
+        setTimeout(() => processImage(), 0);
+      }
     });
   };
 
