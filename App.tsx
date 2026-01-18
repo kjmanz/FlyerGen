@@ -915,11 +915,9 @@ ${header.length + uint8Array.length + 20}
       <header className="bg-white sticky top-0 z-30 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-md flex items-center justify-center shadow-indigo-200 shadow-lg">
-              <span className="text-white font-semibold text-xl">F</span>
-            </div>
+            <img src="./logo.png" alt="Logo" className="w-10 h-10 rounded-md shadow-lg" />
             <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
-              FlyerGen <span className="text-indigo-600">AI</span>
+              チラシ作成ソフト
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
