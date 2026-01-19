@@ -425,7 +425,7 @@ const uploadReferenceImage = async (base64Data: string, index: number): Promise<
 };
 
 // Save reference images to Firestore (independent of presets)
-export const saveReferenceImages = async (images: string[]): Promise<boolean> => {
+export const saveReferenceImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
     if (!db || !storage) {
         console.log('saveReferenceImages: db or storage is null');
         return false;
@@ -438,10 +438,11 @@ export const saveReferenceImages = async (images: string[]): Promise<boolean> =>
             images.map((img, i) => uploadReferenceImage(img, i))
         );
 
-        // Save URLs to Firestore
+        // Save URLs and selected indices to Firestore
         const docRef = doc(db, 'settings', 'reference_images');
         await setDoc(docRef, {
             images: imageUrls,
+            selectedIndices: selectedIndices,
             updatedAt: Date.now()
         });
 
@@ -454,28 +455,29 @@ export const saveReferenceImages = async (images: string[]): Promise<boolean> =>
 };
 
 // Get reference images from Firestore
-export const getReferenceImages = async (): Promise<string[]> => {
+export const getReferenceImages = async (): Promise<{ images: string[], selectedIndices: number[] }> => {
     if (!db) {
         console.log('getReferenceImages: db is null');
-        return [];
+        return { images: [], selectedIndices: [] };
     }
     try {
         console.log('Fetching reference images from cloud...');
-        const docRef = doc(db, 'settings', 'reference_images');
         const docSnap = await getDocs(collection(db, 'settings'));
 
         let images: string[] = [];
+        let selectedIndices: number[] = [];
         docSnap.forEach((d) => {
             if (d.id === 'reference_images') {
                 const data = d.data();
                 images = data.images || [];
+                selectedIndices = data.selectedIndices || [];
             }
         });
 
         console.log(`Fetched ${images.length} reference images from cloud`);
-        return images;
+        return { images, selectedIndices };
     } catch (e) {
         console.error('Get reference images error:', e);
-        return [];
+        return { images: [], selectedIndices: [] };
     }
 };

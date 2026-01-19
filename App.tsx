@@ -43,6 +43,7 @@ const App: React.FC = () => {
   const [characterImages, setCharacterImages] = useState<string[]>([]);
   const [characterClothingMode, setCharacterClothingMode] = useState<'fixed' | 'match'>('fixed');
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [selectedReferenceIndices, setSelectedReferenceIndices] = useState<Set<number>>(new Set());
   const [storeLogoImages, setStoreLogoImages] = useState<string[]>([]);
   const [settings, setSettings] = useState<FlyerSettings>({
     orientation: 'vertical',
@@ -158,8 +159,9 @@ const App: React.FC = () => {
           }
 
           // Load reference images independently (not from presets)
-          if (cloudReferenceImages.length > 0) {
-            setReferenceImages(cloudReferenceImages);
+          if (cloudReferenceImages.images.length > 0) {
+            setReferenceImages(cloudReferenceImages.images);
+            setSelectedReferenceIndices(new Set(cloudReferenceImages.selectedIndices));
           }
         } else {
           // Fallback to local storage
@@ -195,16 +197,37 @@ const App: React.FC = () => {
       // Debounce the sync to avoid too many writes
       const syncTimeout = setTimeout(() => {
         console.log('Syncing reference images to cloud...');
-        saveReferenceImages(referenceImages);
+        saveReferenceImages(referenceImages, Array.from(selectedReferenceIndices));
       }, 1000);
 
       return () => clearTimeout(syncTimeout);
     }
-  }, [referenceImages, referenceImagesInitialized]);
+  }, [referenceImages, selectedReferenceIndices, referenceImagesInitialized]);
 
   // Handle reference images change with cloud sync
   const handleReferenceImagesChange = (images: string[]) => {
+    // When images change, update selected indices to remove any that are out of bounds
+    const newSelectedIndices = new Set(
+      Array.from(selectedReferenceIndices).filter(i => i < images.length)
+    );
+    setSelectedReferenceIndices(newSelectedIndices);
     setReferenceImages(images);
+    if (!referenceImagesInitialized) {
+      setReferenceImagesInitialized(true);
+    }
+  };
+
+  // Toggle reference image selection
+  const toggleReferenceImageSelection = (index: number) => {
+    setSelectedReferenceIndices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
     if (!referenceImagesInitialized) {
       setReferenceImagesInitialized(true);
     }
@@ -303,9 +326,12 @@ const App: React.FC = () => {
     setIsGenerating(true);
 
     try {
+      // Filter reference images to only include selected ones
+      const selectedReferenceImages = referenceImages.filter((_, idx) => selectedReferenceIndices.has(idx));
+
       // Generate images and tags in parallel for better performance
       const [results, tags] = await Promise.all([
-        generateFlyerImage(products, settings, characterImages, characterClothingMode, referenceImages, storeLogoImages, apiKey),
+        generateFlyerImage(products, settings, characterImages, characterClothingMode, selectedReferenceImages, storeLogoImages, apiKey),
         generateTagsFromProducts(products, apiKey)
       ]);
 
@@ -1318,18 +1344,60 @@ ${header.length + uint8Array.length + 20}
             )}
           </div>
           <div id="reference-section" className="bg-white rounded-lg shadow-premium border border-slate-100 p-8">
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🖼️</div>
               <h3 className="text-lg font-semibold text-slate-900">参考デザイン</h3>
               {firebaseEnabled && (
                 <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
               )}
             </div>
+            <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ参考にします。チェックなしの場合は参考なし。</p>
             <ImageUploader
               label="デザイン参考にするチラシ画像"
               images={referenceImages}
               onImagesChange={handleReferenceImagesChange}
             />
+            {/* Checkmark selection for reference images */}
+            {referenceImages.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {referenceImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => toggleReferenceImageSelection(idx)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedReferenceIndices.has(idx)
+                        ? 'border-indigo-600 ring-2 ring-indigo-200'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`参考デザイン ${idx + 1}`}
+                      className="w-full h-20 object-cover"
+                    />
+                    {/* Checkmark overlay */}
+                    <div
+                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                        selectedReferenceIndices.has(idx)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/80 text-slate-300 border border-slate-300'
+                      }`}
+                    >
+                      {selectedReferenceIndices.has(idx) ? '✓' : ''}
+                    </div>
+                    {/* Selection indicator */}
+                    {selectedReferenceIndices.has(idx) && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
+                        使用する
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {referenceImages.length > 0 && selectedReferenceIndices.size === 0 && (
+              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 参考にする画像にチェックを入れてください</p>
+            )}
           </div>
         </div>
 
