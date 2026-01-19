@@ -1830,7 +1830,7 @@ ${header.length + uint8Array.length + 20}
               );
             })()}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...history]
                 .filter(item => selectedTag === null || (item.tags && item.tags.includes(selectedTag)))
                 .sort((a, b) => {
@@ -1867,7 +1867,7 @@ ${header.length + uint8Array.length + 20}
                         {item.tags && item.tags.length > 0 && (
                           <span className="ml-2 flex gap-1">
                             {item.tags.filter(t => !t.startsWith('#')).slice(0, 2).map(tag => (
-                              <span key={tag} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[8px] font-bold">{tag}</span>
+                              <span key={tag} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[7px] font-bold">{tag}</span>
                             ))}
                           </span>
                         )}
@@ -1890,7 +1890,7 @@ ${header.length + uint8Array.length + 20}
                           }}
                           className="bg-white/90 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white transition-all shadow-lg"
                         >
-                          フルスクリーン
+                          画像を開く
                         </button>
                       </div>
                     </div>
