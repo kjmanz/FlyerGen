@@ -153,8 +153,8 @@ export const generateFlyerImage = async (
 
   // Logo position instruction
   const logoPositionInstruction = settings.logoPosition === 'full-bottom'
-    ? '【店名ロゴの配置】チラシの最下部に左右いっぱいに横長で配置してください。'
-    : '【店名ロゴの配置】チラシの右下部分に適切なサイズで配置してください。';
+    ? '【店名ロゴの配置】チラシの最下部に左右いっぱいに横長で配置してください。横幅100%を使用してください。'
+    : '【店名ロゴの配置】チラシの最下部の右側半分に配置してください。横幅は約50%で、右端に寄せて配置してください。';
 
   prompt += `\n
     ${characterImages.length > 0 ? clothingInstruction : ''}
