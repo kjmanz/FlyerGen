@@ -5,7 +5,7 @@ import { Product, FlyerSettings, GeneratedImage, Preset } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
 import { ImageEditModal, EditRegion } from './components/ImageEditModal';
-import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage } from './services/geminiService';
+import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -98,7 +98,8 @@ const App: React.FC = () => {
   const [editingImage, setEditingImage] = useState<GeneratedImage | null>(null);
   const [isEditGenerating, setIsEditGenerating] = useState(false);
 
-
+  // Text Removal State
+  const [removingTextImageId, setRemovingTextImageId] = useState<string | null>(null);
 
   // Load History, Presets & API Key on mount (Firebase + local fallback)
   useEffect(() => {
@@ -1033,6 +1034,80 @@ ${header.length + uint8Array.length + 20}
     }
   };
 
+  // Handle text removal from image
+  const handleRemoveText = async (item: GeneratedImage) => {
+    if (!apiKey) {
+      alert("APIキーが設定されていません。");
+      return;
+    }
+
+    if (!window.confirm("この画像から文字を消去しますか？\n背景やイラストはそのまま残ります。")) {
+      return;
+    }
+
+    setRemovingTextImageId(item.id);
+
+    try {
+      // Remove text from image
+      const cleanedImageData = await removeTextFromImage(item.data, apiKey);
+
+      // Create new history entry for cleaned image
+      const id = uuidv4();
+      const timestamp = Date.now();
+
+      // Generate thumbnail
+      const thumbnailData = await createThumbnail(cleanedImageData);
+
+      let newImageData = cleanedImageData;
+      let newThumbnail = thumbnailData;
+
+      // Upload to Firebase if enabled
+      if (firebaseEnabled) {
+        const filename = `flyer_notext_${timestamp}_${id}.png`;
+        const thumbFilename = `flyer_notext_${timestamp}_${id}_thumb.jpg`;
+
+        const [cloudUrl, thumbUrl] = await Promise.all([
+          uploadImage(cleanedImageData, filename),
+          uploadImage(thumbnailData, thumbFilename)
+        ]);
+
+        if (cloudUrl) {
+          newImageData = cloudUrl;
+        }
+        if (thumbUrl) {
+          newThumbnail = thumbUrl;
+        }
+      }
+
+      const newItem: GeneratedImage = {
+        id: firebaseEnabled ? `flyer_notext_${timestamp}_${id}.png` : id,
+        data: newImageData,
+        thumbnail: newThumbnail,
+        tags: [...(item.tags || []).filter(t => t !== '#文字消去済み'), '#文字消去済み'],
+        createdAt: timestamp,
+        isEdited: true
+      };
+
+      const updatedHistory = [newItem, ...history];
+      setHistory(updatedHistory);
+      await set(DB_KEY_HISTORY, updatedHistory);
+
+      // Save metadata to Firebase if enabled
+      if (firebaseEnabled) {
+        await saveFlyerMetadata(newItem.id, newItem.tags || [], timestamp, {
+          isEdited: true
+        });
+      }
+
+      alert('文字消去が完了しました！新しい画像が履歴に追加されました。');
+    } catch (e: any) {
+      console.error('Text removal failed:', e);
+      alert(`文字消去に失敗しました: ${e.message || '不明なエラー'}`);
+    } finally {
+      setRemovingTextImageId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
@@ -1687,6 +1762,29 @@ ${header.length + uint8Array.length + 20}
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
+                      </button>
+
+                      {/* Remove Text Button */}
+                      <button
+                        onClick={() => handleRemoveText(item)}
+                        disabled={removingTextImageId === item.id}
+                        className={`flex-1 flex items-center justify-center p-3 rounded-md transition-all active:scale-95 border border-slate-100 ${
+                          removingTextImageId === item.id
+                            ? 'bg-rose-100 text-rose-400 cursor-not-allowed'
+                            : 'bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600'
+                        }`}
+                        title="文字を消去"
+                      >
+                        {removingTextImageId === item.id ? (
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
                       </button>
 
                       {/* Reference Button */}

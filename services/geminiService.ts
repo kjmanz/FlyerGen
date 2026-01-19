@@ -575,3 +575,81 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
     throw error;
   }
 };
+
+// Remove all text from flyer image using Worker Batch API
+export const removeTextFromImage = async (
+  imageUrl: string,
+  apiKey: string
+): Promise<string> => {
+  const removeTextPrompt = `
+【★最重要★ テキスト削除タスク】
+あなたはプロの画像編集者です。この画像からすべてのテキスト・文字・数字・記号を削除してください。
+
+【削除対象】
+- すべての日本語テキスト（ひらがな、カタカナ、漢字）
+- すべての英字・数字
+- 価格表示（¥、円など）
+- 商品名、キャッチコピー、説明文
+- ロゴに含まれる文字
+- その他すべての読める文字
+
+【絶対に保持するもの】
+- 背景のデザイン、色、グラデーション、模様
+- イラスト、キャラクター、人物
+- 商品画像、写真
+- 装飾的な図形、アイコン（文字を含まないもの）
+- 全体の構図とレイアウト
+
+【処理方法】
+文字があった部分は、周囲の背景やデザインで自然に埋めてください。
+インペインティング技術を使用し、文字を消した跡が不自然にならないようにしてください。
+
+【出力】
+テキストをすべて削除し、背景で自然に補完された高品質な画像を出力してください。
+`;
+
+  try {
+    // Fetch image and convert to base64 if it's a URL
+    let imageData = imageUrl;
+    if (imageUrl.startsWith('http')) {
+      const resp = await fetch(imageUrl);
+      const blob = await resp.blob();
+      imageData = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // Call Worker API for edit (uses Batch API - 50% cost reduction)
+    const workerUrl = API_URL.replace('/api/batch-generate', '/api/edit-image');
+
+    const response = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        imageData,
+        editPrompt: removeTextPrompt,
+        imageSize: '2K',
+        aspectRatio: '3:4'
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || errorData.error || 'Text removal failed');
+    }
+
+    const result = await response.json();
+
+    if (result.image) {
+      return result.image;
+    }
+
+    throw new Error('文字消去に失敗しました');
+  } catch (error) {
+    console.error("Text removal failed:", error);
+    throw error;
+  }
+};
