@@ -481,3 +481,161 @@ export const getReferenceImages = async (): Promise<{ images: string[], selected
         return { images: [], selectedIndices: [] };
     }
 };
+
+// ===== CHARACTER IMAGES (Independent Cloud Sync) =====
+
+// Upload character image to Firebase Storage
+const uploadCharacterImage = async (base64Data: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `character_images/char_${index}_${Date.now()}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload character image ${index}:`, e);
+        return base64Data;
+    }
+};
+
+// Save character images to Firestore (independent of presets)
+export const saveCharacterImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
+    if (!db || !storage) {
+        console.log('saveCharacterImages: db or storage is null');
+        return false;
+    }
+    try {
+        console.log(`Saving ${images.length} character images to cloud...`);
+
+        // Upload all images to Storage
+        const imageUrls = await Promise.all(
+            images.map((img, i) => uploadCharacterImage(img, i))
+        );
+
+        // Save URLs and selected indices to Firestore
+        const docRef = doc(db, 'settings', 'character_images');
+        await setDoc(docRef, {
+            images: imageUrls,
+            selectedIndices: selectedIndices,
+            updatedAt: Date.now()
+        });
+
+        console.log('Character images saved successfully');
+        return true;
+    } catch (e) {
+        console.error('Save character images error:', e);
+        return false;
+    }
+};
+
+// Get character images from Firestore
+export const getCharacterImages = async (): Promise<{ images: string[], selectedIndices: number[] }> => {
+    if (!db) {
+        console.log('getCharacterImages: db is null');
+        return { images: [], selectedIndices: [] };
+    }
+    try {
+        console.log('Fetching character images from cloud...');
+        const docSnap = await getDocs(collection(db, 'settings'));
+
+        let images: string[] = [];
+        let selectedIndices: number[] = [];
+        docSnap.forEach((d) => {
+            if (d.id === 'character_images') {
+                const data = d.data();
+                images = data.images || [];
+                selectedIndices = data.selectedIndices || [];
+            }
+        });
+
+        console.log(`Fetched ${images.length} character images from cloud`);
+        return { images, selectedIndices };
+    } catch (e) {
+        console.error('Get character images error:', e);
+        return { images: [], selectedIndices: [] };
+    }
+};
+
+// ===== STORE LOGO IMAGES (Independent Cloud Sync) =====
+
+// Upload store logo image to Firebase Storage
+const uploadStoreLogoImage = async (base64Data: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `store_logo_images/logo_${index}_${Date.now()}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload store logo image ${index}:`, e);
+        return base64Data;
+    }
+};
+
+// Save store logo images to Firestore (independent of presets)
+export const saveStoreLogoImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
+    if (!db || !storage) {
+        console.log('saveStoreLogoImages: db or storage is null');
+        return false;
+    }
+    try {
+        console.log(`Saving ${images.length} store logo images to cloud...`);
+
+        // Upload all images to Storage
+        const imageUrls = await Promise.all(
+            images.map((img, i) => uploadStoreLogoImage(img, i))
+        );
+
+        // Save URLs and selected indices to Firestore
+        const docRef = doc(db, 'settings', 'store_logo_images');
+        await setDoc(docRef, {
+            images: imageUrls,
+            selectedIndices: selectedIndices,
+            updatedAt: Date.now()
+        });
+
+        console.log('Store logo images saved successfully');
+        return true;
+    } catch (e) {
+        console.error('Save store logo images error:', e);
+        return false;
+    }
+};
+
+// Get store logo images from Firestore
+export const getStoreLogoImages = async (): Promise<{ images: string[], selectedIndices: number[] }> => {
+    if (!db) {
+        console.log('getStoreLogoImages: db is null');
+        return { images: [], selectedIndices: [] };
+    }
+    try {
+        console.log('Fetching store logo images from cloud...');
+        const docSnap = await getDocs(collection(db, 'settings'));
+
+        let images: string[] = [];
+        let selectedIndices: number[] = [];
+        docSnap.forEach((d) => {
+            if (d.id === 'store_logo_images') {
+                const data = d.data();
+                images = data.images || [];
+                selectedIndices = data.selectedIndices || [];
+            }
+        });
+
+        console.log(`Fetched ${images.length} store logo images from cloud`);
+        return { images, selectedIndices };
+    } catch (e) {
+        console.error('Get store logo images error:', e);
+        return { images: [], selectedIndices: [] };
+    }
+};
