@@ -1830,7 +1830,7 @@ ${header.length + uint8Array.length + 20}
               );
             })()}
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...history]
                 .filter(item => selectedTag === null || (item.tags && item.tags.includes(selectedTag)))
                 .sort((a, b) => {
@@ -1864,13 +1864,6 @@ ${header.length + uint8Array.length + 20}
                             ✏️編集済
                           </span>
                         )}
-                        {item.tags && item.tags.length > 0 && (
-                          <span className="ml-2 flex gap-1">
-                            {item.tags.filter(t => !t.startsWith('#')).slice(0, 2).map(tag => (
-                              <span key={tag} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[7px] font-bold">{tag}</span>
-                            ))}
-                          </span>
-                        )}
                       </span>
                       <button onClick={() => handleDeleteImage(item.id)} className="text-slate-300 hover:text-rose-500 transition-colors bg-white w-6 h-6 flex items-center justify-center rounded-lg shadow-sm" title="Delete">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -1894,6 +1887,19 @@ ${header.length + uint8Array.length + 20}
                         </button>
                       </div>
                     </div>
+
+                    {/* Tags Section - Below Image */}
+                    {item.tags && item.tags.length > 0 && (
+                      <div className="px-4 pt-3 pb-2 bg-white border-t border-slate-50">
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.tags.filter(t => !t.startsWith('#')).map(tag => (
+                            <span key={tag} className="px-2.5 py-1 bg-indigo-600 text-white rounded-full text-xs font-bold shadow-sm">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Action Buttons - Below Image */}
                     <div className="p-4 bg-white flex flex-wrap gap-2">
