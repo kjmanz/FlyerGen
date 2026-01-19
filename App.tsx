@@ -1439,11 +1439,10 @@ ${header.length + uint8Array.length + 20}
                   <div
                     key={idx}
                     onClick={() => toggleReferenceImageSelection(idx)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedReferenceIndices.has(idx)
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedReferenceIndices.has(idx)
                         ? 'border-indigo-600 ring-2 ring-indigo-200'
                         : 'border-slate-200 hover:border-slate-300'
-                    }`}
+                      }`}
                   >
                     <img
                       src={img}
@@ -1452,11 +1451,10 @@ ${header.length + uint8Array.length + 20}
                     />
                     {/* Checkmark overlay */}
                     <div
-                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                        selectedReferenceIndices.has(idx)
+                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedReferenceIndices.has(idx)
                           ? 'bg-indigo-600 text-white'
                           : 'bg-white/80 text-slate-300 border border-slate-300'
-                      }`}
+                        }`}
                     >
                       {selectedReferenceIndices.has(idx) ? '✓' : ''}
                     </div>
@@ -1684,7 +1682,7 @@ ${header.length + uint8Array.length + 20}
                     </div>
 
                     {/* Action Buttons - Below Image */}
-                    <div className="p-4 bg-white flex gap-2">
+                    <div className="p-4 bg-white flex flex-wrap gap-2">
                       {/* Download Button with Dropdown */}
                       <div className="relative flex-1">
                         <button
@@ -1727,8 +1725,7 @@ ${header.length + uint8Array.length + 20}
                         <button
                           onClick={() => handleUpscale(item)}
                           disabled={upscalingImageId === item.id || item.isUpscaled}
-                          className={`w-full flex items-center justify-center p-3 rounded-md transition-all border ${
-                            upscalingImageId === item.id
+                          className={`w-full flex items-center justify-center p-3 rounded-md transition-all border ${upscalingImageId === item.id
                               ? 'bg-amber-50 text-amber-600 border-amber-100 cursor-wait'
                               : item.isUpscaled
                                 ? 'bg-green-50 text-green-600 border-green-100 cursor-not-allowed'
@@ -1768,11 +1765,10 @@ ${header.length + uint8Array.length + 20}
                       <button
                         onClick={() => handleRemoveText(item)}
                         disabled={removingTextImageId === item.id}
-                        className={`flex-1 flex items-center justify-center p-3 rounded-md transition-all active:scale-95 border border-slate-100 ${
-                          removingTextImageId === item.id
+                        className={`flex-1 flex items-center justify-center p-3 rounded-md transition-all active:scale-95 border border-slate-100 ${removingTextImageId === item.id
                             ? 'bg-rose-100 text-rose-400 cursor-not-allowed'
                             : 'bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600'
-                        }`}
+                          }`}
                         title="文字を消去"
                       >
                         {removingTextImageId === item.id ? (
