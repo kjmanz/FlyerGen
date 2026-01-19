@@ -1921,7 +1921,7 @@ ${header.length + uint8Array.length + 20}
                         <div className="relative">
                           <button
                             onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
-                            className="w-full flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                            className="w-full flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
                             title="ダウンロード"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1959,10 +1959,10 @@ ${header.length + uint8Array.length + 20}
                           disabled={upscalingImageId === item.id || item.isUpscaled}
                           className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${
                             upscalingImageId === item.id
-                              ? 'bg-amber-100 text-amber-600 cursor-wait'
+                              ? 'bg-slate-100 text-slate-600 cursor-wait'
                               : item.isUpscaled
-                                ? 'bg-green-100 text-green-600 cursor-not-allowed'
-                                : 'bg-violet-500 hover:bg-violet-600 text-white active:scale-95'
+                                ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
+                                : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                           }`}
                           title={item.isUpscaled ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)` : `AIアップスケール(${UPSCALE_SCALE}x)`}
                         >
@@ -1985,7 +1985,7 @@ ${header.length + uint8Array.length + 20}
                         {/* Edit Button */}
                         <button
                           onClick={() => setEditingImage(item)}
-                          className="flex items-center justify-center bg-amber-500 hover:bg-amber-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                          className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
                           title="画像を編集"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2002,8 +2002,8 @@ ${header.length + uint8Array.length + 20}
                           disabled={removingTextImageId === item.id}
                           className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${
                             removingTextImageId === item.id
-                              ? 'bg-rose-100 text-rose-400 cursor-not-allowed'
-                              : 'bg-rose-500 hover:bg-rose-600 text-white active:scale-95'
+                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                              : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                           }`}
                           title="文字を消去"
                         >
@@ -2022,7 +2022,7 @@ ${header.length + uint8Array.length + 20}
                         {/* Reference Button */}
                         <button
                           onClick={() => handleUseAsReference(item.data)}
-                          className="flex items-center justify-center bg-slate-600 hover:bg-slate-700 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                          className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
                           title="参考画像として使用"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
