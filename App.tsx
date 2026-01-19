@@ -22,6 +22,10 @@ import {
   updateFlyerFavorite,
   saveReferenceImages,
   getReferenceImages,
+  saveCharacterImages,
+  getCharacterImages,
+  saveStoreLogoImages,
+  getStoreLogoImages,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -41,10 +45,12 @@ const App: React.FC = () => {
     { id: uuidv4(), images: [], productCode: '', productName: '', specs: '', originalPrice: '', salePrice: '', salePriceLabel: '', catchCopy: '' }
   ]);
   const [characterImages, setCharacterImages] = useState<string[]>([]);
+  const [selectedCharacterIndices, setSelectedCharacterIndices] = useState<Set<number>>(new Set());
   const [characterClothingMode, setCharacterClothingMode] = useState<'fixed' | 'match'>('fixed');
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [selectedReferenceIndices, setSelectedReferenceIndices] = useState<Set<number>>(new Set());
   const [storeLogoImages, setStoreLogoImages] = useState<string[]>([]);
+  const [selectedLogoIndices, setSelectedLogoIndices] = useState<Set<number>>(new Set());
   const [settings, setSettings] = useState<FlyerSettings>({
     orientation: 'vertical',
     imageSize: '2K',
@@ -122,10 +128,12 @@ const App: React.FC = () => {
         // Try to load from Firebase first
         if (firebaseEnabled) {
           console.log('Loading from Firebase...');
-          const [cloudImages, cloudPresets, cloudReferenceImages] = await Promise.all([
+          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages] = await Promise.all([
             getCloudImages(),
             getCloudPresets(),
-            getReferenceImages()
+            getReferenceImages(),
+            getCharacterImages(),
+            getStoreLogoImages()
           ]);
 
           if (cloudImages.length > 0) {
@@ -163,6 +171,18 @@ const App: React.FC = () => {
           if (cloudReferenceImages.images.length > 0) {
             setReferenceImages(cloudReferenceImages.images);
             setSelectedReferenceIndices(new Set(cloudReferenceImages.selectedIndices));
+          }
+
+          // Load character images independently (not from presets)
+          if (cloudCharacterImages.images.length > 0) {
+            setCharacterImages(cloudCharacterImages.images);
+            setSelectedCharacterIndices(new Set(cloudCharacterImages.selectedIndices));
+          }
+
+          // Load store logo images independently (not from presets)
+          if (cloudStoreLogoImages.images.length > 0) {
+            setStoreLogoImages(cloudStoreLogoImages.images);
+            setSelectedLogoIndices(new Set(cloudStoreLogoImages.selectedIndices));
           }
         } else {
           // Fallback to local storage
@@ -205,6 +225,50 @@ const App: React.FC = () => {
     }
   }, [referenceImages, selectedReferenceIndices, referenceImagesInitialized]);
 
+  // Sync character images to cloud when changed (independent of presets)
+  const [characterImagesInitialized, setCharacterImagesInitialized] = React.useState(false);
+  useEffect(() => {
+    // Skip initial load sync - only sync user changes
+    if (!characterImagesInitialized) {
+      if (characterImages.length > 0) {
+        setCharacterImagesInitialized(true);
+      }
+      return;
+    }
+
+    if (firebaseEnabled) {
+      // Debounce the sync to avoid too many writes
+      const syncTimeout = setTimeout(() => {
+        console.log('Syncing character images to cloud...');
+        saveCharacterImages(characterImages, Array.from(selectedCharacterIndices));
+      }, 1000);
+
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [characterImages, selectedCharacterIndices, characterImagesInitialized]);
+
+  // Sync store logo images to cloud when changed (independent of presets)
+  const [logoImagesInitialized, setLogoImagesInitialized] = React.useState(false);
+  useEffect(() => {
+    // Skip initial load sync - only sync user changes
+    if (!logoImagesInitialized) {
+      if (storeLogoImages.length > 0) {
+        setLogoImagesInitialized(true);
+      }
+      return;
+    }
+
+    if (firebaseEnabled) {
+      // Debounce the sync to avoid too many writes
+      const syncTimeout = setTimeout(() => {
+        console.log('Syncing store logo images to cloud...');
+        saveStoreLogoImages(storeLogoImages, Array.from(selectedLogoIndices));
+      }, 1000);
+
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [storeLogoImages, selectedLogoIndices, logoImagesInitialized]);
+
   // Handle reference images change with cloud sync
   const handleReferenceImagesChange = (images: string[]) => {
     // When images change, update selected indices to remove any that are out of bounds
@@ -231,6 +295,64 @@ const App: React.FC = () => {
     });
     if (!referenceImagesInitialized) {
       setReferenceImagesInitialized(true);
+    }
+  };
+
+  // Handle character images change with cloud sync
+  const handleCharacterImagesChange = (images: string[]) => {
+    // When images change, update selected indices to remove any that are out of bounds
+    const newSelectedIndices = new Set(
+      Array.from(selectedCharacterIndices).filter(i => i < images.length)
+    );
+    setSelectedCharacterIndices(newSelectedIndices);
+    setCharacterImages(images);
+    if (!characterImagesInitialized) {
+      setCharacterImagesInitialized(true);
+    }
+  };
+
+  // Toggle character image selection
+  const toggleCharacterImageSelection = (index: number) => {
+    setSelectedCharacterIndices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+    if (!characterImagesInitialized) {
+      setCharacterImagesInitialized(true);
+    }
+  };
+
+  // Handle store logo images change with cloud sync
+  const handleStoreLogoImagesChange = (images: string[]) => {
+    // When images change, update selected indices to remove any that are out of bounds
+    const newSelectedIndices = new Set(
+      Array.from(selectedLogoIndices).filter(i => i < images.length)
+    );
+    setSelectedLogoIndices(newSelectedIndices);
+    setStoreLogoImages(images);
+    if (!logoImagesInitialized) {
+      setLogoImagesInitialized(true);
+    }
+  };
+
+  // Toggle store logo image selection
+  const toggleLogoImageSelection = (index: number) => {
+    setSelectedLogoIndices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+    if (!logoImagesInitialized) {
+      setLogoImagesInitialized(true);
     }
   };
 
@@ -327,12 +449,14 @@ const App: React.FC = () => {
     setIsGenerating(true);
 
     try {
-      // Filter reference images to only include selected ones
+      // Filter images to only include selected ones
+      const selectedCharacterImages = characterImages.filter((_, idx) => selectedCharacterIndices.has(idx));
       const selectedReferenceImages = referenceImages.filter((_, idx) => selectedReferenceIndices.has(idx));
+      const selectedStoreLogoImages = storeLogoImages.filter((_, idx) => selectedLogoIndices.has(idx));
 
       // Generate images and tags in parallel for better performance
       const [results, tags] = await Promise.all([
-        generateFlyerImage(products, settings, characterImages, characterClothingMode, selectedReferenceImages, storeLogoImages, apiKey),
+        generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, selectedReferenceImages, selectedStoreLogoImages, apiKey),
         generateTagsFromProducts(products, apiKey)
       ]);
 
@@ -760,15 +884,15 @@ ${header.length + uint8Array.length + 20}
       const now = Date.now();
 
       // Clone data to avoid reference issues
-      // Note: referenceImages are NOT saved to preset - they are synced independently from cloud
+      // Note: characterImages, referenceImages, and storeLogoImages are NOT saved to preset - they are synced independently from cloud
       const newPreset: Preset = {
         id: targetId,
         name: savePresetName,
         products: JSON.parse(JSON.stringify(products)),
-        characterImages: [...characterImages],
+        characterImages: [], // Empty - character images are synced independently
         characterClothingMode: characterClothingMode,
         referenceImages: [], // Empty - reference images are synced independently
-        storeLogoImages: [...storeLogoImages],
+        storeLogoImages: [], // Empty - store logo images are synced independently
         settings: { ...settings },
         createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
         updatedAt: now
@@ -818,10 +942,10 @@ ${header.length + uint8Array.length + 20}
     const data = JSON.parse(JSON.stringify(preset));
 
     setProducts(data.products || []);
-    setCharacterImages(data.characterImages || []);
+    // Note: characterImages are NOT loaded from preset - they are synced independently from cloud
     setCharacterClothingMode(data.characterClothingMode || 'fixed');
     // Note: referenceImages are NOT loaded from preset - they are synced independently from cloud
-    setStoreLogoImages(data.storeLogoImages || []);
+    // Note: storeLogoImages are NOT loaded from preset - they are synced independently from cloud
 
     // Ensure settings has all required fields with defaults
     setSettings({
@@ -860,11 +984,11 @@ ${header.length + uint8Array.length + 20}
   };
 
   const handleNewProject = () => {
-    if (window.confirm("現在の入力をクリアして新規作成しますか？（参考デザインはクラウド同期のため保持されます）")) {
+    if (window.confirm("現在の入力をクリアして新規作成しますか？（キャラ画像、参考デザイン、ロゴ画像はクラウド同期のため保持されます）")) {
       setProducts([{ id: uuidv4(), images: [], productCode: '', productName: '', specs: '', originalPrice: '', salePrice: '', salePriceLabel: '', catchCopy: '' }]);
-      setCharacterImages([]);
+      // Note: characterImages are NOT cleared - they are synced independently from cloud
       // Note: referenceImages are NOT cleared - they are synced independently from cloud
-      setStoreLogoImages([]);
+      // Note: storeLogoImages are NOT cleared - they are synced independently from cloud
       setSettings({
         orientation: 'vertical',
         imageSize: '2K',
@@ -1393,16 +1517,59 @@ ${header.length + uint8Array.length + 20}
         {/* Global Assets */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
           <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8">
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">👤</div>
               <h3 className="text-lg font-semibold text-slate-900">キャラクター</h3>
+              {firebaseEnabled && (
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
+              )}
             </div>
+            <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
             <ImageUploader
               label="店舗キャラクター、マスコットなど"
               images={characterImages}
-              onImagesChange={setCharacterImages}
+              onImagesChange={handleCharacterImagesChange}
             />
+            {/* Checkmark selection for character images */}
             {characterImages.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {characterImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => toggleCharacterImageSelection(idx)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCharacterIndices.has(idx)
+                        ? 'border-indigo-600 ring-2 ring-indigo-200'
+                        : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`キャラクター ${idx + 1}`}
+                      className="w-full h-20 object-cover"
+                    />
+                    {/* Checkmark overlay */}
+                    <div
+                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCharacterIndices.has(idx)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/80 text-slate-300 border border-slate-300'
+                        }`}
+                    >
+                      {selectedCharacterIndices.has(idx) ? '✓' : ''}
+                    </div>
+                    {/* Selection indicator */}
+                    {selectedCharacterIndices.has(idx) && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
+                        使用する
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {characterImages.length > 0 && selectedCharacterIndices.size === 0 && (
+              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
+            )}
+            {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
               <div className="mt-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
                 <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャラクター衣装モード</label>
                 <div className="flex gap-3">
@@ -1476,18 +1643,59 @@ ${header.length + uint8Array.length + 20}
 
         {/* Store Logo */}
         <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🏪</div>
             <h3 className="text-lg font-semibold text-slate-900">店舗ロゴ</h3>
+            {firebaseEnabled && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
+            )}
           </div>
-          <p className="text-[10px] font-bold text-slate-400 tracking-wider mb-6 ml-11">チラシの下部に表示されます</p>
+          <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
           <ImageUploader
             label="店舗ロゴ画像"
             images={storeLogoImages}
-            onImagesChange={setStoreLogoImages}
-            multiple={false}
+            onImagesChange={handleStoreLogoImagesChange}
           />
+          {/* Checkmark selection for store logo images */}
           {storeLogoImages.length > 0 && (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {storeLogoImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => toggleLogoImageSelection(idx)}
+                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedLogoIndices.has(idx)
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                >
+                  <img
+                    src={img}
+                    alt={`店舗ロゴ ${idx + 1}`}
+                    className="w-full h-20 object-cover"
+                  />
+                  {/* Checkmark overlay */}
+                  <div
+                    className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedLogoIndices.has(idx)
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white/80 text-slate-300 border border-slate-300'
+                      }`}
+                  >
+                    {selectedLogoIndices.has(idx) ? '✓' : ''}
+                  </div>
+                  {/* Selection indicator */}
+                  {selectedLogoIndices.has(idx) && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
+                      使用する
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {storeLogoImages.length > 0 && selectedLogoIndices.size === 0 && (
+            <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
+          )}
+          {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
             <div className="mt-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
               <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ロゴの表示位置</label>
               <div className="flex gap-3">
