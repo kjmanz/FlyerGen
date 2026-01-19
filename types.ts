@@ -19,7 +19,9 @@ export interface FlyerSettings {
   orientation: 'vertical' | 'horizontal'; // vertical -> 3:4, horizontal -> 4:3
   imageSize: ImageSize;
   patternCount: number;
-  backgroundMode: 'white' | 'creative'; // New: Background mode
+  backgroundMode: 'white' | 'creative' | 'custom'; // Background mode: white, creative, or custom
+  customBackground?: string; // Custom background description (when backgroundMode is 'custom')
+  flyerTitle?: string; // Optional flyer title
   logoPosition: 'full-bottom' | 'right-bottom'; // New: Logo position mode
   additionalInstructions: string;
 }

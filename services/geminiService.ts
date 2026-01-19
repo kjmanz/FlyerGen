@@ -86,9 +86,19 @@ export const generateFlyerImage = async (
   apiKey: string
 ): Promise<string[]> => {
   // Background instruction logic
-  const backgroundInstruction = settings.backgroundMode === 'white'
-    ? "【最重要：背景は絶対に純白】背景色は必ず「純白（RGB: 255,255,255 / #FFFFFF）」のみを使用してください。青、グレー、クリーム色、その他いかなる色も絶対に使わないでください。グラデーション、模様、装飾、影も一切禁止です。商品と文字以外は全て真っ白にしてください。これは印刷用切り抜き素材のための必須条件です。"
-    : "【背景について】背景は商品の魅力を引き立てる、明るく親しみやすいデザインにしてください。季節感や「街の電気屋さん」の温かみを感じさせる背景装飾を適度に入れてください。";
+  let backgroundInstruction: string;
+  if (settings.backgroundMode === 'white') {
+    backgroundInstruction = "【最重要：背景は絶対に純白】背景色は必ず「純白（RGB: 255,255,255 / #FFFFFF）」のみを使用してください。青、グレー、クリーム色、その他いかなる色も絶対に使わないでください。グラデーション、模様、装飾、影も一切禁止です。商品と文字以外は全て真っ白にしてください。これは印刷用切り抜き素材のための必須条件です。";
+  } else if (settings.backgroundMode === 'custom' && settings.customBackground) {
+    backgroundInstruction = `【背景について - カスタム指定】以下の指定に沿った背景を作成してください：\n${settings.customBackground}`;
+  } else {
+    backgroundInstruction = "【背景について】背景は商品の魅力を引き立てる、明るく親しみやすいデザインにしてください。季節感や「街の電気屋さん」の温かみを感じさせる背景装飾を適度に入れてください。";
+  }
+
+  // Title instruction
+  const titleInstruction = settings.flyerTitle
+    ? `【チラシタイトル】チラシの上部に「${settings.flyerTitle}」というタイトルを大きく目立つように配置してください。`
+    : '';
 
   // 1. Construct the text prompt
   let prompt = `
@@ -104,7 +114,8 @@ export const generateFlyerImage = async (
     - 言語: 日本語（自然で正確な表現）
     - 雰囲気: 地域密着の信頼できる「街の電気屋さん」。元気で親しみやすく、信頼感のあるデザイン。
     - ${backgroundInstruction}
-    
+    ${titleInstruction ? `\n    ${titleInstruction}` : ''}
+
     【掲載商品】
   `;
 

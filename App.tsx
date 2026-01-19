@@ -20,6 +20,8 @@ import {
   updateFlyerUpscaleStatus,
   updateFlyerTags,
   updateFlyerFavorite,
+  saveReferenceImages,
+  getReferenceImages,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -118,9 +120,10 @@ const App: React.FC = () => {
         // Try to load from Firebase first
         if (firebaseEnabled) {
           console.log('Loading from Firebase...');
-          const [cloudImages, cloudPresets] = await Promise.all([
+          const [cloudImages, cloudPresets, cloudReferenceImages] = await Promise.all([
             getCloudImages(),
-            getCloudPresets()
+            getCloudPresets(),
+            getReferenceImages()
           ]);
 
           if (cloudImages.length > 0) {
@@ -153,6 +156,11 @@ const App: React.FC = () => {
             }));
             setPresets(presetsFromCloud);
           }
+
+          // Load reference images independently (not from presets)
+          if (cloudReferenceImages.length > 0) {
+            setReferenceImages(cloudReferenceImages);
+          }
         } else {
           // Fallback to local storage
           const [savedHistory, savedPresets] = await Promise.all([
@@ -171,6 +179,36 @@ const App: React.FC = () => {
     };
     loadData();
   }, []);
+
+  // Sync reference images to cloud when changed (independent of presets)
+  const [referenceImagesInitialized, setReferenceImagesInitialized] = React.useState(false);
+  useEffect(() => {
+    // Skip initial load sync - only sync user changes
+    if (!referenceImagesInitialized) {
+      if (referenceImages.length > 0) {
+        setReferenceImagesInitialized(true);
+      }
+      return;
+    }
+
+    if (firebaseEnabled) {
+      // Debounce the sync to avoid too many writes
+      const syncTimeout = setTimeout(() => {
+        console.log('Syncing reference images to cloud...');
+        saveReferenceImages(referenceImages);
+      }, 1000);
+
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [referenceImages, referenceImagesInitialized]);
+
+  // Handle reference images change with cloud sync
+  const handleReferenceImagesChange = (images: string[]) => {
+    setReferenceImages(images);
+    if (!referenceImagesInitialized) {
+      setReferenceImagesInitialized(true);
+    }
+  };
 
   const handleSaveApiKey = async () => {
     if (!tempApiKey.trim()) {
@@ -695,13 +733,14 @@ ${header.length + uint8Array.length + 20}
       const now = Date.now();
 
       // Clone data to avoid reference issues
+      // Note: referenceImages are NOT saved to preset - they are synced independently from cloud
       const newPreset: Preset = {
         id: targetId,
         name: savePresetName,
         products: JSON.parse(JSON.stringify(products)),
         characterImages: [...characterImages],
         characterClothingMode: characterClothingMode,
-        referenceImages: [...referenceImages],
+        referenceImages: [], // Empty - reference images are synced independently
         storeLogoImages: [...storeLogoImages],
         settings: { ...settings },
         createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
@@ -754,7 +793,7 @@ ${header.length + uint8Array.length + 20}
     setProducts(data.products || []);
     setCharacterImages(data.characterImages || []);
     setCharacterClothingMode(data.characterClothingMode || 'fixed');
-    setReferenceImages(data.referenceImages || []);
+    // Note: referenceImages are NOT loaded from preset - they are synced independently from cloud
     setStoreLogoImages(data.storeLogoImages || []);
 
     // Ensure settings has all required fields with defaults
@@ -763,6 +802,8 @@ ${header.length + uint8Array.length + 20}
       imageSize: data.settings?.imageSize || '2K',
       patternCount: data.settings?.patternCount || 1,
       backgroundMode: data.settings?.backgroundMode || 'creative',
+      customBackground: data.settings?.customBackground || '',
+      flyerTitle: data.settings?.flyerTitle || '',
       logoPosition: data.settings?.logoPosition || 'full-bottom',
       additionalInstructions: data.settings?.additionalInstructions || ''
     });
@@ -792,16 +833,18 @@ ${header.length + uint8Array.length + 20}
   };
 
   const handleNewProject = () => {
-    if (window.confirm("現在の入力をクリアして新規作成しますか？")) {
+    if (window.confirm("現在の入力をクリアして新規作成しますか？（参考デザインはクラウド同期のため保持されます）")) {
       setProducts([{ id: uuidv4(), images: [], productCode: '', productName: '', specs: '', originalPrice: '', salePrice: '', salePriceLabel: '', catchCopy: '' }]);
       setCharacterImages([]);
-      setReferenceImages([]);
+      // Note: referenceImages are NOT cleared - they are synced independently from cloud
       setStoreLogoImages([]);
       setSettings({
         orientation: 'vertical',
         imageSize: '2K',
         patternCount: 1,
         backgroundMode: 'creative',
+        customBackground: '',
+        flyerTitle: '',
         logoPosition: 'full-bottom',
         additionalInstructions: ''
       });
@@ -1103,28 +1146,61 @@ ${header.length + uint8Array.length + 20}
             <h2 className="text-xl font-semibold text-slate-900">出力設定</h2>
           </div>
 
+          {/* Flyer Title Input */}
+          <div className="mb-10 relative">
+            <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシタイトル（任意）</label>
+            <input
+              type="text"
+              placeholder="例: 冬の家電セール、新生活応援フェア..."
+              value={settings.flyerTitle || ''}
+              onChange={(e) => setSettings({ ...settings, flyerTitle: e.target.value })}
+              className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+            />
+            <p className="text-[10px] text-slate-400 mt-2 ml-1">入力するとチラシ上部に大きく表示されます。未入力の場合はAIにおまかせ。</p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 relative">
             {/* Background Mode */}
             <div>
               <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード</label>
-              <div className="flex gap-4">
-                <label className={`flex-1 flex flex-col gap-3 p-4 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+              <div className="flex gap-3">
+                <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                   <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
-                  <div className="w-10 h-10 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-lg shadow-inner">✨</div>
+                  <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-900">クリエイティブ</div>
-                    <div className="text-[10px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
+                    <div className="text-xs font-semibold text-slate-900">おまかせ</div>
+                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
                   </div>
                 </label>
-                <label className={`flex-1 flex flex-col gap-3 p-4 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                   <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
-                  <div className="w-10 h-10 rounded-md bg-white flex items-center justify-center text-lg shadow-sm border border-slate-200">⬜</div>
+                  <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-900">ホワイト</div>
-                    <div className="text-[10px] font-bold text-slate-500 mt-0.5">シンプル</div>
+                    <div className="text-xs font-semibold text-slate-900">白配色</div>
+                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
+                  </div>
+                </label>
+                <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
+                  <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900">自由記述</div>
+                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
                   </div>
                 </label>
               </div>
+              {/* Custom Background Text Area */}
+              {settings.backgroundMode === 'custom' && (
+                <div className="mt-4">
+                  <textarea
+                    rows={3}
+                    placeholder="例: 桜の花びらが舞う春らしい背景、冬の雪景色風..."
+                    value={settings.customBackground || ''}
+                    onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
+                    className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Orientation */}
@@ -1245,11 +1321,14 @@ ${header.length + uint8Array.length + 20}
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🖼️</div>
               <h3 className="text-lg font-semibold text-slate-900">参考デザイン</h3>
+              {firebaseEnabled && (
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
+              )}
             </div>
             <ImageUploader
               label="デザイン参考にするチラシ画像"
               images={referenceImages}
-              onImagesChange={setReferenceImages}
+              onImagesChange={handleReferenceImagesChange}
             />
           </div>
         </div>

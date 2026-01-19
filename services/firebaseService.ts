@@ -402,3 +402,80 @@ export const deleteCloudPreset = async (presetId: string): Promise<boolean> => {
         return false;
     }
 };
+
+// ===== REFERENCE IMAGES (Independent Cloud Sync) =====
+
+// Upload reference image to Firebase Storage
+const uploadReferenceImage = async (base64Data: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `reference_images/ref_${index}_${Date.now()}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload reference image ${index}:`, e);
+        return base64Data;
+    }
+};
+
+// Save reference images to Firestore (independent of presets)
+export const saveReferenceImages = async (images: string[]): Promise<boolean> => {
+    if (!db || !storage) {
+        console.log('saveReferenceImages: db or storage is null');
+        return false;
+    }
+    try {
+        console.log(`Saving ${images.length} reference images to cloud...`);
+
+        // Upload all images to Storage
+        const imageUrls = await Promise.all(
+            images.map((img, i) => uploadReferenceImage(img, i))
+        );
+
+        // Save URLs to Firestore
+        const docRef = doc(db, 'settings', 'reference_images');
+        await setDoc(docRef, {
+            images: imageUrls,
+            updatedAt: Date.now()
+        });
+
+        console.log('Reference images saved successfully');
+        return true;
+    } catch (e) {
+        console.error('Save reference images error:', e);
+        return false;
+    }
+};
+
+// Get reference images from Firestore
+export const getReferenceImages = async (): Promise<string[]> => {
+    if (!db) {
+        console.log('getReferenceImages: db is null');
+        return [];
+    }
+    try {
+        console.log('Fetching reference images from cloud...');
+        const docRef = doc(db, 'settings', 'reference_images');
+        const docSnap = await getDocs(collection(db, 'settings'));
+
+        let images: string[] = [];
+        docSnap.forEach((d) => {
+            if (d.id === 'reference_images') {
+                const data = d.data();
+                images = data.images || [];
+            }
+        });
+
+        console.log(`Fetched ${images.length} reference images from cloud`);
+        return images;
+    } catch (e) {
+        console.error('Get reference images error:', e);
+        return [];
+    }
+};
