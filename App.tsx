@@ -1697,15 +1697,21 @@ ${header.length + uint8Array.length + 20}
           )}
           {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
             <div className="mt-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ロゴの表示位置</label>
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ロゴの表示サイズ（最下部に配置）</label>
               <div className="flex gap-3">
-                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'full-bottom' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'full-bottom' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                   <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'full-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} />
-                  <span>📐 下部全幅</span>
+                  <div className={`w-5 h-5 rounded flex items-center justify-center ${settings.logoPosition === 'full-bottom' ? 'bg-indigo-600 text-white' : 'bg-white border-2 border-slate-300'}`}>
+                    {settings.logoPosition === 'full-bottom' ? '✓' : ''}
+                  </div>
+                  <span>横幅目一杯</span>
                 </label>
-                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'right-bottom' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'right-bottom' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                   <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'right-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} />
-                  <span>↘️ 右下配置</span>
+                  <div className={`w-5 h-5 rounded flex items-center justify-center ${settings.logoPosition === 'right-bottom' ? 'bg-indigo-600 text-white' : 'bg-white border-2 border-slate-300'}`}>
+                    {settings.logoPosition === 'right-bottom' ? '✓' : ''}
+                  </div>
+                  <span>横幅半分（右端）</span>
                 </label>
               </div>
             </div>
