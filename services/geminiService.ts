@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Product, FlyerSettings, SpecSearchResult, CampaignInfo, ProductServiceInfo, ContentSections, ReviewSearchResult } from "../types";
+import { Product, FlyerSettings, SpecSearchResult, CampaignInfo, ProductServiceInfo, ContentSections, ReviewSearchResult, SalesLetterInfo, SalesFramework } from "../types";
 
 // Helper to get client instance with provided API key
 const getClient = (apiKey: string) => {
@@ -1287,4 +1287,253 @@ ${referenceImages.length > 0 ? `
 
   console.log(`Received ${result.images.length} product service flyer image(s) from Batch API`);
   return result.images;
+};
+
+// セールスレター用フィールド別AI検索（具体的な数値を含む）
+export const searchSalesFieldData = async (
+  productName: string,
+  fieldType: 'problems' | 'benefits' | 'affinity' | 'solution' | 'offer' | 'desire' | 'socialProof',
+  apiKey: string
+): Promise<{
+  suggestions: string[];
+  specificData?: { value: string; unit: string; context: string }[];
+}> => {
+  const ai = getClient(apiKey);
+
+  const fieldPrompts: Record<string, string> = {
+    problems: `
+「${productName}」を検討するお客様が抱える悩み・問題点を5つ調査してください。
+具体的な生活シーンや状況を含めて、共感できる表現で記述してください。
+例：「夏の電気代が気になる」「古いエアコンの効きが悪い」
+`,
+    benefits: `
+「${productName}」を導入することで得られるメリット・ベネフィットを5つ調査してください。
+【重要】具体的な数値を必ず含めてください（年間○○円節約、○○%削減、○○分で完了など）。
+例：「年間約24,000円の電気代削減」「室温を10分で快適温度に」
+`,
+    affinity: `
+「${productName}」に悩むお客様への共感・寄り添いのメッセージを生成してください。
+「私も同じでした」「多くのお客様が同じ悩みを抱えています」のような、理解者としてのポジションを示す内容を3パターン作成してください。
+`,
+    solution: `
+「${productName}」がお客様の悩みをどう解決するか、分かりやすく説明する文章を生成してください。
+機能だけでなく、お客様の生活がどう変わるかを具体的に描写してください。
+`,
+    offer: `
+「${productName}」を販売する際のオファー（特典・提案）のアイデアを5つ提案してください。
+価格、特典、保証、期間限定などのアイデアを含めてください。
+例：「今なら工事費込み」「10年保証付き」「先着○名様限定」
+`,
+    desire: `
+「${productName}」を使った後の「得られる未来」を具体的に描写してください。
+お客様の欲求を刺激する、魅力的な未来像を3パターン作成してください。
+`,
+    socialProof: `
+「${productName}」の信頼性を示す情報を調査してください：
+1. 導入実績の傾向（年間○○件など）
+2. お客様の声の例（3つ）
+3. 一般的な保証内容
+4. 業界での評価
+`
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: fieldPrompts[fieldType] }] }],
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseModalities: ["TEXT"],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            suggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+            specificData: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  value: { type: Type.STRING },
+                  unit: { type: Type.STRING },
+                  context: { type: Type.STRING }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const text = response.text || "{}";
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("Field search error:", e);
+    return { suggestions: [] };
+  }
+};
+
+// セールスレター用チラシ画像生成
+export const generateSalesLetterFlyer = async (
+  salesLetterInfo: SalesLetterInfo,
+  settings: FlyerSettings,
+  staffImages: string[],
+  customerImages: string[],
+  storeLogoImages: string[],
+  customIllustrations: string[],
+  referenceImages: string[],
+  apiKey: string
+): Promise<string[]> => {
+  // Background instruction
+  let backgroundInstruction: string;
+  if (settings.backgroundMode === 'white') {
+    backgroundInstruction = "【背景】純白（#FFFFFF）のみ使用";
+  } else if (settings.backgroundMode === 'custom' && settings.customBackground) {
+    backgroundInstruction = `【背景】${settings.customBackground}`;
+  } else {
+    backgroundInstruction = "【背景】商品の魅力を引き立てる、信頼感のあるデザイン";
+  }
+
+  // Logo instruction
+  const logoPositionInstruction = settings.logoPosition === 'full-bottom'
+    ? 'チラシ最下部に左右いっぱいに横長で配置'
+    : 'チラシ最下部の右側半分に配置';
+
+  // Framework-specific layout
+  const frameworkInstruction = salesLetterInfo.framework === 'pasona' ? `
+【構成：新PASONAの法則】
+1. P（Problem）: 問題提起 - 上部に大きく配置
+   「${salesLetterInfo.headline}」
+   
+2. A（Affinity）: 共感・寄り添い - ヘッドライン直下
+   「${salesLetterInfo.affinity}」
+   ※ 売り手でなく理解者として語る。ストーリー調が効果的。
+   
+3. S（Solution）: 解決策 - 中央部
+   「${salesLetterInfo.solution}」
+   商品画像と共に配置。お客様の声も含めると効果的。
+   
+4. O（Offer）: 提案 - 中下部
+   「${salesLetterInfo.offer}」
+   価格、特典、保証などを明確に。
+   
+5. N（Narrowing）: 絞り込み - 下部
+   「${salesLetterInfo.narrowing}」
+   限定性で行動を促す。
+   
+6. A（Action）: 行動喚起 - 最下部
+   「${salesLetterInfo.cta}」
+` : `
+【構成：AIDAの法則】
+1. A（Attention）: 注意喚起 - 上部に大きく配置
+   「${salesLetterInfo.headline}」
+   
+2. I（Interest）: 興味喚起 - ヘッドライン直下
+   問題提起: ${salesLetterInfo.problems.join('、 ')}
+   
+3. D（Desire）: 欲求喚起 - 中央部
+   「${salesLetterInfo.desire}」
+   ベネフィット: ${salesLetterInfo.benefits.join('、 ')}
+   
+4. A（Action）: 行動喚起 - 最下部
+   「${salesLetterInfo.cta}」
+`;
+
+  // Social proof section
+  const socialProofSection = `
+【証拠・信頼性】
+${salesLetterInfo.socialProof.experience ? `・実績: ${salesLetterInfo.socialProof.experience}` : ''}
+${salesLetterInfo.socialProof.cases ? `・施工件数: ${salesLetterInfo.socialProof.cases}` : ''}
+${salesLetterInfo.socialProof.customerVoices.length > 0 ? `・お客様の声:\n  ${salesLetterInfo.socialProof.customerVoices.map(v => `「${v}」`).join('\n  ')}` : ''}
+`;
+
+  const prompt = `
+【役割】
+あなたは日本の家電量販店のプロのチラシデザイナーです。
+
+【タスク】
+セールスレター形式の効果的な「表面チラシ」を作成してください。
+
+【出力仕様】
+- レイアウト: ${settings.orientation === 'vertical' ? 'A4縦' : 'A4横'}
+- 解像度: ${settings.imageSize}
+- 言語: 日本語
+- ${backgroundInstruction}
+
+【紹介商品】
+${salesLetterInfo.productName}
+
+${frameworkInstruction}
+
+${socialProofSection}
+
+【画像の使用順序】
+1. 商品画像
+2. 店員スタッフ画像
+3. お客様画像
+4. 参考チラシ画像
+5. 使用イラスト
+6. 店名ロゴ画像
+
+${storeLogoImages.length > 0 ? `
+【店名ロゴ】
+提供されたロゴを${logoPositionInstruction}。編集・加工禁止。
+` : `
+【重要：店名・連絡先について】
+店名ロゴが提供されていません。店舗名、電話番号、住所を一切掲載しないでください。
+`}
+
+${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像のデザインを参考にしてください。' : ''}
+`;
+
+  if (settings.additionalInstructions) {
+    // Add additional instructions if any
+  }
+
+  // Prepare content parts
+  const parts: any[] = [{ text: prompt }];
+
+  const processImage = async (imgData: string) => {
+    let base64Data = imgData;
+    if (imgData.startsWith('http')) {
+      try {
+        const resp = await fetch(imgData);
+        const blob = await resp.blob();
+        base64Data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error('Failed to fetch image from URL:', e);
+        return null;
+      }
+    }
+    const cleanBase64 = base64Data.split(',')[1] || base64Data;
+    return { inlineData: { mimeType: 'image/png', data: cleanBase64 } };
+  };
+
+  // Add images in order
+  const productImages: string[] = []; // From salesLetterInfo if needed
+  for (const img of [...productImages, ...staffImages, ...customerImages, ...referenceImages, ...customIllustrations, ...storeLogoImages]) {
+    const processed = await processImage(img);
+    if (processed) parts.push(processed);
+  }
+
+  const ai = getClient(apiKey);
+  const result = await ai.models.generateImages({
+    model: "imagen-3.0-generate-002",
+    prompt: prompt,
+    config: {
+      numberOfImages: settings.patternCount,
+      aspectRatio: settings.orientation === 'vertical' ? "3:4" : "4:3"
+    }
+  });
+
+  if (!result.images || result.images.length === 0) {
+    throw new Error("画像の生成に失敗しました。");
+  }
+
+  console.log(`Generated ${result.images.length} sales letter flyer image(s)`);
+  return result.images.map(img => `data:image/png;base64,${img.image?.bytesBase64Encoded}`);
 };

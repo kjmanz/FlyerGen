@@ -73,6 +73,9 @@ export interface Preset {
   campaignInfo?: CampaignInfo;
   frontFlyerType?: FrontFlyerType;
   productServiceInfo?: ProductServiceInfo;
+  // Sales letter fields
+  salesLetterInfo?: SalesLetterInfo;
+  salesLetterMode?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -129,4 +132,35 @@ export interface ReviewSearchResult {
   satisfactionPoints: string[]; // 満足ポイント
   purchaseReasons: string[];  // 導入のきっかけ
   concerns: string[];         // 気になる点・注意点
+}
+
+// セールスレター フレームワーク選択
+export type SalesFramework = 'aida' | 'pasona';
+
+// セールスレター情報
+export interface SalesLetterInfo {
+  framework: SalesFramework;
+  productName: string;
+
+  // 共通フィールド
+  headline: string;           // キャッチコピー（Attention / Problem）
+  problems: string[];         // 問題提起（Interest / Problem の詳細）
+  benefits: string[];         // ベネフィット（Desire の一部 / Solution の一部）
+  cta: string;                // 行動喚起（Action）
+
+  // PASONA専用フィールド
+  affinity: string;           // 共感・寄り添い（Affinity）★PASONAの重要ポイント
+  solution: string;           // 解決策の提示（Solution）
+  offer: string;              // 提案・特典（Offer）
+  narrowing: string;          // 絞り込み・限定性（Narrowing）
+
+  // AIDA専用フィールド
+  desire: string;             // 欲求喚起・ベネフィット詳細（Desire）
+
+  // 証拠・信頼性（共通）
+  socialProof: {
+    experience: string;       // 実績年数
+    cases: string;            // 施工件数
+    customerVoices: string[]; // お客様の声
+  };
 }

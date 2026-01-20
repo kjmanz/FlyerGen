@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo } from './types';
+import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
 import { ImageEditModal, EditRegion } from './components/ImageEditModal';
 import { ProductServiceForm } from './components/ProductServiceForm';
-import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage, generateProductServiceFlyer } from './services/geminiService';
+import { SalesLetterForm } from './components/SalesLetterForm';
+import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage, generateProductServiceFlyer, generateSalesLetterFlyer } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -182,6 +183,27 @@ const App: React.FC = () => {
       ecoContribution: false,
       faq: false,
       cta: false
+    }
+  });
+
+  // Sales Letter Mode State (セールスレターモード)
+  const [salesLetterMode, setSalesLetterMode] = useState(false);
+  const [salesLetterInfo, setSalesLetterInfo] = useState<SalesLetterInfo>({
+    framework: 'pasona',
+    productName: '',
+    headline: '',
+    problems: [''],
+    benefits: [''],
+    cta: '',
+    affinity: '',
+    solution: '',
+    offer: '',
+    narrowing: '',
+    desire: '',
+    socialProof: {
+      experience: '',
+      cases: '',
+      customerVoices: ['']
     }
   });
 
@@ -653,20 +675,37 @@ const App: React.FC = () => {
       if (flyerSide === 'front') {
         // 表面生成処理
         if (frontFlyerType === 'product-service') {
-          // 商品・サービス紹介モード
-          [results, tags] = await Promise.all([
-            generateProductServiceFlyer(
-              productServiceInfo,
-              settings,
-              selectedCharacterImages,
-              selectedCustomerImages,
-              selectedStoreLogoImages,
-              selectedCustomIllustrations,
-              referenceWithOpposite,
-              apiKey
-            ),
-            Promise.resolve(['表面', '商品紹介', productServiceInfo.title].filter(Boolean))
-          ]);
+          if (salesLetterMode) {
+            // セールスレターモード
+            [results, tags] = await Promise.all([
+              generateSalesLetterFlyer(
+                salesLetterInfo,
+                settings,
+                selectedCharacterImages,
+                selectedCustomerImages,
+                selectedStoreLogoImages,
+                selectedCustomIllustrations,
+                referenceWithOpposite,
+                apiKey
+              ),
+              Promise.resolve(['表面', 'セールスレター', salesLetterInfo.productName].filter(Boolean))
+            ]);
+          } else {
+            // 商品・サービス紹介モード（通常）
+            [results, tags] = await Promise.all([
+              generateProductServiceFlyer(
+                productServiceInfo,
+                settings,
+                selectedCharacterImages,
+                selectedCustomerImages,
+                selectedStoreLogoImages,
+                selectedCustomIllustrations,
+                referenceWithOpposite,
+                apiKey
+              ),
+              Promise.resolve(['表面', '商品紹介', productServiceInfo.title].filter(Boolean))
+            ]);
+          }
         } else {
           // キャンペーン訴求モード
           [results, tags] = await Promise.all([
@@ -1176,6 +1215,9 @@ ${header.length + uint8Array.length + 20}
         campaignInfo: JSON.parse(JSON.stringify(campaignInfo)),
         frontFlyerType: frontFlyerType,
         productServiceInfo: JSON.parse(JSON.stringify(productServiceInfo)),
+        // Sales letter fields
+        salesLetterInfo: JSON.parse(JSON.stringify(salesLetterInfo)),
+        salesLetterMode: salesLetterMode,
         createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
         updatedAt: now
       };
@@ -1260,6 +1302,13 @@ ${header.length + uint8Array.length + 20}
     }
     if (data.productServiceInfo) {
       setProductServiceInfo(data.productServiceInfo);
+    }
+    // Load sales letter fields
+    if (data.salesLetterInfo) {
+      setSalesLetterInfo(data.salesLetterInfo);
+    }
+    if (typeof data.salesLetterMode === 'boolean') {
+      setSalesLetterMode(data.salesLetterMode);
     }
 
     setCurrentPresetId(data.id);
@@ -1915,14 +1964,47 @@ ${header.length + uint8Array.length + 20}
 
             {/* Product/Service Mode Form */}
             {frontFlyerType === 'product-service' && (
-              <ProductServiceForm
-                productServiceInfo={productServiceInfo}
-                setProductServiceInfo={setProductServiceInfo}
-                settings={settings}
-                setSettings={setSettings}
-                apiKey={apiKey}
-                onSettingsOpen={() => setIsSettingsOpen(true)}
-              />
+              <>
+                {/* Sales Letter Mode Toggle */}
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center text-sm">📝</div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">セールスレターモード</div>
+                        <div className="text-[10px] text-slate-500">AIDA / 新PASONAフレームワークで訴求力UP</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSalesLetterMode(!salesLetterMode)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${salesLetterMode ? 'bg-amber-500' : 'bg-slate-200'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${salesLetterMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Conditional Form Display */}
+                {salesLetterMode ? (
+                  <SalesLetterForm
+                    salesLetterInfo={salesLetterInfo}
+                    setSalesLetterInfo={setSalesLetterInfo}
+                    settings={settings}
+                    setSettings={setSettings}
+                    apiKey={apiKey}
+                    onSettingsOpen={() => setIsSettingsOpen(true)}
+                  />
+                ) : (
+                  <ProductServiceForm
+                    productServiceInfo={productServiceInfo}
+                    setProductServiceInfo={setProductServiceInfo}
+                    settings={settings}
+                    setSettings={setSettings}
+                    apiKey={apiKey}
+                    onSettingsOpen={() => setIsSettingsOpen(true)}
+                  />
+                )}
+              </>
             )}
           </>
         )}
