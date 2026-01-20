@@ -79,7 +79,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
           </span>
           {product.salePrice && (
             <span className="text-xs sm:text-sm font-bold text-rose-600 whitespace-nowrap">
-              ¥{typeof product.salePrice === 'number' ? product.salePrice.toLocaleString() : product.salePrice}
+              ¥{typeof product.salePrice === 'number' ? product.salePrice.toLocaleString() : product.salePrice}（税込）
             </span>
           )}
         </div>
@@ -154,7 +154,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
               {/* Prices */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">通常価格</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">通常価格（税込）</label>
                   <div className="relative">
                     <input
                       type="number"
@@ -167,7 +167,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-rose-500 mb-1">特価</label>
+                  <label className="block text-xs font-semibold text-rose-500 mb-1">特価（税込）</label>
                   <div className="relative">
                     <input
                       type="number"
