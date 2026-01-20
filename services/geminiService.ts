@@ -123,13 +123,13 @@ export const generateFlyerImage = async (
   products.forEach((p, index) => {
     const priceLabel = p.salePriceLabel && p.salePriceLabel.trim() !== '' ? p.salePriceLabel : '特価';
     const originalPriceStr = typeof p.originalPrice === 'number'
-      ? `${p.originalPrice.toLocaleString()}円`
+      ? `${p.originalPrice.toLocaleString()}円（税込）`
       : '';
 
     let salePriceStr: string | number = p.salePrice;
     const cleanSalePrice = String(p.salePrice).replace(/[,，\s]/g, '');
     if (cleanSalePrice && /^\d+$/.test(cleanSalePrice)) {
-      salePriceStr = `${parseInt(cleanSalePrice).toLocaleString()}円`;
+      salePriceStr = `${parseInt(cleanSalePrice).toLocaleString()}円（税込）`;
     }
 
     prompt += `
@@ -138,7 +138,7 @@ export const generateFlyerImage = async (
     - 商品名: ${p.productName}
     - スペック: ${p.specs}
     - 通常価格: ${originalPriceStr}
-    - ${priceLabel}: ${salePriceStr} (赤字で大きく強調！金額の場合はカンマ区切りで表示)
+    - ${priceLabel}: ${salePriceStr} (赤字で大きく強調！金額の場合はカンマ区切りで表示。【重要】税込表記は必ず価格の後ろに配置すること。「228,000円（税込）」が正しく、「（税込）228,000円」は絶対NG)
     - キャッチコピー: ${p.catchCopy}
     `;
   });
