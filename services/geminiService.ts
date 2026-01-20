@@ -83,6 +83,7 @@ export const generateFlyerImage = async (
   characterClothingMode: 'fixed' | 'match',
   referenceImages: string[],
   storeLogoImages: string[],
+  customIllustrations: string[],
   apiKey: string
 ): Promise<string[]> => {
   // Background instruction logic
@@ -164,7 +165,21 @@ export const generateFlyerImage = async (
     1. 商品画像
     2. キャラクター画像（あれば、デザインのアクセントに使用）
     3. 参考チラシ画像${referenceImages.length > 0 ? '（★重要★下記の【参考デザインの模倣指示】を参照）' : ''}
-    4. 店名ロゴ画像
+    4. 使用イラスト（チラシ内に配置して装飾に活用）
+    5. 店名ロゴ画像
+
+    ${customIllustrations.length > 0 ? `
+    【★使用イラストについて - 配置と使用方法★】
+    使用イラスト画像が提供されています。以下のルールに従って配置してください：
+    1. イラストは一切編集・加工・変形しないでください
+    2. イラストの色、デザインをそのまま忠実に再現してください
+    3. イラストのアスペクト比を維持してください
+    4. イラストは「添付画像をそのまま貼り付ける」前提で再現し、描き直し・推測・再生成は禁止
+    5. 縁取り・影・ぼかし・質感追加などの装飾は禁止（元画像の透過は維持）
+    6. イラストはチラシ内のデザインアクセントとして、商品や文字を邪魔しない位置に適切に配置してください
+    7. 複数のイラストがある場合は、バランス良く配置し、チラシ全体の雰囲気を高めてください
+    8. イラストは商品情報より目立たないようにしてください（装飾要素として使用）
+    ` : ''}
 
     ${storeLogoImages.length > 0 ? `
     【★店名ロゴについて - 絶対厳守★】
@@ -262,6 +277,7 @@ export const generateFlyerImage = async (
   products.forEach((p) => imagesToProcess.push(...p.images));
   imagesToProcess.push(...characterImages);
   imagesToProcess.push(...referenceImages);
+  imagesToProcess.push(...customIllustrations);
   imagesToProcess.push(...storeLogoImages);
 
   // Process all images concurrently
