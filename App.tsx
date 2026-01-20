@@ -826,9 +826,26 @@ const App: React.FC = () => {
   };
 
   const handleDownloadPng = (imageData: string, timestamp: number) => {
-    const blob = dataUrlToBlob(imageData, 'image/png');
-    const filename = `Flyer_${formatDateForFilename(timestamp)}.png`;
-    triggerDownload(blob, filename, 'image/png');
+    // Handle both data URLs and cloud URLs by using Image + Canvas
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const filename = `Flyer_${formatDateForFilename(timestamp)}.png`;
+            triggerDownload(blob, filename, 'image/png');
+          }
+        }, 'image/png');
+      }
+    };
+    img.src = imageData;
     setOpenDownloadMenu(null);
   };
 
