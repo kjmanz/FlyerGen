@@ -69,6 +69,10 @@ export interface Preset {
   referenceImages: string[];
   storeLogoImages: string[];
   settings: FlyerSettings;
+  // Front side fields
+  campaignInfo?: CampaignInfo;
+  frontFlyerType?: FrontFlyerType;
+  productServiceInfo?: ProductServiceInfo;
   createdAt: number;
   updatedAt: number;
 }

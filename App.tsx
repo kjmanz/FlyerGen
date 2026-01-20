@@ -1172,6 +1172,10 @@ ${header.length + uint8Array.length + 20}
         referenceImages: [], // Empty - reference images are synced independently
         storeLogoImages: [], // Empty - store logo images are synced independently
         settings: { ...settings },
+        // Front side fields
+        campaignInfo: JSON.parse(JSON.stringify(campaignInfo)),
+        frontFlyerType: frontFlyerType,
+        productServiceInfo: JSON.parse(JSON.stringify(productServiceInfo)),
         createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
         updatedAt: now
       };
@@ -1236,6 +1240,27 @@ ${header.length + uint8Array.length + 20}
       logoPosition: data.settings?.logoPosition || 'full-bottom',
       additionalInstructions: data.settings?.additionalInstructions || ''
     });
+
+    // Load front side fields
+    if (data.frontFlyerType) {
+      setFrontFlyerType(data.frontFlyerType);
+    }
+    if (data.campaignInfo) {
+      setCampaignInfo({
+        campaignDescription: data.campaignInfo.campaignDescription || '',
+        headline: data.campaignInfo.headline || '',
+        campaignName: data.campaignInfo.campaignName || '',
+        startDate: data.campaignInfo.startDate || '',
+        endDate: data.campaignInfo.endDate || '',
+        content: data.campaignInfo.content || '',
+        benefits: data.campaignInfo.benefits || [''],
+        useProductImage: data.campaignInfo.useProductImage || false,
+        productImage: data.campaignInfo.productImage || ''
+      });
+    }
+    if (data.productServiceInfo) {
+      setProductServiceInfo(data.productServiceInfo);
+    }
 
     setCurrentPresetId(data.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
