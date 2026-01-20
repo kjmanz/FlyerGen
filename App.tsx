@@ -26,6 +26,8 @@ import {
   getCharacterImages,
   saveStoreLogoImages,
   getStoreLogoImages,
+  saveCustomIllustrations,
+  getCustomIllustrations,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -47,8 +49,10 @@ const App: React.FC = () => {
   const [characterImages, setCharacterImages] = useState<string[]>([]);
   const [selectedCharacterIndices, setSelectedCharacterIndices] = useState<Set<number>>(new Set());
   const [characterClothingMode, setCharacterClothingMode] = useState<'fixed' | 'match'>('fixed');
+  const [customIllustrations, setCustomIllustrations] = useState<string[]>([]);
+  const [selectedCustomIllustrationIndices, setSelectedCustomIllustrationIndices] = useState<Set<number>>(new Set());
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
-  const [selectedReferenceIndices, setSelectedReferenceIndices] = useState<Set<number>>(new Set());
+  const [selectedReferenceIndex, setSelectedReferenceIndex] = useState<number | null>(null);
   const [storeLogoImages, setStoreLogoImages] = useState<string[]>([]);
   const [selectedLogoIndices, setSelectedLogoIndices] = useState<Set<number>>(new Set());
   const [settings, setSettings] = useState<FlyerSettings>({
@@ -128,12 +132,13 @@ const App: React.FC = () => {
         // Try to load from Firebase first
         if (firebaseEnabled) {
           console.log('Loading from Firebase...');
-          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages] = await Promise.all([
+          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages, cloudCustomIllustrations] = await Promise.all([
             getCloudImages(),
             getCloudPresets(),
             getReferenceImages(),
             getCharacterImages(),
-            getStoreLogoImages()
+            getStoreLogoImages(),
+            getCustomIllustrations()
           ]);
 
           if (cloudImages.length > 0) {
@@ -170,7 +175,7 @@ const App: React.FC = () => {
           // Load reference images independently (not from presets)
           if (cloudReferenceImages.images.length > 0) {
             setReferenceImages(cloudReferenceImages.images);
-            setSelectedReferenceIndices(new Set(cloudReferenceImages.selectedIndices));
+            setSelectedReferenceIndex(cloudReferenceImages.selectedIndices.length > 0 ? cloudReferenceImages.selectedIndices[0] : null);
           }
 
           // Load character images independently (not from presets)
@@ -183,6 +188,12 @@ const App: React.FC = () => {
           if (cloudStoreLogoImages.images.length > 0) {
             setStoreLogoImages(cloudStoreLogoImages.images);
             setSelectedLogoIndices(new Set(cloudStoreLogoImages.selectedIndices));
+          }
+
+          // Load custom illustrations independently (not from presets)
+          if (cloudCustomIllustrations.images.length > 0) {
+            setCustomIllustrations(cloudCustomIllustrations.images);
+            setSelectedCustomIllustrationIndices(new Set(cloudCustomIllustrations.selectedIndices));
           }
         } else {
           // Fallback to local storage
@@ -218,12 +229,12 @@ const App: React.FC = () => {
       // Debounce the sync to avoid too many writes
       const syncTimeout = setTimeout(() => {
         console.log('Syncing reference images to cloud...');
-        saveReferenceImages(referenceImages, Array.from(selectedReferenceIndices));
+        saveReferenceImages(referenceImages, selectedReferenceIndex !== null ? [selectedReferenceIndex] : []);
       }, 1000);
 
       return () => clearTimeout(syncTimeout);
     }
-  }, [referenceImages, selectedReferenceIndices, referenceImagesInitialized]);
+  }, [referenceImages, selectedReferenceIndex, referenceImagesInitialized]);
 
   // Sync character images to cloud when changed (independent of presets)
   const [characterImagesInitialized, setCharacterImagesInitialized] = React.useState(false);
@@ -269,30 +280,43 @@ const App: React.FC = () => {
     }
   }, [storeLogoImages, selectedLogoIndices, logoImagesInitialized]);
 
+  // Sync custom illustrations to cloud when changed (independent of presets)
+  const [customIllustrationsInitialized, setCustomIllustrationsInitialized] = React.useState(false);
+  useEffect(() => {
+    // Skip initial load sync - only sync user changes
+    if (!customIllustrationsInitialized) {
+      if (customIllustrations.length > 0) {
+        setCustomIllustrationsInitialized(true);
+      }
+      return;
+    }
+
+    if (firebaseEnabled) {
+      // Debounce the sync to avoid too many writes
+      const syncTimeout = setTimeout(() => {
+        console.log('Syncing custom illustrations to cloud...');
+        saveCustomIllustrations(customIllustrations, Array.from(selectedCustomIllustrationIndices));
+      }, 1000);
+
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [customIllustrations, selectedCustomIllustrationIndices, customIllustrationsInitialized]);
+
   // Handle reference images change with cloud sync
   const handleReferenceImagesChange = (images: string[]) => {
-    // When images change, update selected indices to remove any that are out of bounds
-    const newSelectedIndices = new Set(
-      Array.from(selectedReferenceIndices).filter(i => i < images.length)
-    );
-    setSelectedReferenceIndices(newSelectedIndices);
+    // When images change, update selected index to remove it if out of bounds
+    if (selectedReferenceIndex !== null && selectedReferenceIndex >= images.length) {
+      setSelectedReferenceIndex(null);
+    }
     setReferenceImages(images);
     if (!referenceImagesInitialized) {
       setReferenceImagesInitialized(true);
     }
   };
 
-  // Toggle reference image selection
+  // Toggle reference image selection (single selection)
   const toggleReferenceImageSelection = (index: number) => {
-    setSelectedReferenceIndices(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
+    setSelectedReferenceIndex(prev => prev === index ? null : index);
     if (!referenceImagesInitialized) {
       setReferenceImagesInitialized(true);
     }
@@ -353,6 +377,35 @@ const App: React.FC = () => {
     });
     if (!logoImagesInitialized) {
       setLogoImagesInitialized(true);
+    }
+  };
+
+  // Handle custom illustrations change with cloud sync
+  const handleCustomIllustrationsChange = (images: string[]) => {
+    // When images change, update selected indices to remove any that are out of bounds
+    const newSelectedIndices = new Set(
+      Array.from(selectedCustomIllustrationIndices).filter(i => i < images.length)
+    );
+    setSelectedCustomIllustrationIndices(newSelectedIndices);
+    setCustomIllustrations(images);
+    if (!customIllustrationsInitialized) {
+      setCustomIllustrationsInitialized(true);
+    }
+  };
+
+  // Toggle custom illustration selection
+  const toggleCustomIllustrationSelection = (index: number) => {
+    setSelectedCustomIllustrationIndices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+    if (!customIllustrationsInitialized) {
+      setCustomIllustrationsInitialized(true);
     }
   };
 
@@ -451,12 +504,13 @@ const App: React.FC = () => {
     try {
       // Filter images to only include selected ones
       const selectedCharacterImages = characterImages.filter((_, idx) => selectedCharacterIndices.has(idx));
-      const selectedReferenceImages = referenceImages.filter((_, idx) => selectedReferenceIndices.has(idx));
+      const selectedReferenceImages = selectedReferenceIndex !== null ? [referenceImages[selectedReferenceIndex]] : [];
       const selectedStoreLogoImages = storeLogoImages.filter((_, idx) => selectedLogoIndices.has(idx));
+      const selectedCustomIllustrations = customIllustrations.filter((_, idx) => selectedCustomIllustrationIndices.has(idx));
 
       // Generate images and tags in parallel for better performance
       const [results, tags] = await Promise.all([
-        generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, selectedReferenceImages, selectedStoreLogoImages, apiKey),
+        generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, selectedReferenceImages, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
         generateTagsFromProducts(products, apiKey)
       ]);
 
@@ -1585,6 +1639,60 @@ ${header.length + uint8Array.length + 20}
               </div>
             )}
           </div>
+          <div id="custom-illustrations-section" className="bg-white rounded-lg shadow-premium border border-slate-100 p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🎨</div>
+              <h3 className="text-lg font-semibold text-slate-900">使用イラスト</h3>
+              {firebaseEnabled && (
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
+            <ImageUploader
+              label="チラシに配置するイラスト"
+              images={customIllustrations}
+              onImagesChange={handleCustomIllustrationsChange}
+            />
+            {/* Checkmark selection for custom illustrations */}
+            {customIllustrations.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                {customIllustrations.map((img, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => toggleCustomIllustrationSelection(idx)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomIllustrationIndices.has(idx)
+                        ? 'border-indigo-600 ring-2 ring-indigo-200'
+                        : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`使用イラスト ${idx + 1}`}
+                      className="w-full h-20 object-cover"
+                    />
+                    {/* Checkmark overlay */}
+                    <div
+                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCustomIllustrationIndices.has(idx)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/80 text-slate-300 border border-slate-300'
+                        }`}
+                    >
+                      {selectedCustomIllustrationIndices.has(idx) ? '✓' : ''}
+                    </div>
+                    {/* Selection indicator */}
+                    {selectedCustomIllustrationIndices.has(idx) && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
+                        使用する
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {customIllustrations.length > 0 && selectedCustomIllustrationIndices.size === 0 && (
+              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
+            )}
+          </div>
           <div id="reference-section" className="bg-white rounded-lg shadow-premium border border-slate-100 p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🖼️</div>
@@ -1593,7 +1701,7 @@ ${header.length + uint8Array.length + 20}
                 <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
               )}
             </div>
-            <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ参考にします。チェックなしの場合は参考なし。</p>
+            <p className="text-[10px] text-slate-500 mb-4 ml-1">選択した画像のみ参考にします（1つのみ選択可能）。選択なしの場合は参考なし。</p>
             <ImageUploader
               label="デザイン参考にするチラシ画像"
               images={referenceImages}
@@ -1606,7 +1714,7 @@ ${header.length + uint8Array.length + 20}
                   <div
                     key={idx}
                     onClick={() => toggleReferenceImageSelection(idx)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedReferenceIndices.has(idx)
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedReferenceIndex === idx
                         ? 'border-indigo-600 ring-2 ring-indigo-200'
                         : 'border-slate-200 hover:border-slate-300'
                       }`}
@@ -1618,15 +1726,15 @@ ${header.length + uint8Array.length + 20}
                     />
                     {/* Checkmark overlay */}
                     <div
-                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedReferenceIndices.has(idx)
+                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedReferenceIndex === idx
                           ? 'bg-indigo-600 text-white'
                           : 'bg-white/80 text-slate-300 border border-slate-300'
                         }`}
                     >
-                      {selectedReferenceIndices.has(idx) ? '✓' : ''}
+                      {selectedReferenceIndex === idx ? '✓' : ''}
                     </div>
                     {/* Selection indicator */}
-                    {selectedReferenceIndices.has(idx) && (
+                    {selectedReferenceIndex === idx && (
                       <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
                         使用する
                       </div>
@@ -1635,8 +1743,8 @@ ${header.length + uint8Array.length + 20}
                 ))}
               </div>
             )}
-            {referenceImages.length > 0 && selectedReferenceIndices.size === 0 && (
-              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 参考にする画像にチェックを入れてください</p>
+            {referenceImages.length > 0 && selectedReferenceIndex === null && (
+              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 参考にする画像を1つ選択してください</p>
             )}
           </div>
         </div>

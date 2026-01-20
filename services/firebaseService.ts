@@ -639,3 +639,82 @@ export const getStoreLogoImages = async (): Promise<{ images: string[], selected
         return { images: [], selectedIndices: [] };
     }
 };
+
+// ===== CUSTOM ILLUSTRATIONS (Independent Cloud Sync) =====
+
+// Upload custom illustration to Firebase Storage
+const uploadCustomIllustration = async (base64Data: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `custom_illustrations/illust_${index}_${Date.now()}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload custom illustration ${index}:`, e);
+        return base64Data;
+    }
+};
+
+// Save custom illustrations to Firestore (independent of presets)
+export const saveCustomIllustrations = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
+    if (!db || !storage) {
+        console.log('saveCustomIllustrations: db or storage is null');
+        return false;
+    }
+    try {
+        console.log(`Saving ${images.length} custom illustrations to cloud...`);
+
+        // Upload all images to Storage
+        const imageUrls = await Promise.all(
+            images.map((img, i) => uploadCustomIllustration(img, i))
+        );
+
+        // Save URLs and selected indices to Firestore
+        const docRef = doc(db, 'settings', 'custom_illustrations');
+        await setDoc(docRef, {
+            images: imageUrls,
+            selectedIndices: selectedIndices,
+            updatedAt: Date.now()
+        });
+
+        console.log('Custom illustrations saved successfully');
+        return true;
+    } catch (e) {
+        console.error('Save custom illustrations error:', e);
+        return false;
+    }
+};
+
+// Get custom illustrations from Firestore
+export const getCustomIllustrations = async (): Promise<{ images: string[], selectedIndices: number[] }> => {
+    if (!db) {
+        console.log('getCustomIllustrations: db is null');
+        return { images: [], selectedIndices: [] };
+    }
+    try {
+        console.log('Fetching custom illustrations from cloud...');
+        const docSnap = await getDocs(collection(db, 'settings'));
+
+        let images: string[] = [];
+        let selectedIndices: number[] = [];
+        docSnap.forEach((d) => {
+            if (d.id === 'custom_illustrations') {
+                const data = d.data();
+                images = data.images || [];
+                selectedIndices = data.selectedIndices || [];
+            }
+        });
+
+        console.log(`Fetched ${images.length} custom illustrations from cloud`);
+        return { images, selectedIndices };
+    } catch (e) {
+        console.error('Get custom illustrations error:', e);
+        return { images: [], selectedIndices: [] };
+    }
+};
