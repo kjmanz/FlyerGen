@@ -640,6 +640,85 @@ export const getStoreLogoImages = async (): Promise<{ images: string[], selected
     }
 };
 
+// ===== CUSTOMER IMAGES (Independent Cloud Sync) =====
+
+// Upload customer image to Firebase Storage
+const uploadCustomerImage = async (base64Data: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `customer_images/customer_${index}_${Date.now()}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload customer image ${index}:`, e);
+        return base64Data;
+    }
+};
+
+// Save customer images to Firestore (independent of presets)
+export const saveCustomerImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
+    if (!db || !storage) {
+        console.log('saveCustomerImages: db or storage is null');
+        return false;
+    }
+    try {
+        console.log(`Saving ${images.length} customer images to cloud...`);
+
+        // Upload all images to Storage
+        const imageUrls = await Promise.all(
+            images.map((img, i) => uploadCustomerImage(img, i))
+        );
+
+        // Save URLs and selected indices to Firestore
+        const docRef = doc(db, 'settings', 'customer_images');
+        await setDoc(docRef, {
+            images: imageUrls,
+            selectedIndices: selectedIndices,
+            updatedAt: Date.now()
+        });
+
+        console.log('Customer images saved successfully');
+        return true;
+    } catch (e) {
+        console.error('Save customer images error:', e);
+        return false;
+    }
+};
+
+// Get customer images from Firestore
+export const getCustomerImages = async (): Promise<{ images: string[], selectedIndices: number[] }> => {
+    if (!db) {
+        console.log('getCustomerImages: db is null');
+        return { images: [], selectedIndices: [] };
+    }
+    try {
+        console.log('Fetching customer images from cloud...');
+        const docSnap = await getDocs(collection(db, 'settings'));
+
+        let images: string[] = [];
+        let selectedIndices: number[] = [];
+        docSnap.forEach((d) => {
+            if (d.id === 'customer_images') {
+                const data = d.data();
+                images = data.images || [];
+                selectedIndices = data.selectedIndices || [];
+            }
+        });
+
+        console.log(`Fetched ${images.length} customer images from cloud`);
+        return { images, selectedIndices };
+    } catch (e) {
+        console.error('Get customer images error:', e);
+        return { images: [], selectedIndices: [] };
+    }
+};
+
 // ===== CUSTOM ILLUSTRATIONS (Independent Cloud Sync) =====
 
 // Upload custom illustration to Firebase Storage

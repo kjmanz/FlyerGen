@@ -44,6 +44,20 @@ export interface GeneratedImage {
   isUpscaled?: boolean; // Flag to indicate if image has been upscaled
   upscaleScale?: number; // Upscale multiplier (4 only)
   isEdited?: boolean; // Flag to indicate if image has been edited
+  flyerType?: 'front' | 'back'; // 表面 or 裏面
+}
+
+// 表面用キャンペーン情報
+export interface CampaignInfo {
+  campaignDescription: string;  // 何のキャンペーン？（AI生成トリガー）
+  headline: string;             // ヘッドライン（お客様の悩み）
+  campaignName: string;         // キャンペーン名
+  startDate: string;            // 開始日
+  endDate: string;              // 終了日
+  content: string;              // キャンペーン内容
+  benefits: string[];           // 特典リスト（無制限）
+  useProductImage: boolean;     // 商品画像を使用するか
+  productImage: string;         // 商品画像（Base64）
 }
 
 export interface Preset {

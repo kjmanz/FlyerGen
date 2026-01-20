@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Product, FlyerSettings, SpecSearchResult } from "../types";
+import { Product, FlyerSettings, SpecSearchResult, CampaignInfo } from "../types";
 
 // Helper to get client instance with provided API key
 const getClient = (apiKey: string) => {
@@ -680,4 +680,253 @@ export const removeTextFromImage = async (
     console.error("Text removal failed:", error);
     throw error;
   }
+};
+
+// Generate campaign headline and name from description using Gemini
+export const generateCampaignContent = async (
+  campaignDescription: string,
+  apiKey: string
+): Promise<{ headline: string; campaignName: string }> => {
+  const ai = getClient(apiKey);
+
+  const prompt = `
+あなたは日本の家電量販店のマーケティング専門家です。
+以下のキャンペーン説明から、魅力的なヘッドライン（お客様の悩み訴求）とキャンペーン名を生成してください。
+
+【キャンペーン説明】
+${campaignDescription}
+
+【出力ルール】
+1. headline: お客様の悩みや課題を問いかける形式で作成（例: 「まだ10年前のエアコン使っていませんか？」）
+   - 疑問形または課題提起の形式
+   - お客様が「自分のことだ」と感じる表現
+   - 30文字以内
+
+2. campaignName: イベント名・フェア名として使える名称（例: 「夏の省エネ家電 買い替え応援フェア」）
+   - 季節感や緊急性を含める
+   - 25文字以内
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            headline: { type: Type.STRING },
+            campaignName: { type: Type.STRING }
+          },
+          required: ["headline", "campaignName"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("AIからの応答がありません。");
+    }
+    return JSON.parse(text) as { headline: string; campaignName: string };
+
+  } catch (error) {
+    console.error("Campaign content generation failed:", error);
+    throw error;
+  }
+};
+
+// Generate front flyer image (campaign-focused)
+export const generateFrontFlyerImage = async (
+  campaignInfo: CampaignInfo,
+  settings: FlyerSettings,
+  staffImages: string[],        // 店側スタッフ（キャラクター画像）
+  customerImages: string[],     // お客様画像
+  storeLogoImages: string[],
+  customIllustrations: string[],
+  referenceImages: string[],
+  apiKey: string
+): Promise<string[]> => {
+  // Background instruction logic
+  let backgroundInstruction: string;
+  if (settings.backgroundMode === 'white') {
+    backgroundInstruction = "【最重要：背景は絶対に純白】背景色は必ず「純白（RGB: 255,255,255 / #FFFFFF）」のみを使用してください。";
+  } else if (settings.backgroundMode === 'custom' && settings.customBackground) {
+    backgroundInstruction = `【背景について - カスタム指定】以下の指定に沿った背景を作成してください：\n${settings.customBackground}`;
+  } else {
+    backgroundInstruction = "【背景について】背景はキャンペーンの魅力を引き立てる、明るく親しみやすいデザインにしてください。";
+  }
+
+  // Format benefits list
+  const benefitsList = campaignInfo.benefits.filter(b => b.trim()).map((b, i) => `  ${i + 1}. ${b}`).join('\n');
+
+  // Format campaign period
+  const periodStr = campaignInfo.startDate && campaignInfo.endDate
+    ? `${campaignInfo.startDate} 〜 ${campaignInfo.endDate}`
+    : (campaignInfo.startDate || campaignInfo.endDate || '期間限定');
+
+  // Logo position instruction
+  const logoPositionInstruction = settings.logoPosition === 'full-bottom'
+    ? '【店名ロゴの配置】チラシの最下部に左右いっぱいに横長で配置してください。'
+    : '【店名ロゴの配置】チラシの最下部の右側半分に配置してください。';
+
+  let prompt = `
+【役割】
+あなたは日本の家電量販店のプロのチラシデザイナーです。
+
+【タスク】
+キャンペーン訴求用の「表面チラシ」を作成してください。お客様の目を引き、キャンペーンへの興味を喚起するデザインにしてください。
+
+【出力仕様】
+- レイアウト: ${settings.orientation === 'vertical' ? 'A4縦 (210mm × 297mm)' : 'A4横 (297mm × 210mm)'}
+- 出力解像度: ${settings.imageSize}
+- 言語: 日本語
+- 雰囲気: 地域密着の信頼できる「街の電気屋さん」。元気で親しみやすく、信頼感のあるデザイン。
+- ${backgroundInstruction}
+
+【★キャンペーン情報★】
+■ ヘッドライン（大きく目立たせる）:
+「${campaignInfo.headline}」
+
+■ キャンペーン名:
+「${campaignInfo.campaignName}」
+
+■ キャンペーン期間:
+${periodStr}
+
+■ キャンペーン内容:
+${campaignInfo.content || 'お得なキャンペーン実施中！'}
+
+${benefitsList ? `■ 特典リスト:\n${benefitsList}` : ''}
+
+【デザイン指示】
+1. ヘッドラインは画像の上部1/3に大きく配置し、お客様の悩みに共感を促す
+2. キャンペーン名はヘッドラインの下に目立つように配置
+3. キャンペーン期間は分かりやすい場所に配置（リボンやバッジ装飾推奨）
+4. 特典は箇条書きまたはアイコン付きで見やすく配置
+5. ${staffImages.length > 0 ? '店員スタッフ画像を笑顔で親しみやすく配置（右下または左下推奨）' : ''}
+6. ${customerImages.length > 0 ? 'お客様画像は「悩んでいる様子」または「喜んでいる様子」として配置（ヘッドライン近くに配置推奨）' : ''}
+
+【画像の使用について】
+提供された画像は以下の順序で添付されています：
+1. 店員スタッフ画像（チラシ内で店員として配置）
+2. お客様画像（チラシ内でお客様として配置）
+3. 参考チラシ画像${referenceImages.length > 0 ? '（★重要★デザインを参考に）' : ''}
+4. 使用イラスト（チラシ内に配置して装飾に活用）
+5. 店名ロゴ画像
+${campaignInfo.useProductImage && campaignInfo.productImage ? '6. メイン商品画像（目立つ位置に配置）' : ''}
+
+${storeLogoImages.length > 0 ? `
+【★★★ 店名ロゴについて - 絶対厳守事項 ★★★】
+店名ロゴ画像が提供されています。以下のルールは絶対に違反してはいけません：
+1. ロゴは一切編集・加工・変形してはいけません
+2. ロゴの色、フォント、デザインを変更してはいけません
+3. ${logoPositionInstruction}
+` : ''}
+
+${customIllustrations.length > 0 ? `
+【使用イラストについて】
+使用イラスト画像が提供されています：
+1. イラストは一切編集・加工しないでください
+2. チラシ内のデザインアクセントとして適切に配置してください
+` : ''}
+
+${referenceImages.length > 0 ? `
+【★参考デザインの模倣指示★】
+参考チラシ画像が提供されています。レイアウト、色使い、タイポグラフィ、装飾要素を参考にしてください。
+` : ''}
+`;
+
+  if (settings.additionalInstructions) {
+    prompt += `\n【追加指示】\n${settings.additionalInstructions}`;
+  }
+
+  // Prepare content parts
+  const parts: any[] = [{ text: prompt }];
+
+  const processImage = async (imgData: string) => {
+    let base64Data = imgData;
+
+    if (imgData.startsWith('http')) {
+      try {
+        const resp = await fetch(imgData);
+        const blob = await resp.blob();
+        base64Data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error('Failed to fetch image from URL:', e);
+        return null;
+      }
+    }
+
+    const cleanBase64 = base64Data.split(',')[1] || base64Data;
+    return {
+      inlineData: {
+        mimeType: 'image/png',
+        data: cleanBase64
+      }
+    };
+  };
+
+  // Collect all images to process
+  const imagesToProcess: string[] = [];
+  imagesToProcess.push(...staffImages);
+  imagesToProcess.push(...customerImages);
+  imagesToProcess.push(...referenceImages);
+  imagesToProcess.push(...customIllustrations);
+  imagesToProcess.push(...storeLogoImages);
+  if (campaignInfo.useProductImage && campaignInfo.productImage) {
+    imagesToProcess.push(campaignInfo.productImage);
+  }
+
+  // Process all images concurrently
+  const processedImages = await Promise.all(imagesToProcess.map(processImage));
+  processedImages.forEach(img => {
+    if (img) parts.push(img);
+  });
+
+  // Determine aspect ratio
+  const aspectRatio = settings.orientation === 'vertical' ? '3:4' : '4:3';
+
+  // Create batch requests
+  const batchRequests = Array.from({ length: settings.patternCount }).map(() => ({
+    contents: { parts }
+  }));
+
+  console.log(`Sending ${batchRequests.length} front flyer request(s) to API...`);
+
+  // API endpoint
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      requests: batchRequests,
+      imageSize: settings.imageSize,
+      aspectRatio: aspectRatio
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    let errorMessage = errorData.message || errorData.error || `Batch API error: ${response.status}`;
+    if (errorData.details && Array.isArray(errorData.details)) {
+      errorMessage += '\nDetails:\n' + errorData.details.map((d: any) => d.error || JSON.stringify(d)).join('\n');
+    }
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
+
+  if (!result.images || result.images.length === 0) {
+    throw new Error("画像の生成に失敗しました。");
+  }
+
+  console.log(`Received ${result.images.length} front flyer image(s) from Batch API`);
+  return result.images;
 };

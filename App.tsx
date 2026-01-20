@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { Product, FlyerSettings, GeneratedImage, Preset } from './types';
+import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
 import { ImageEditModal, EditRegion } from './components/ImageEditModal';
-import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage } from './services/geminiService';
+import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -28,6 +28,8 @@ import {
   getStoreLogoImages,
   saveCustomIllustrations,
   getCustomIllustrations,
+  saveCustomerImages,
+  getCustomerImages,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -114,6 +116,33 @@ const App: React.FC = () => {
   // Text Removal State
   const [removingTextImageId, setRemovingTextImageId] = useState<string | null>(null);
 
+  // Front/Back Side State (表面/裏面切り替え)
+  const [flyerSide, setFlyerSide] = useState<'front' | 'back'>('back');
+
+  // Campaign Info State (表面用キャンペーン情報)
+  const [campaignInfo, setCampaignInfo] = useState<CampaignInfo>({
+    campaignDescription: '',
+    headline: '',
+    campaignName: '',
+    startDate: '',
+    endDate: '',
+    content: '',
+    benefits: [''],
+    useProductImage: false,
+    productImage: ''
+  });
+
+  // Customer Images State (お客様画像)
+  const [customerImages, setCustomerImages] = useState<string[]>([]);
+  const [selectedCustomerImageIndices, setSelectedCustomerImageIndices] = useState<Set<number>>(new Set());
+
+  // Campaign AI Generation State
+  const [isGeneratingCampaign, setIsGeneratingCampaign] = useState(false);
+
+  // Opposite Side Reference Images (反対面参照用)
+  const [oppositeSideImage, setOppositeSideImage] = useState<string>('');
+  const [useOppositeSideReference, setUseOppositeSideReference] = useState(false);
+
   // Load History, Presets & API Key on mount (Firebase + local fallback)
   useEffect(() => {
     const loadData = async () => {
@@ -135,13 +164,14 @@ const App: React.FC = () => {
         // Try to load from Firebase first
         if (firebaseEnabled) {
           console.log('Loading from Firebase...');
-          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages, cloudCustomIllustrations] = await Promise.all([
+          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages, cloudCustomIllustrations, cloudCustomerImages] = await Promise.all([
             getCloudImages(),
             getCloudPresets(),
             getReferenceImages(),
             getCharacterImages(),
             getStoreLogoImages(),
-            getCustomIllustrations()
+            getCustomIllustrations(),
+            getCustomerImages()
           ]);
 
           if (cloudImages.length > 0) {
@@ -197,6 +227,12 @@ const App: React.FC = () => {
           if (cloudCustomIllustrations.images.length > 0) {
             setCustomIllustrations(cloudCustomIllustrations.images);
             setSelectedCustomIllustrationIndices(new Set(cloudCustomIllustrations.selectedIndices));
+          }
+
+          // Load customer images independently (not from presets)
+          if (cloudCustomerImages.images.length > 0) {
+            setCustomerImages(cloudCustomerImages.images);
+            setSelectedCustomerImageIndices(new Set(cloudCustomerImages.selectedIndices));
           }
         } else {
           // Fallback to local storage
@@ -304,6 +340,57 @@ const App: React.FC = () => {
       return () => clearTimeout(syncTimeout);
     }
   }, [customIllustrations, selectedCustomIllustrationIndices, customIllustrationsInitialized]);
+
+  // Sync customer images to cloud when changed (independent of presets)
+  const [customerImagesInitialized, setCustomerImagesInitialized] = React.useState(false);
+  useEffect(() => {
+    // Skip initial load sync - only sync user changes
+    if (!customerImagesInitialized) {
+      if (customerImages.length > 0) {
+        setCustomerImagesInitialized(true);
+      }
+      return;
+    }
+
+    if (firebaseEnabled) {
+      // Debounce the sync to avoid too many writes
+      const syncTimeout = setTimeout(() => {
+        console.log('Syncing customer images to cloud...');
+        saveCustomerImages(customerImages, Array.from(selectedCustomerImageIndices));
+      }, 1000);
+
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [customerImages, selectedCustomerImageIndices, customerImagesInitialized]);
+
+  // Handle customer images change with cloud sync
+  const handleCustomerImagesChange = (images: string[]) => {
+    // When images change, update selected indices to remove any that are out of bounds
+    const newSelectedIndices = new Set(
+      Array.from(selectedCustomerImageIndices).filter(i => i < images.length)
+    );
+    setSelectedCustomerImageIndices(newSelectedIndices);
+    setCustomerImages(images);
+    if (!customerImagesInitialized) {
+      setCustomerImagesInitialized(true);
+    }
+  };
+
+  // Toggle customer image selection
+  const toggleCustomerImageSelection = (index: number) => {
+    setSelectedCustomerImageIndices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+    if (!customerImagesInitialized) {
+      setCustomerImagesInitialized(true);
+    }
+  };
 
   // Handle reference images change with cloud sync
   const handleReferenceImagesChange = (images: string[]) => {
@@ -498,7 +585,8 @@ const App: React.FC = () => {
     }
 
     // Confirmation dialog to prevent accidental clicks
-    if (!window.confirm("チラシを作成しますか？")) {
+    const sideLabel = flyerSide === 'front' ? '表面' : '裏面';
+    if (!window.confirm(`${sideLabel}チラシを作成しますか？`)) {
       return;
     }
 
@@ -510,12 +598,39 @@ const App: React.FC = () => {
       const selectedReferenceImages = selectedReferenceIndex !== null ? [referenceImages[selectedReferenceIndex]] : [];
       const selectedStoreLogoImages = storeLogoImages.filter((_, idx) => selectedLogoIndices.has(idx));
       const selectedCustomIllustrations = customIllustrations.filter((_, idx) => selectedCustomIllustrationIndices.has(idx));
+      const selectedCustomerImages = customerImages.filter((_, idx) => selectedCustomerImageIndices.has(idx));
 
-      // Generate images and tags in parallel for better performance
-      const [results, tags] = await Promise.all([
-        generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, selectedReferenceImages, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
-        generateTagsFromProducts(products, apiKey)
-      ]);
+      // Add opposite side reference if enabled
+      const referenceWithOpposite = useOppositeSideReference && oppositeSideImage
+        ? [...selectedReferenceImages, oppositeSideImage]
+        : selectedReferenceImages;
+
+      let results: string[];
+      let tags: string[];
+
+      if (flyerSide === 'front') {
+        // 表面生成処理
+        [results, tags] = await Promise.all([
+          generateFrontFlyerImage(
+            campaignInfo,
+            settings,
+            selectedCharacterImages,
+            selectedCustomerImages,
+            selectedStoreLogoImages,
+            selectedCustomIllustrations,
+            referenceWithOpposite,
+            apiKey
+          ),
+          Promise.resolve(['表面', campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
+        ]);
+      } else {
+        // 裏面生成処理（既存ロジック）
+        [results, tags] = await Promise.all([
+          generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, referenceWithOpposite, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
+          generateTagsFromProducts(products, apiKey)
+        ]);
+        tags = ['裏面', ...tags];
+      }
 
       const newItems: GeneratedImage[] = [];
 
@@ -546,14 +661,15 @@ const App: React.FC = () => {
               data: cloudUrl,
               thumbnail: thumbUrl || thumbnailData,
               tags,
+              flyerType: flyerSide,
               createdAt: timestamp
             });
           } else {
             // Fallback to local if upload fails
-            newItems.push({ id, data, thumbnail: thumbnailData, tags, createdAt: timestamp });
+            newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp });
           }
         } else {
-          newItems.push({ id, data, thumbnail: thumbnailData, tags, createdAt: timestamp });
+          newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp });
         }
       }
 
@@ -568,6 +684,34 @@ const App: React.FC = () => {
       console.error(e);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Handle campaign content AI generation
+  const handleGenerateCampaignContent = async () => {
+    if (!apiKey) {
+      setIsSettingsOpen(true);
+      alert("APIキーが設定されていません。");
+      return;
+    }
+    if (!campaignInfo.campaignDescription.trim()) {
+      alert("「何のキャンペーン？」を入力してください。");
+      return;
+    }
+
+    setIsGeneratingCampaign(true);
+    try {
+      const result = await generateCampaignContent(campaignInfo.campaignDescription, apiKey);
+      setCampaignInfo(prev => ({
+        ...prev,
+        headline: result.headline,
+        campaignName: result.campaignName
+      }));
+    } catch (e) {
+      console.error(e);
+      alert("キャンペーン内容の生成に失敗しました。");
+    } finally {
+      setIsGeneratingCampaign(false);
     }
   };
 
@@ -1331,7 +1475,7 @@ ${header.length + uint8Array.length + 20}
               ) : (
                 <>
                   <span>✨</span>
-                  <span className="hidden sm:inline">チラシ作成</span>
+                  <span className="hidden sm:inline">{flyerSide === 'front' ? '表面作成' : '裏面作成'}</span>
                 </>
               )}
             </button>
@@ -1412,6 +1556,32 @@ ${header.length + uint8Array.length + 20}
           </div>
         )}
 
+        {/* Front/Back Toggle Tabs */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex bg-slate-100 rounded-lg p-1 shadow-sm">
+            <button
+              onClick={() => setFlyerSide('front')}
+              className={`px-6 py-2.5 rounded-md font-semibold transition-all ${
+                flyerSide === 'front'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              表面
+            </button>
+            <button
+              onClick={() => setFlyerSide('back')}
+              className={`px-6 py-2.5 rounded-md font-semibold transition-all ${
+                flyerSide === 'back'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              裏面
+            </button>
+          </div>
+        </div>
+
         {/* Action Bar for Current State */}
         <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -1436,7 +1606,168 @@ ${header.length + uint8Array.length + 20}
           </button>
         </div>
 
-        {/* Settings */}
+        {/* Front Side - Campaign Form */}
+        {flyerSide === 'front' && (
+          <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+
+            <div className="flex items-center gap-3 mb-8 relative">
+              <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">📢</div>
+              <h2 className="text-xl font-semibold text-slate-900">キャンペーン情報（表面）</h2>
+            </div>
+
+            {/* Campaign Description - AI Trigger */}
+            <div className="mb-8 relative">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">何のキャンペーン？</label>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="例: エアコンの買い替え促進、省エネ訴求"
+                  value={campaignInfo.campaignDescription}
+                  onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignDescription: e.target.value })}
+                  className="flex-1 rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                />
+                <button
+                  onClick={handleGenerateCampaignContent}
+                  disabled={isGeneratingCampaign || !campaignInfo.campaignDescription.trim()}
+                  className="px-5 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isGeneratingCampaign ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      生成中
+                    </>
+                  ) : (
+                    <>✨ AI生成</>
+                  )}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」を押すと、ヘッドラインとキャンペーン名が自動生成されます</p>
+            </div>
+
+            {/* Headline */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ヘッドライン（お客様の悩み）</label>
+              <input
+                type="text"
+                placeholder="例: まだ10年前のエアコン使っていませんか？"
+                value={campaignInfo.headline}
+                onChange={(e) => setCampaignInfo({ ...campaignInfo, headline: e.target.value })}
+                className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+              />
+            </div>
+
+            {/* Campaign Name */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン名</label>
+              <input
+                type="text"
+                placeholder="例: 夏の省エネ家電 買い替え応援フェア"
+                value={campaignInfo.campaignName}
+                onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignName: e.target.value })}
+                className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+              />
+            </div>
+
+            {/* Campaign Period */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">開始日</label>
+                <input
+                  type="date"
+                  value={campaignInfo.startDate}
+                  onChange={(e) => setCampaignInfo({ ...campaignInfo, startDate: e.target.value })}
+                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">終了日</label>
+                <input
+                  type="date"
+                  value={campaignInfo.endDate}
+                  onChange={(e) => setCampaignInfo({ ...campaignInfo, endDate: e.target.value })}
+                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
+                />
+              </div>
+            </div>
+
+            {/* Campaign Content */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン内容</label>
+              <textarea
+                rows={3}
+                placeholder="キャンペーンの詳細内容を記述..."
+                value={campaignInfo.content}
+                onChange={(e) => setCampaignInfo({ ...campaignInfo, content: e.target.value })}
+                className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+              />
+            </div>
+
+            {/* Benefits List */}
+            <div className="mb-6">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">特典リスト</label>
+              {campaignInfo.benefits.map((benefit, idx) => (
+                <div key={idx} className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder={`特典 ${idx + 1}...`}
+                    value={benefit}
+                    onChange={(e) => {
+                      const newBenefits = [...campaignInfo.benefits];
+                      newBenefits[idx] = e.target.value;
+                      setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
+                    }}
+                    className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                  />
+                  {campaignInfo.benefits.length > 1 && (
+                    <button
+                      onClick={() => {
+                        const newBenefits = campaignInfo.benefits.filter((_, i) => i !== idx);
+                        setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
+                      }}
+                      className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md transition-all"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={() => setCampaignInfo({ ...campaignInfo, benefits: [...campaignInfo.benefits, ''] })}
+                className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2"
+              >
+                ＋ 特典を追加
+              </button>
+            </div>
+
+            {/* Product Image (Optional) */}
+            <div className="mb-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={campaignInfo.useProductImage}
+                  onChange={(e) => setCampaignInfo({ ...campaignInfo, useProductImage: e.target.checked })}
+                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm font-semibold text-slate-700">メイン商品画像を使用する（任意）</span>
+              </label>
+              {campaignInfo.useProductImage && (
+                <div className="mt-4">
+                  <ImageUploader
+                    label="メイン商品画像"
+                    images={campaignInfo.productImage ? [campaignInfo.productImage] : []}
+                    onImagesChange={(images) => setCampaignInfo({ ...campaignInfo, productImage: images[0] || '' })}
+                    maxImages={1}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Back Side - Settings */}
+        {flyerSide === 'back' && (
+        <>
         <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
 
@@ -1585,6 +1916,101 @@ ${header.length + uint8Array.length + 20}
                 apiKey={apiKey}
               />
             ))}
+          </div>
+        </div>
+        </>
+        )}
+
+        {/* Common Settings Section (Both Front and Back) */}
+        <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+
+          <div className="flex items-center gap-3 mb-8 relative">
+            <div className="w-8 h-8 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
+            <h2 className="text-xl font-semibold text-slate-900">共通設定</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 relative">
+            {/* Orientation */}
+            <div>
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシ形式</label>
+              <div className="flex gap-4">
+                <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'vertical' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <input type="radio" name="orientation-common" className="sr-only" checked={settings.orientation === 'vertical'} onChange={() => setSettings({ ...settings, orientation: 'vertical' })} />
+                  <div className="w-6 h-9 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
+                  <span className="text-sm font-semibold text-slate-900">縦向き</span>
+                </label>
+                <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'horizontal' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <input type="radio" name="orientation-common" className="sr-only" checked={settings.orientation === 'horizontal'} onChange={() => setSettings({ ...settings, orientation: 'horizontal' })} />
+                  <div className="w-9 h-6 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
+                  <span className="text-sm font-semibold text-slate-900">横向き</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Resolution & Variations */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">解像度</label>
+                <div className="relative">
+                  <select
+                    value={settings.imageSize}
+                    onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as any })}
+                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
+                  >
+                    <option value="1K">1K</option>
+                    <option value="2K">2K</option>
+                    <option value="4K">4K</option>
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">パターン数</label>
+                <div className="relative">
+                  <select
+                    value={settings.patternCount}
+                    onChange={(e) => setSettings({ ...settings, patternCount: parseInt(e.target.value) })}
+                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
+                  >
+                    {[1, 2, 3, 4, 5].map(v => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Opposite Side Reference */}
+          <div className="p-5 bg-amber-50/50 rounded-md border border-amber-100">
+            <label className="flex items-center gap-3 cursor-pointer mb-3">
+              <input
+                type="checkbox"
+                checked={useOppositeSideReference}
+                onChange={(e) => setUseOppositeSideReference(e.target.checked)}
+                className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+              />
+              <span className="text-sm font-semibold text-slate-700">
+                {flyerSide === 'front' ? '裏面を参照して統一感を出す' : '表面を参照して統一感を出す'}
+              </span>
+            </label>
+            {useOppositeSideReference && (
+              <div className="mt-3">
+                <ImageUploader
+                  label={flyerSide === 'front' ? '参照する裏面画像' : '参照する表面画像'}
+                  images={oppositeSideImage ? [oppositeSideImage] : []}
+                  onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
+                  maxImages={1}
+                />
+                <p className="text-[10px] text-amber-600 mt-2">アップロードした反対面の画像を参考にして、デザインの統一感を持たせます。</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1773,6 +2199,62 @@ ${header.length + uint8Array.length + 20}
           </div>
         </div>
 
+        {/* Customer Images (for Front Side) */}
+        <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">👥</div>
+            <h3 className="text-lg font-semibold text-slate-900">お客様画像</h3>
+            {firebaseEnabled && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
+            )}
+          </div>
+          <p className="text-[10px] text-slate-500 mb-4 ml-1">表面チラシで「お客様」として配置する画像。チェックを入れた画像のみ使用。</p>
+          <ImageUploader
+            label="お客様画像"
+            images={customerImages}
+            onImagesChange={handleCustomerImagesChange}
+          />
+          {/* Checkmark selection for customer images */}
+          {customerImages.length > 0 && (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {customerImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => toggleCustomerImageSelection(idx)}
+                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomerImageIndices.has(idx)
+                      ? 'border-rose-600 ring-2 ring-rose-200'
+                      : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                >
+                  <img
+                    src={img}
+                    alt={`お客様画像 ${idx + 1}`}
+                    className="w-full h-20 object-cover"
+                  />
+                  {/* Checkmark overlay */}
+                  <div
+                    className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCustomerImageIndices.has(idx)
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-white/80 text-slate-300 border border-slate-300'
+                      }`}
+                  >
+                    {selectedCustomerImageIndices.has(idx) ? '✓' : ''}
+                  </div>
+                  {/* Selection indicator */}
+                  {selectedCustomerImageIndices.has(idx) && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-rose-600 text-white text-[9px] font-bold text-center py-0.5">
+                      使用する
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {customerImages.length > 0 && selectedCustomerImageIndices.size === 0 && (
+            <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
+          )}
+        </div>
+
         {/* Store Logo */}
         <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
           <div className="flex items-center gap-3 mb-4">
@@ -1883,7 +2365,7 @@ ${header.length + uint8Array.length + 20}
             ) : (
               <>
                 <span className="mr-3 text-2xl">✨</span>
-                <span className="tracking-tight uppercase">チラシ生成</span>
+                <span className="tracking-tight uppercase">{flyerSide === 'front' ? '表面チラシ生成' : '裏面チラシ生成'}</span>
               </>
             )}
           </button>
