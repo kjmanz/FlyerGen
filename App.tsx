@@ -1561,21 +1561,19 @@ ${header.length + uint8Array.length + 20}
           <div className="inline-flex bg-slate-100 rounded-lg p-1 shadow-sm">
             <button
               onClick={() => setFlyerSide('front')}
-              className={`px-6 py-2.5 rounded-md font-semibold transition-all ${
-                flyerSide === 'front'
+              className={`px-6 py-2.5 rounded-md font-semibold transition-all ${flyerSide === 'front'
                   ? 'bg-white text-indigo-600 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
-              }`}
+                }`}
             >
               表面
             </button>
             <button
               onClick={() => setFlyerSide('back')}
-              className={`px-6 py-2.5 rounded-md font-semibold transition-all ${
-                flyerSide === 'back'
+              className={`px-6 py-2.5 rounded-md font-semibold transition-all ${flyerSide === 'back'
                   ? 'bg-white text-indigo-600 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
-              }`}
+                }`}
             >
               裏面
             </button>
@@ -1762,40 +1760,13 @@ ${header.length + uint8Array.length + 20}
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        {/* Back Side - Settings */}
-        {flyerSide === 'back' && (
-        <>
-        <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
-
-          <div className="flex items-center gap-3 mb-8 relative">
-            <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
-            <h2 className="text-xl font-semibold text-slate-900">出力設定</h2>
-          </div>
-
-          {/* Flyer Title Input */}
-          <div className="mb-10 relative">
-            <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシタイトル（任意）</label>
-            <input
-              type="text"
-              placeholder="例: 冬の家電セール、新生活応援フェア..."
-              value={settings.flyerTitle || ''}
-              onChange={(e) => setSettings({ ...settings, flyerTitle: e.target.value })}
-              className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-            />
-            <p className="text-[10px] text-slate-400 mt-2 ml-1">入力するとチラシ上部に大きく表示されます。未入力の場合はAIにおまかせ。</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 relative">
-            {/* Background Mode */}
-            <div>
+            {/* Background Mode (Front Side) */}
+            <div className="mb-6">
               <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード</label>
               <div className="flex gap-3">
                 <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
+                  <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
                   <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
                   <div>
                     <div className="text-xs font-semibold text-slate-900">おまかせ</div>
@@ -1803,7 +1774,7 @@ ${header.length + uint8Array.length + 20}
                   </div>
                 </label>
                 <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
+                  <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
                   <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
                   <div>
                     <div className="text-xs font-semibold text-slate-900">白配色</div>
@@ -1811,7 +1782,7 @@ ${header.length + uint8Array.length + 20}
                   </div>
                 </label>
                 <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
+                  <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
                   <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
                   <div>
                     <div className="text-xs font-semibold text-slate-900">自由記述</div>
@@ -1832,93 +1803,163 @@ ${header.length + uint8Array.length + 20}
                 </div>
               )}
             </div>
-
-            {/* Orientation */}
-            <div>
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシ形式</label>
-              <div className="flex gap-4">
-                <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'vertical' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="orientation" className="sr-only" checked={settings.orientation === 'vertical'} onChange={() => setSettings({ ...settings, orientation: 'vertical' })} />
-                  <div className="w-6 h-9 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
-                  <span className="text-sm font-semibold text-slate-900">縦向き</span>
-                </label>
-                <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'horizontal' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="orientation" className="sr-only" checked={settings.orientation === 'horizontal'} onChange={() => setSettings({ ...settings, orientation: 'horizontal' })} />
-                  <div className="w-9 h-6 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
-                  <span className="text-sm font-semibold text-slate-900">横向き</span>
-                </label>
-              </div>
-            </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative">
-            <div>
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">解像度・画質</label>
-              <div className="relative">
-                <select
-                  value={settings.imageSize}
-                  onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as any })}
-                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
-                >
-                  <option value="1K">1K（標準・高速）</option>
-                  <option value="2K">2K（高画質）</option>
-                  <option value="4K">4K（最高画質）</option>
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+        {/* Back Side - Settings */}
+        {flyerSide === 'back' && (
+          <>
+            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+
+              <div className="flex items-center gap-3 mb-8 relative">
+                <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
+                <h2 className="text-xl font-semibold text-slate-900">出力設定</h2>
+              </div>
+
+              {/* Flyer Title Input */}
+              <div className="mb-10 relative">
+                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシタイトル（任意）</label>
+                <input
+                  type="text"
+                  placeholder="例: 冬の家電セール、新生活応援フェア..."
+                  value={settings.flyerTitle || ''}
+                  onChange={(e) => setSettings({ ...settings, flyerTitle: e.target.value })}
+                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                />
+                <p className="text-[10px] text-slate-400 mt-2 ml-1">入力するとチラシ上部に大きく表示されます。未入力の場合はAIにおまかせ。</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 relative">
+                {/* Background Mode */}
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード</label>
+                  <div className="flex gap-3">
+                    <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
+                      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900">おまかせ</div>
+                        <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
+                      </div>
+                    </label>
+                    <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
+                      <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900">白配色</div>
+                        <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
+                      </div>
+                    </label>
+                    <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
+                      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900">自由記述</div>
+                        <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
+                      </div>
+                    </label>
+                  </div>
+                  {/* Custom Background Text Area */}
+                  {settings.backgroundMode === 'custom' && (
+                    <div className="mt-4">
+                      <textarea
+                        rows={3}
+                        placeholder="例: 桜の花びらが舞う春らしい背景、冬の雪景色風..."
+                        value={settings.customBackground || ''}
+                        onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
+                        className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Orientation */}
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシ形式</label>
+                  <div className="flex gap-4">
+                    <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'vertical' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="orientation" className="sr-only" checked={settings.orientation === 'vertical'} onChange={() => setSettings({ ...settings, orientation: 'vertical' })} />
+                      <div className="w-6 h-9 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
+                      <span className="text-sm font-semibold text-slate-900">縦向き</span>
+                    </label>
+                    <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'horizontal' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="orientation" className="sr-only" checked={settings.orientation === 'horizontal'} onChange={() => setSettings({ ...settings, orientation: 'horizontal' })} />
+                      <div className="w-9 h-6 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
+                      <span className="text-sm font-semibold text-slate-900">横向き</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative">
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">解像度・画質</label>
+                  <div className="relative">
+                    <select
+                      value={settings.imageSize}
+                      onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as any })}
+                      className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
+                    >
+                      <option value="1K">1K（標準・高速）</option>
+                      <option value="2K">2K（高画質）</option>
+                      <option value="4K">4K（最高画質）</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">バリエーション</label>
+                  <div className="relative">
+                    <select
+                      value={settings.patternCount}
+                      onChange={(e) => setSettings({ ...settings, patternCount: parseInt(e.target.value) })}
+                      className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
+                    >
+                      {[1, 2, 3, 4, 5].map(v => (
+                        <option key={v} value={v}>{v} パターン</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">バリエーション</label>
-              <div className="relative">
-                <select
-                  value={settings.patternCount}
-                  onChange={(e) => setSettings({ ...settings, patternCount: parseInt(e.target.value) })}
-                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
-                >
-                  {[1, 2, 3, 4, 5].map(v => (
-                    <option key={v} value={v}>{v} パターン</option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+
+            {/* Products */}
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📱</div>
+                  <h2 className="text-xl font-semibold text-slate-900">掲載商品</h2>
                 </div>
+                <button
+                  onClick={addProduct}
+                  className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
+                >
+                  ＋ 商品追加
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {products.map((p, idx) => (
+                  <ProductCard
+                    key={p.id}
+                    index={idx}
+                    product={p}
+                    onChange={updateProduct}
+                    onRemove={() => removeProduct(p.id)}
+                    onDuplicate={() => duplicateProduct(p)}
+                    apiKey={apiKey}
+                  />
+                ))}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Products */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📱</div>
-              <h2 className="text-xl font-semibold text-slate-900">掲載商品</h2>
-            </div>
-            <button
-              onClick={addProduct}
-              className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
-            >
-              ＋ 商品追加
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {products.map((p, idx) => (
-              <ProductCard
-                key={p.id}
-                index={idx}
-                product={p}
-                onChange={updateProduct}
-                onRemove={() => removeProduct(p.id)}
-                onDuplicate={() => duplicateProduct(p)}
-                apiKey={apiKey}
-              />
-            ))}
-          </div>
-        </div>
-        </>
+          </>
         )}
 
         {/* Common Settings Section (Both Front and Back) */}
@@ -2038,8 +2079,8 @@ ${header.length + uint8Array.length + 20}
                     key={idx}
                     onClick={() => toggleCharacterImageSelection(idx)}
                     className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCharacterIndices.has(idx)
-                        ? 'border-indigo-600 ring-2 ring-indigo-200'
-                        : 'border-slate-200 hover:border-slate-300'
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-slate-200 hover:border-slate-300'
                       }`}
                   >
                     <img
@@ -2050,8 +2091,8 @@ ${header.length + uint8Array.length + 20}
                     {/* Checkmark overlay */}
                     <div
                       className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCharacterIndices.has(idx)
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white/80 text-slate-300 border border-slate-300'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white/80 text-slate-300 border border-slate-300'
                         }`}
                     >
                       {selectedCharacterIndices.has(idx) ? '✓' : ''}
@@ -2107,8 +2148,8 @@ ${header.length + uint8Array.length + 20}
                     key={idx}
                     onClick={() => toggleCustomIllustrationSelection(idx)}
                     className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomIllustrationIndices.has(idx)
-                        ? 'border-indigo-600 ring-2 ring-indigo-200'
-                        : 'border-slate-200 hover:border-slate-300'
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-slate-200 hover:border-slate-300'
                       }`}
                   >
                     <img
@@ -2119,8 +2160,8 @@ ${header.length + uint8Array.length + 20}
                     {/* Checkmark overlay */}
                     <div
                       className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCustomIllustrationIndices.has(idx)
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white/80 text-slate-300 border border-slate-300'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white/80 text-slate-300 border border-slate-300'
                         }`}
                     >
                       {selectedCustomIllustrationIndices.has(idx) ? '✓' : ''}
@@ -2161,8 +2202,8 @@ ${header.length + uint8Array.length + 20}
                     key={idx}
                     onClick={() => setPreviewImage(img)}
                     className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedReferenceIndex === idx
-                        ? 'border-indigo-600 ring-2 ring-indigo-200'
-                        : 'border-slate-200 hover:border-slate-300'
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-slate-200 hover:border-slate-300'
                       }`}
                   >
                     <img
@@ -2177,8 +2218,8 @@ ${header.length + uint8Array.length + 20}
                         toggleReferenceImageSelection(idx);
                       }}
                       className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedReferenceIndex === idx
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white/80 text-slate-300 border border-slate-300'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white/80 text-slate-300 border border-slate-300'
                         }`}
                     >
                       {selectedReferenceIndex === idx ? '✓' : ''}
@@ -2222,8 +2263,8 @@ ${header.length + uint8Array.length + 20}
                   key={idx}
                   onClick={() => toggleCustomerImageSelection(idx)}
                   className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomerImageIndices.has(idx)
-                      ? 'border-rose-600 ring-2 ring-rose-200'
-                      : 'border-slate-200 hover:border-slate-300'
+                    ? 'border-rose-600 ring-2 ring-rose-200'
+                    : 'border-slate-200 hover:border-slate-300'
                     }`}
                 >
                   <img
@@ -2234,8 +2275,8 @@ ${header.length + uint8Array.length + 20}
                   {/* Checkmark overlay */}
                   <div
                     className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCustomerImageIndices.has(idx)
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-white/80 text-slate-300 border border-slate-300'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-white/80 text-slate-300 border border-slate-300'
                       }`}
                   >
                     {selectedCustomerImageIndices.has(idx) ? '✓' : ''}
@@ -2278,8 +2319,8 @@ ${header.length + uint8Array.length + 20}
                   key={idx}
                   onClick={() => toggleLogoImageSelection(idx)}
                   className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedLogoIndices.has(idx)
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-slate-200 hover:border-slate-300'
+                    ? 'border-indigo-600 ring-2 ring-indigo-200'
+                    : 'border-slate-200 hover:border-slate-300'
                     }`}
                 >
                   <img
@@ -2290,8 +2331,8 @@ ${header.length + uint8Array.length + 20}
                   {/* Checkmark overlay */}
                   <div
                     className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedLogoIndices.has(idx)
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white/80 text-slate-300 border border-slate-300'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white/80 text-slate-300 border border-slate-300'
                       }`}
                   >
                     {selectedLogoIndices.has(idx) ? '✓' : ''}
@@ -2571,13 +2612,12 @@ ${header.length + uint8Array.length + 20}
                         <button
                           onClick={() => handleUpscale(item)}
                           disabled={upscalingImageId === item.id || item.isUpscaled}
-                          className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${
-                            upscalingImageId === item.id
+                          className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
                               ? 'bg-slate-100 text-slate-600 cursor-wait'
                               : item.isUpscaled
                                 ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
                                 : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
-                          }`}
+                            }`}
                           title={item.isUpscaled ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)` : `AIアップスケール(${UPSCALE_SCALE}x)`}
                         >
                           {upscalingImageId === item.id ? (
@@ -2614,11 +2654,10 @@ ${header.length + uint8Array.length + 20}
                         <button
                           onClick={() => handleRemoveText(item)}
                           disabled={removingTextImageId === item.id}
-                          className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${
-                            removingTextImageId === item.id
+                          className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${removingTextImageId === item.id
                               ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                               : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
-                          }`}
+                            }`}
                           title="文字を消去"
                         >
                           {removingTextImageId === item.id ? (
