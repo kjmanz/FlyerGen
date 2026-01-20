@@ -98,6 +98,9 @@ const App: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isTaggingAll, setIsTaggingAll] = useState(false);
 
+  // Image Preview Modal State
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   // Manual Upload State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -1713,7 +1716,7 @@ ${header.length + uint8Array.length + 20}
                 {referenceImages.map((img, idx) => (
                   <div
                     key={idx}
-                    onClick={() => toggleReferenceImageSelection(idx)}
+                    onClick={() => setPreviewImage(img)}
                     className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedReferenceIndex === idx
                         ? 'border-indigo-600 ring-2 ring-indigo-200'
                         : 'border-slate-200 hover:border-slate-300'
@@ -1726,6 +1729,10 @@ ${header.length + uint8Array.length + 20}
                     />
                     {/* Checkmark overlay */}
                     <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleReferenceImageSelection(idx);
+                      }}
                       className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedReferenceIndex === idx
                           ? 'bg-indigo-600 text-white'
                           : 'bg-white/80 text-slate-300 border border-slate-300'
@@ -2368,6 +2375,29 @@ ${header.length + uint8Array.length + 20}
                 キャンセル
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-7xl max-h-[90vh] animate-slide-up">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-12 right-0 bg-white/90 hover:bg-white text-slate-700 font-bold px-4 py-2 rounded-lg shadow-lg transition-all"
+            >
+              ✕ 閉じる
+            </button>
+            <img
+              src={previewImage}
+              alt="プレビュー"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
       )}
