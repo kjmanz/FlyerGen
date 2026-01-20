@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Product, FlyerSettings, SpecSearchResult, CampaignInfo } from "../types";
+import { Product, FlyerSettings, SpecSearchResult, CampaignInfo, ProductServiceInfo, ContentSections, ReviewSearchResult } from "../types";
 
 // Helper to get client instance with provided API key
 const getClient = (apiKey: string) => {
@@ -928,5 +928,349 @@ ${referenceImages.length > 0 ? `
   }
 
   console.log(`Received ${result.images.length} front flyer image(s) from Batch API`);
+  return result.images;
+};
+
+// Generate product/service content from title using AI
+export const generateProductServiceContent = async (
+  title: string,
+  apiKey: string
+): Promise<Partial<ProductServiceInfo>> => {
+  const ai = getClient(apiKey);
+
+  const prompt = `
+あなたは日本の家電量販店のマーケティング専門家です。
+以下の商品・サービスについて、チラシ用のコンテンツを生成してください。
+
+【商品・サービス】
+${title}
+
+【生成項目】
+1. catchCopy: 目を引くキャッチコピー（30文字以内）
+2. specs: スペック・仕様の要約（100文字以内）
+3. features: 特徴・機能リスト（5つ、各30文字以内）
+4. benefits: お客様へのメリットリスト（5つ、各30文字以内）
+5. targetAudience: おすすめの方リスト（3つ、各20文字以内）
+6. energySaving: 省エネ性能（50文字以内）
+7. ecoContribution: 環境貢献（50文字以内）
+
+家電量販店のお客様向けに、分かりやすく魅力的な表現を使ってください。
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            catchCopy: { type: Type.STRING },
+            specs: { type: Type.STRING },
+            features: { type: Type.ARRAY, items: { type: Type.STRING } },
+            benefits: { type: Type.ARRAY, items: { type: Type.STRING } },
+            targetAudience: { type: Type.ARRAY, items: { type: Type.STRING } },
+            energySaving: { type: Type.STRING },
+            ecoContribution: { type: Type.STRING }
+          },
+          required: ["catchCopy", "features", "benefits"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("AIからの応答がありません。");
+    }
+    return JSON.parse(text) as Partial<ProductServiceInfo>;
+
+  } catch (error) {
+    console.error("Product service content generation failed:", error);
+    throw error;
+  }
+};
+
+// Search for product reviews using Google Search Grounding
+export const searchProductReviews = async (
+  title: string,
+  apiKey: string
+): Promise<ReviewSearchResult> => {
+  const ai = getClient(apiKey);
+
+  const prompt = `
+以下の商品・サービスについて、お客様のレビューや口コミをインターネットで検索し、まとめてください。
+
+【検索対象】
+${title} レビュー 口コミ 評判 メリット デメリット
+
+【出力形式】
+1. merits: よく挙げられるメリット（5つ、各30文字以内）
+2. satisfactionPoints: 満足ポイント（3つ、各30文字以内）
+3. purchaseReasons: 導入・購入のきっかけ（3つ、各30文字以内）
+4. concerns: 気になる点・注意点（3つ、各30文字以内）
+
+実際のユーザーの声を参考に、具体的で信頼性のある情報をまとめてください。
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            merits: { type: Type.ARRAY, items: { type: Type.STRING } },
+            satisfactionPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+            purchaseReasons: { type: Type.ARRAY, items: { type: Type.STRING } },
+            concerns: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["merits", "satisfactionPoints", "purchaseReasons"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("検索結果がありません。");
+    }
+    return JSON.parse(text) as ReviewSearchResult;
+
+  } catch (error) {
+    console.error("Review search failed:", error);
+    throw error;
+  }
+};
+
+// Generate product/service introduction flyer image
+export const generateProductServiceFlyer = async (
+  info: ProductServiceInfo,
+  settings: FlyerSettings,
+  staffImages: string[],
+  customerImages: string[],
+  storeLogoImages: string[],
+  customIllustrations: string[],
+  referenceImages: string[],
+  apiKey: string
+): Promise<string[]> => {
+  // Background instruction logic
+  let backgroundInstruction: string;
+  if (settings.backgroundMode === 'white') {
+    backgroundInstruction = "【最重要：背景は絶対に純白】背景色は必ず「純白（RGB: 255,255,255 / #FFFFFF）」のみを使用してください。";
+  } else if (settings.backgroundMode === 'custom' && settings.customBackground) {
+    backgroundInstruction = `【背景について - カスタム指定】以下の指定に沿った背景を作成してください：\n${settings.customBackground}`;
+  } else {
+    backgroundInstruction = "【背景について】商品・サービスの魅力を引き立てる、明るく親しみやすいデザインにしてください。";
+  }
+
+  // Logo position instruction
+  const logoPositionInstruction = settings.logoPosition === 'full-bottom'
+    ? '【店名ロゴの配置】チラシの最下部に左右いっぱいに横長で配置してください。'
+    : '【店名ロゴの配置】チラシの最下部の右側半分に配置してください。';
+
+  // Build content sections based on enabled flags
+  const sections = info.sections;
+  let contentBlock = "";
+
+  if (sections.catchCopy && info.catchCopy) {
+    contentBlock += `\n■ キャッチコピー（大きく目立たせる）:\n「${info.catchCopy}」\n`;
+  }
+  if (sections.specs && info.specs) {
+    contentBlock += `\n■ スペック・仕様:\n${info.specs}\n`;
+  }
+  if (sections.features && info.features.length > 0) {
+    contentBlock += `\n■ 特徴・機能:\n${info.features.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`;
+  }
+  if (sections.benefits && info.benefits.length > 0) {
+    contentBlock += `\n■ お客様へのメリット:\n${info.benefits.map((b, i) => `${i + 1}. ${b}`).join('\n')}\n`;
+  }
+  if (sections.targetAudience && info.targetAudience.length > 0) {
+    contentBlock += `\n■ こんな方におすすめ:\n${info.targetAudience.map(t => `・${t}`).join('\n')}\n`;
+  }
+  if (sections.beforeAfter && info.beforeAfter) {
+    contentBlock += `\n■ Before/After:\n${info.beforeAfter}\n`;
+  }
+  if (sections.customerReviews && info.customerReviews.length > 0) {
+    contentBlock += `\n■ お客様の声:\n${info.customerReviews.map(r => `「${r}」`).join('\n')}\n`;
+  }
+  if (sections.caseStudies && info.caseStudies) {
+    contentBlock += `\n■ 施工事例・実績:\n${info.caseStudies}\n`;
+  }
+  if (sections.warranty && info.warranty) {
+    contentBlock += `\n■ 保証・アフターサービス:\n${info.warranty}\n`;
+  }
+  if (sections.pricing && info.pricing) {
+    contentBlock += `\n■ 価格・料金目安:\n${info.pricing}\n`;
+  }
+  if (sections.subsidies && info.subsidies) {
+    contentBlock += `\n■ 補助金・助成金情報:\n${info.subsidies}\n`;
+  }
+  if (sections.limitedOffer && info.limitedOffer) {
+    contentBlock += `\n■ 期間限定特典:\n${info.limitedOffer}\n`;
+  }
+  if (sections.energySaving && info.energySaving) {
+    contentBlock += `\n■ 省エネ性能:\n${info.energySaving}\n`;
+  }
+  if (sections.ecoContribution && info.ecoContribution) {
+    contentBlock += `\n■ 環境貢献:\n${info.ecoContribution}\n`;
+  }
+  if (sections.faq && info.faq.length > 0) {
+    contentBlock += `\n■ よくある質問:\n${info.faq.map(qa => `Q: ${qa.q}\nA: ${qa.a}`).join('\n\n')}\n`;
+  }
+  if (sections.cta && info.cta) {
+    contentBlock += `\n■ お問い合わせ:\n${info.cta}\n`;
+  }
+
+  let prompt = `
+【役割】
+あなたは日本の家電量販店のプロのチラシデザイナーです。
+
+【タスク】
+商品・サービス紹介用の「表面チラシ」を作成してください。商品やサービスの魅力を最大限に伝え、お客様の興味を引くデザインにしてください。
+
+【出力仕様】
+- レイアウト: ${settings.orientation === 'vertical' ? 'A4縦 (210mm × 297mm)' : 'A4横 (297mm × 210mm)'}
+- 出力解像度: ${settings.imageSize}
+- 言語: 日本語
+- 雰囲気: 地域密着の信頼できる「街の電気屋さん」。親しみやすく、信頼感のあるデザイン。
+- ${backgroundInstruction}
+
+【★紹介する商品・サービス★】
+${info.title}
+
+【掲載内容】
+${contentBlock}
+
+【デザイン指示】
+1. タイトル「${info.title}」は画像の上部に大きく配置
+2. キャッチコピーは目立つ位置に強調表示
+3. 特徴・メリットは読みやすくリスト形式で配置
+4. ${staffImages.length > 0 ? '店員スタッフ画像を笑顔で親しみやすく配置' : ''}
+5. ${customerImages.length > 0 ? 'お客様画像を適切に配置' : ''}
+6. 商品画像があれば中央に大きく配置
+
+【画像の使用について】
+提供された画像は以下の順序で添付されています：
+1. 商品画像
+2. 店員スタッフ画像
+3. お客様画像
+4. 参考チラシ画像${referenceImages.length > 0 ? '（★デザインを参考に）' : ''}
+5. 使用イラスト
+6. 店名ロゴ画像
+
+${storeLogoImages.length > 0 ? `
+【★★★ 店名ロゴについて - 絶対厳守事項 ★★★】
+店名ロゴ画像が提供されています。以下のルールは絶対に違反してはいけません：
+1. ロゴは一切編集・加工・変形してはいけません
+2. ロゴの色、フォント、デザインを変更してはいけません
+3. ${logoPositionInstruction}
+` : ''}
+
+${customIllustrations.length > 0 ? `
+【使用イラストについて】
+使用イラスト画像が提供されています：
+1. イラストは一切編集・加工しないでください
+2. チラシ内のデザインアクセントとして適切に配置してください
+` : ''}
+
+${referenceImages.length > 0 ? `
+【★参考デザインの模倣指示★】
+参考チラシ画像が提供されています。レイアウト、色使い、タイポグラフィ、装飾要素を参考にしてください。
+` : ''}
+`;
+
+  if (settings.additionalInstructions) {
+    prompt += `\n【追加指示】\n${settings.additionalInstructions}`;
+  }
+
+  // Prepare content parts
+  const parts: any[] = [{ text: prompt }];
+
+  const processImage = async (imgData: string) => {
+    let base64Data = imgData;
+
+    if (imgData.startsWith('http')) {
+      try {
+        const resp = await fetch(imgData);
+        const blob = await resp.blob();
+        base64Data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error('Failed to fetch image from URL:', e);
+        return null;
+      }
+    }
+
+    const cleanBase64 = base64Data.split(',')[1] || base64Data;
+    return {
+      inlineData: {
+        mimeType: 'image/png',
+        data: cleanBase64
+      }
+    };
+  };
+
+  // Collect all images to process
+  const imagesToProcess: string[] = [];
+  imagesToProcess.push(...info.productImages);
+  imagesToProcess.push(...staffImages);
+  imagesToProcess.push(...customerImages);
+  imagesToProcess.push(...referenceImages);
+  imagesToProcess.push(...customIllustrations);
+  imagesToProcess.push(...storeLogoImages);
+
+  // Process all images concurrently
+  const processedImages = await Promise.all(imagesToProcess.map(processImage));
+  processedImages.forEach(img => {
+    if (img) parts.push(img);
+  });
+
+  // Determine aspect ratio
+  const aspectRatio = settings.orientation === 'vertical' ? '3:4' : '4:3';
+
+  // Create batch requests
+  const batchRequests = Array.from({ length: settings.patternCount }).map(() => ({
+    contents: { parts }
+  }));
+
+  console.log(`Sending ${batchRequests.length} product service flyer request(s) to API...`);
+
+  // API endpoint
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      requests: batchRequests,
+      imageSize: settings.imageSize,
+      aspectRatio: aspectRatio
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    let errorMessage = errorData.message || errorData.error || `Batch API error: ${response.status}`;
+    if (errorData.details && Array.isArray(errorData.details)) {
+      errorMessage += '\nDetails:\n' + errorData.details.map((d: any) => d.error || JSON.stringify(d)).join('\n');
+    }
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
+
+  if (!result.images || result.images.length === 0) {
+    throw new Error("画像の生成に失敗しました。");
+  }
+
+  console.log(`Received ${result.images.length} product service flyer image(s) from Batch API`);
   return result.images;
 };

@@ -72,3 +72,57 @@ export interface Preset {
   createdAt: number;
   updatedAt: number;
 }
+
+// 表面チラシのタイプ
+export type FrontFlyerType = 'campaign' | 'product-service';
+
+// 掲載項目の選択状態（16項目）
+export interface ContentSections {
+  catchCopy: boolean;        // キャッチコピー
+  specs: boolean;            // スペック・仕様
+  features: boolean;         // 特徴・機能
+  benefits: boolean;         // お客様へのメリット
+  targetAudience: boolean;   // こんな方におすすめ
+  beforeAfter: boolean;      // Before/After比較
+  customerReviews: boolean;  // お客様の声
+  caseStudies: boolean;      // 施工事例・実績
+  warranty: boolean;         // 保証・アフターサービス
+  pricing: boolean;          // 価格・料金目安
+  subsidies: boolean;        // 補助金・助成金
+  limitedOffer: boolean;     // 期間限定特典
+  energySaving: boolean;     // 省エネ性能
+  ecoContribution: boolean;  // 環境貢献
+  faq: boolean;              // よくある質問
+  cta: boolean;              // お問い合わせ・来店誘導
+}
+
+// 商品・サービス紹介情報
+export interface ProductServiceInfo {
+  title: string;                    // 紹介タイトル（例: エコキュート）
+  catchCopy: string;                // キャッチコピー
+  specs: string;                    // スペック・仕様
+  features: string[];               // 特徴・機能リスト
+  benefits: string[];               // メリットリスト
+  targetAudience: string[];         // こんな方におすすめ
+  beforeAfter: string;              // Before/After比較
+  customerReviews: string[];        // お客様の声
+  caseStudies: string;              // 施工事例
+  warranty: string;                 // 保証情報
+  pricing: string;                  // 価格情報
+  subsidies: string;                // 補助金情報
+  limitedOffer: string;             // 期間限定特典
+  energySaving: string;             // 省エネ性能
+  ecoContribution: string;          // 環境貢献
+  faq: { q: string; a: string }[];  // Q&A
+  cta: string;                      // CTA
+  productImages: string[];          // 商品画像
+  sections: ContentSections;        // 掲載項目の選択
+}
+
+// レビュー検索結果
+export interface ReviewSearchResult {
+  merits: string[];           // よく挙げられるメリット
+  satisfactionPoints: string[]; // 満足ポイント
+  purchaseReasons: string[];  // 導入のきっかけ
+  concerns: string[];         // 気になる点・注意点
+}

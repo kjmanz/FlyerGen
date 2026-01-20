@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo } from './types';
+import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo } from './types';
 import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
 import { ImageEditModal, EditRegion } from './components/ImageEditModal';
-import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage } from './services/geminiService';
+import { ProductServiceForm } from './components/ProductServiceForm';
+import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage, generateProductServiceFlyer } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -142,6 +143,47 @@ const App: React.FC = () => {
   // Opposite Side Reference Images (反対面参照用)
   const [oppositeSideImage, setOppositeSideImage] = useState<string>('');
   const [useOppositeSideReference, setUseOppositeSideReference] = useState(false);
+
+  // Product/Service Introduction State (商品・サービス紹介)
+  const [frontFlyerType, setFrontFlyerType] = useState<FrontFlyerType>('campaign');
+  const [productServiceInfo, setProductServiceInfo] = useState<ProductServiceInfo>({
+    title: '',
+    catchCopy: '',
+    specs: '',
+    features: [''],
+    benefits: [''],
+    targetAudience: [''],
+    beforeAfter: '',
+    customerReviews: [''],
+    caseStudies: '',
+    warranty: '',
+    pricing: '',
+    subsidies: '',
+    limitedOffer: '',
+    energySaving: '',
+    ecoContribution: '',
+    faq: [],
+    cta: '',
+    productImages: [],
+    sections: {
+      catchCopy: true,
+      specs: false,
+      features: true,
+      benefits: true,
+      targetAudience: false,
+      beforeAfter: false,
+      customerReviews: false,
+      caseStudies: false,
+      warranty: false,
+      pricing: false,
+      subsidies: false,
+      limitedOffer: false,
+      energySaving: false,
+      ecoContribution: false,
+      faq: false,
+      cta: false
+    }
+  });
 
   // Load History, Presets & API Key on mount (Firebase + local fallback)
   useEffect(() => {
@@ -610,19 +652,37 @@ const App: React.FC = () => {
 
       if (flyerSide === 'front') {
         // 表面生成処理
-        [results, tags] = await Promise.all([
-          generateFrontFlyerImage(
-            campaignInfo,
-            settings,
-            selectedCharacterImages,
-            selectedCustomerImages,
-            selectedStoreLogoImages,
-            selectedCustomIllustrations,
-            referenceWithOpposite,
-            apiKey
-          ),
-          Promise.resolve(['表面', campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
-        ]);
+        if (frontFlyerType === 'product-service') {
+          // 商品・サービス紹介モード
+          [results, tags] = await Promise.all([
+            generateProductServiceFlyer(
+              productServiceInfo,
+              settings,
+              selectedCharacterImages,
+              selectedCustomerImages,
+              selectedStoreLogoImages,
+              selectedCustomIllustrations,
+              referenceWithOpposite,
+              apiKey
+            ),
+            Promise.resolve(['表面', '商品紹介', productServiceInfo.title].filter(Boolean))
+          ]);
+        } else {
+          // キャンペーン訴求モード
+          [results, tags] = await Promise.all([
+            generateFrontFlyerImage(
+              campaignInfo,
+              settings,
+              selectedCharacterImages,
+              selectedCustomerImages,
+              selectedStoreLogoImages,
+              selectedCustomIllustrations,
+              referenceWithOpposite,
+              apiKey
+            ),
+            Promise.resolve(['表面', campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
+          ]);
+        }
       } else {
         // 裏面生成処理（既存ロジック）
         [results, tags] = await Promise.all([
@@ -1562,8 +1622,8 @@ ${header.length + uint8Array.length + 20}
             <button
               onClick={() => setFlyerSide('front')}
               className={`px-6 py-2.5 rounded-md font-semibold transition-all ${flyerSide === 'front'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
                 }`}
             >
               表面
@@ -1571,8 +1631,8 @@ ${header.length + uint8Array.length + 20}
             <button
               onClick={() => setFlyerSide('back')}
               className={`px-6 py-2.5 rounded-md font-semibold transition-all ${flyerSide === 'back'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
                 }`}
             >
               裏面
@@ -1604,206 +1664,242 @@ ${header.length + uint8Array.length + 20}
           </button>
         </div>
 
-        {/* Front Side - Campaign Form */}
+        {/* Front Side */}
         {flyerSide === 'front' && (
-          <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
-
-            <div className="flex items-center gap-3 mb-8 relative">
-              <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">📢</div>
-              <h2 className="text-xl font-semibold text-slate-900">キャンペーン情報（表面）</h2>
-            </div>
-
-            {/* Campaign Description - AI Trigger */}
-            <div className="mb-8 relative">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">何のキャンペーン？</label>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  placeholder="例: エアコンの買い替え促進、省エネ訴求"
-                  value={campaignInfo.campaignDescription}
-                  onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignDescription: e.target.value })}
-                  className="flex-1 rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                />
-                <button
-                  onClick={handleGenerateCampaignContent}
-                  disabled={isGeneratingCampaign || !campaignInfo.campaignDescription.trim()}
-                  className="px-5 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isGeneratingCampaign ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                      生成中
-                    </>
-                  ) : (
-                    <>✨ AI生成</>
-                  )}
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」を押すと、ヘッドラインとキャンペーン名が自動生成されます</p>
-            </div>
-
-            {/* Headline */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ヘッドライン（お客様の悩み）</label>
-              <input
-                type="text"
-                placeholder="例: まだ10年前のエアコン使っていませんか？"
-                value={campaignInfo.headline}
-                onChange={(e) => setCampaignInfo({ ...campaignInfo, headline: e.target.value })}
-                className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-              />
-            </div>
-
-            {/* Campaign Name */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン名</label>
-              <input
-                type="text"
-                placeholder="例: 夏の省エネ家電 買い替え応援フェア"
-                value={campaignInfo.campaignName}
-                onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignName: e.target.value })}
-                className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-              />
-            </div>
-
-            {/* Campaign Period */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">開始日</label>
-                <input
-                  type="date"
-                  value={campaignInfo.startDate}
-                  onChange={(e) => setCampaignInfo({ ...campaignInfo, startDate: e.target.value })}
-                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">終了日</label>
-                <input
-                  type="date"
-                  value={campaignInfo.endDate}
-                  onChange={(e) => setCampaignInfo({ ...campaignInfo, endDate: e.target.value })}
-                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
-                />
+          <>
+            {/* Front Flyer Type Selector */}
+            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-4 ml-1">表面チラシのタイプ</label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'campaign' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'campaign'} onChange={() => setFrontFlyerType('campaign')} />
+                  <div className="w-12 h-12 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-2xl mb-3">🎉</div>
+                  <div className="text-sm font-bold text-slate-900">キャンペーン訴求</div>
+                  <div className="text-[10px] text-slate-500 mt-1">セール・フェア告知</div>
+                </label>
+                <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'product-service' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'product-service'} onChange={() => setFrontFlyerType('product-service')} />
+                  <div className="w-12 h-12 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-2xl mb-3">📦</div>
+                  <div className="text-sm font-bold text-slate-900">商品・サービス紹介</div>
+                  <div className="text-[10px] text-slate-500 mt-1">機能・メリット訴求</div>
+                </label>
               </div>
             </div>
 
-            {/* Campaign Content */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン内容</label>
-              <textarea
-                rows={3}
-                placeholder="キャンペーンの詳細内容を記述..."
-                value={campaignInfo.content}
-                onChange={(e) => setCampaignInfo({ ...campaignInfo, content: e.target.value })}
-                className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-              />
-            </div>
+            {/* Campaign Mode Form */}
+            {frontFlyerType === 'campaign' && (
+              <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
 
-            {/* Benefits List */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">特典リスト</label>
-              {campaignInfo.benefits.map((benefit, idx) => (
-                <div key={idx} className="flex gap-2 mb-2">
+                <div className="flex items-center gap-3 mb-8 relative">
+                  <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">📢</div>
+                  <h2 className="text-xl font-semibold text-slate-900">キャンペーン情報（表面）</h2>
+                </div>
+
+                {/* Campaign Description - AI Trigger */}
+                <div className="mb-8 relative">
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">何のキャンペーン？</label>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      placeholder="例: エアコンの買い替え促進、省エネ訴求"
+                      value={campaignInfo.campaignDescription}
+                      onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignDescription: e.target.value })}
+                      className="flex-1 rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                    />
+                    <button
+                      onClick={handleGenerateCampaignContent}
+                      disabled={isGeneratingCampaign || !campaignInfo.campaignDescription.trim()}
+                      className="px-5 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isGeneratingCampaign ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                          生成中
+                        </>
+                      ) : (
+                        <>✨ AI生成</>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」を押すと、ヘッドラインとキャンペーン名が自動生成されます</p>
+                </div>
+
+                {/* Headline */}
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ヘッドライン（お客様の悩み）</label>
                   <input
                     type="text"
-                    placeholder={`特典 ${idx + 1}...`}
-                    value={benefit}
-                    onChange={(e) => {
-                      const newBenefits = [...campaignInfo.benefits];
-                      newBenefits[idx] = e.target.value;
-                      setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
-                    }}
-                    className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                  />
-                  {campaignInfo.benefits.length > 1 && (
-                    <button
-                      onClick={() => {
-                        const newBenefits = campaignInfo.benefits.filter((_, i) => i !== idx);
-                        setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
-                      }}
-                      className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md transition-all"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                onClick={() => setCampaignInfo({ ...campaignInfo, benefits: [...campaignInfo.benefits, ''] })}
-                className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2"
-              >
-                ＋ 特典を追加
-              </button>
-            </div>
-
-            {/* Product Image (Optional) */}
-            <div className="mb-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={campaignInfo.useProductImage}
-                  onChange={(e) => setCampaignInfo({ ...campaignInfo, useProductImage: e.target.checked })}
-                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm font-semibold text-slate-700">メイン商品画像を使用する（任意）</span>
-              </label>
-              {campaignInfo.useProductImage && (
-                <div className="mt-4">
-                  <ImageUploader
-                    label="メイン商品画像"
-                    images={campaignInfo.productImage ? [campaignInfo.productImage] : []}
-                    onImagesChange={(images) => setCampaignInfo({ ...campaignInfo, productImage: images[0] || '' })}
-                    maxImages={1}
+                    placeholder="例: まだ10年前のエアコン使っていませんか？"
+                    value={campaignInfo.headline}
+                    onChange={(e) => setCampaignInfo({ ...campaignInfo, headline: e.target.value })}
+                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
                   />
                 </div>
-              )}
-            </div>
 
-            {/* Background Mode (Front Side) */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード</label>
-              <div className="flex gap-3">
-                <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
-                  <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
+                {/* Campaign Name */}
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン名</label>
+                  <input
+                    type="text"
+                    placeholder="例: 夏の省エネ家電 買い替え応援フェア"
+                    value={campaignInfo.campaignName}
+                    onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignName: e.target.value })}
+                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                  />
+                </div>
+
+                {/* Campaign Period */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
-                    <div className="text-xs font-semibold text-slate-900">おまかせ</div>
-                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
+                    <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">開始日</label>
+                    <input
+                      type="date"
+                      value={campaignInfo.startDate}
+                      onChange={(e) => setCampaignInfo({ ...campaignInfo, startDate: e.target.value })}
+                      className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
+                    />
                   </div>
-                </label>
-                <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
-                  <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-900">白配色</div>
-                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
+                    <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">終了日</label>
+                    <input
+                      type="date"
+                      value={campaignInfo.endDate}
+                      onChange={(e) => setCampaignInfo({ ...campaignInfo, endDate: e.target.value })}
+                      className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
+                    />
                   </div>
-                </label>
-                <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
-                  <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-900">自由記述</div>
-                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
-                  </div>
-                </label>
-              </div>
-              {/* Custom Background Text Area */}
-              {settings.backgroundMode === 'custom' && (
-                <div className="mt-4">
+                </div>
+
+                {/* Campaign Content */}
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン内容</label>
                   <textarea
                     rows={3}
-                    placeholder="例: 桜の花びらが舞う春らしい背景、冬の雪景色風..."
-                    value={settings.customBackground || ''}
-                    onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
+                    placeholder="キャンペーンの詳細内容を記述..."
+                    value={campaignInfo.content}
+                    onChange={(e) => setCampaignInfo({ ...campaignInfo, content: e.target.value })}
                     className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
                   />
                 </div>
-              )}
-            </div>
-          </div>
+
+                {/* Benefits List */}
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">特典リスト</label>
+                  {campaignInfo.benefits.map((benefit, idx) => (
+                    <div key={idx} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder={`特典 ${idx + 1}...`}
+                        value={benefit}
+                        onChange={(e) => {
+                          const newBenefits = [...campaignInfo.benefits];
+                          newBenefits[idx] = e.target.value;
+                          setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
+                        }}
+                        className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                      />
+                      {campaignInfo.benefits.length > 1 && (
+                        <button
+                          onClick={() => {
+                            const newBenefits = campaignInfo.benefits.filter((_, i) => i !== idx);
+                            setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
+                          }}
+                          className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md transition-all"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setCampaignInfo({ ...campaignInfo, benefits: [...campaignInfo.benefits, ''] })}
+                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2"
+                  >
+                    ＋ 特典を追加
+                  </button>
+                </div>
+
+                {/* Product Image (Optional) */}
+                <div className="mb-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={campaignInfo.useProductImage}
+                      onChange={(e) => setCampaignInfo({ ...campaignInfo, useProductImage: e.target.checked })}
+                      className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm font-semibold text-slate-700">メイン商品画像を使用する（任意）</span>
+                  </label>
+                  {campaignInfo.useProductImage && (
+                    <div className="mt-4">
+                      <ImageUploader
+                        label="メイン商品画像"
+                        images={campaignInfo.productImage ? [campaignInfo.productImage] : []}
+                        onImagesChange={(images) => setCampaignInfo({ ...campaignInfo, productImage: images[0] || '' })}
+                        maxImages={1}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Background Mode (Front Side) */}
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード</label>
+                  <div className="flex gap-3">
+                    <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
+                      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900">おまかせ</div>
+                        <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
+                      </div>
+                    </label>
+                    <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
+                      <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900">白配色</div>
+                        <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
+                      </div>
+                    </label>
+                    <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="frontBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
+                      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900">自由記述</div>
+                        <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
+                      </div>
+                    </label>
+                  </div>
+                  {/* Custom Background Text Area */}
+                  {settings.backgroundMode === 'custom' && (
+                    <div className="mt-4">
+                      <textarea
+                        rows={3}
+                        placeholder="例: 桜の花びらが舞う春らしい背景、冬の雪景色風..."
+                        value={settings.customBackground || ''}
+                        onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
+                        className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Product/Service Mode Form */}
+            {frontFlyerType === 'product-service' && (
+              <ProductServiceForm
+                productServiceInfo={productServiceInfo}
+                setProductServiceInfo={setProductServiceInfo}
+                settings={settings}
+                setSettings={setSettings}
+                apiKey={apiKey}
+                onSettingsOpen={() => setIsSettingsOpen(true)}
+              />
+            )}
+          </>
         )}
 
         {/* Back Side - Settings */}
@@ -2557,10 +2653,10 @@ ${header.length + uint8Array.length + 20}
                           onClick={() => handleUpscale(item)}
                           disabled={upscalingImageId === item.id || item.isUpscaled}
                           className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
-                              ? 'bg-slate-100 text-slate-600 cursor-wait'
-                              : item.isUpscaled
-                                ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
-                                : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
+                            ? 'bg-slate-100 text-slate-600 cursor-wait'
+                            : item.isUpscaled
+                              ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
+                              : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                             }`}
                           title={item.isUpscaled ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)` : `AIアップスケール(${UPSCALE_SCALE}x)`}
                         >
@@ -2599,8 +2695,8 @@ ${header.length + uint8Array.length + 20}
                           onClick={() => handleRemoveText(item)}
                           disabled={removingTextImageId === item.id}
                           className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${removingTextImageId === item.id
-                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                              : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                             }`}
                           title="文字を消去"
                         >
