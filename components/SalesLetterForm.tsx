@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SalesLetterInfo, SalesFramework, FlyerSettings } from '../types';
 import { ImageUploader } from './ImageUploader';
-import { searchSalesFieldData } from '../services/geminiService';
+import { searchSalesFieldData, searchAllSalesFields } from '../services/geminiService';
 
 interface SalesLetterFormProps {
     salesLetterInfo: SalesLetterInfo;
@@ -21,6 +21,56 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
     onSettingsOpen
 }) => {
     const [searchingField, setSearchingField] = useState<string | null>(null);
+    const [searchingAll, setSearchingAll] = useState(false);
+
+    // 一括AI検索（商品名から全フィールドを自動入力）
+    const handleSearchAll = async () => {
+        if (!apiKey) {
+            onSettingsOpen();
+            alert("APIキーが設定されていません。");
+            return;
+        }
+        if (!salesLetterInfo.productName.trim()) {
+            alert("商品・サービス名を入力してください。");
+            return;
+        }
+
+        setSearchingAll(true);
+        try {
+            const result = await searchAllSalesFields(
+                salesLetterInfo.productName,
+                salesLetterInfo.framework,
+                apiKey
+            );
+
+            setSalesLetterInfo(prev => ({
+                ...prev,
+                headline: result.headline || prev.headline,
+                problems: result.problems.length > 0 ? result.problems : prev.problems,
+                benefits: result.benefits.length > 0 ? result.benefits : prev.benefits,
+                affinity: result.affinity || prev.affinity,
+                solution: result.solution || prev.solution,
+                offer: result.offer || prev.offer,
+                narrowing: result.narrowing || prev.narrowing,
+                desire: result.desire || prev.desire,
+                cta: result.cta || prev.cta,
+                socialProof: {
+                    experience: result.socialProof.experience || prev.socialProof.experience,
+                    cases: result.socialProof.cases || prev.socialProof.cases,
+                    customerVoices: result.socialProof.customerVoices.length > 0
+                        ? result.socialProof.customerVoices
+                        : prev.socialProof.customerVoices
+                }
+            }));
+
+            alert("全フィールドにAI検索結果を反映しました！");
+        } catch (e) {
+            console.error(e);
+            alert("AI検索に失敗しました。もう一度お試しください。");
+        } finally {
+            setSearchingAll(false);
+        }
+    };
 
     const handleSearch = async (fieldType: 'problems' | 'benefits' | 'affinity' | 'solution' | 'offer' | 'desire' | 'socialProof') => {
         if (!apiKey) {
@@ -110,13 +160,33 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
             {/* Product Name */}
             <div className="mb-8 relative">
                 <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">商品・サービス名</label>
-                <input
-                    type="text"
-                    placeholder="例: エコキュート、内窓リフォーム..."
-                    value={salesLetterInfo.productName}
-                    onChange={(e) => setSalesLetterInfo({ ...salesLetterInfo, productName: e.target.value })}
-                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300"
-                />
+                <div className="flex gap-3">
+                    <input
+                        type="text"
+                        placeholder="例: エコキュート、内窓リフォーム..."
+                        value={salesLetterInfo.productName}
+                        onChange={(e) => setSalesLetterInfo({ ...salesLetterInfo, productName: e.target.value })}
+                        className="flex-1 rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300"
+                    />
+                    <button
+                        onClick={handleSearchAll}
+                        disabled={searchingAll || searchingField !== null || !salesLetterInfo.productName.trim()}
+                        className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-md text-sm font-bold hover:from-indigo-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md hover:shadow-lg whitespace-nowrap"
+                    >
+                        {searchingAll ? (
+                            <>
+                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                検索中...
+                            </>
+                        ) : (
+                            <>✨ AI一括検索</>
+                        )}
+                    </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2 ml-1">商品名を入力して「AI一括検索」を押すと、下のフィールドが自動で埋まります</p>
             </div>
 
             {/* Headline */}
