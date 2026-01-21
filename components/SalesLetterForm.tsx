@@ -72,7 +72,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
         }
     };
 
-    const handleSearch = async (fieldType: 'problems' | 'benefits' | 'affinity' | 'solution' | 'offer' | 'desire' | 'socialProof') => {
+    const handleSearch = async (fieldType: 'headline' | 'problems' | 'benefits' | 'affinity' | 'solution' | 'offer' | 'desire' | 'socialProof') => {
         if (!apiKey) {
             onSettingsOpen();
             alert("APIキーが設定されていません。");
@@ -87,7 +87,9 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
         try {
             const result = await searchSalesFieldData(salesLetterInfo.productName, fieldType, apiKey);
 
-            if (fieldType === 'problems') {
+            if (fieldType === 'headline') {
+                setSalesLetterInfo(prev => ({ ...prev, headline: result.suggestions[0] || prev.headline }));
+            } else if (fieldType === 'problems') {
                 setSalesLetterInfo(prev => ({ ...prev, problems: [...new Set([...prev.problems.filter(p => p.trim()), ...result.suggestions])] }));
             } else if (fieldType === 'benefits') {
                 setSalesLetterInfo(prev => ({ ...prev, benefits: [...new Set([...prev.benefits.filter(b => b.trim()), ...result.suggestions])] }));
@@ -195,6 +197,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                     <label className="text-xs font-semibold tracking-wide text-amber-700">
                         {salesLetterInfo.framework === 'pasona' ? 'P：問題提起（ヘッドライン）' : 'A：Attention（キャッチコピー）'}
                     </label>
+                    <SearchButton fieldType="headline" disabled={!salesLetterInfo.productName.trim()} />
                 </div>
                 <input
                     type="text"

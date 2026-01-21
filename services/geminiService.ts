@@ -1292,7 +1292,7 @@ ${referenceImages.length > 0 ? `
 // セールスレター用フィールド別AI検索（具体的な数値を含む）
 export const searchSalesFieldData = async (
   productName: string,
-  fieldType: 'problems' | 'benefits' | 'affinity' | 'solution' | 'offer' | 'desire' | 'socialProof',
+  fieldType: 'headline' | 'problems' | 'benefits' | 'affinity' | 'solution' | 'offer' | 'desire' | 'socialProof',
   apiKey: string
 ): Promise<{
   suggestions: string[];
@@ -1301,6 +1301,12 @@ export const searchSalesFieldData = async (
   const ai = getClient(apiKey);
 
   const fieldPrompts: Record<string, string> = {
+    headline: `
+「${productName}」に関するキャッチコピー・ヘッドラインを5つ作成してください。
+お客様の悩みを問いかける形式や、課題提起の形式で作成してください。
+お客様が「自分のことだ」と感じる表現を心がけてください。
+例：「まだ10年前のエアコン使っていませんか？」「電気代、毎月気になりませんか？」
+`,
     problems: `
 「${productName}」を検討するお客様が抱える悩み・問題点を5つ調査してください。
 具体的な生活シーンや状況を含めて、共感できる表現で記述してください。
@@ -1339,7 +1345,7 @@ export const searchSalesFieldData = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: fieldPrompts[fieldType] }] }],
       config: {
         tools: [{ googleSearch: {} }],
@@ -1435,7 +1441,7 @@ ${frameworkPrompt}
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         tools: [{ googleSearch: {} }],
