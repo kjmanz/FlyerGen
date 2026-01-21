@@ -740,6 +740,7 @@ ${campaignDescription}
 export const generateFrontFlyerImage = async (
   campaignInfo: CampaignInfo,
   settings: FlyerSettings,
+  productImages: string[],
   staffImages: string[],        // 店側スタッフ（キャラクター画像）
   customerImages: string[],     // お客様画像
   storeLogoImages: string[],
@@ -878,8 +879,9 @@ ${referenceImages.length > 0 ? `
     };
   };
 
-  // Collect all images to process
+  // Collect all images to process (product images first)
   const imagesToProcess: string[] = [];
+  imagesToProcess.push(...productImages);
   imagesToProcess.push(...staffImages);
   imagesToProcess.push(...customerImages);
   imagesToProcess.push(...referenceImages);
@@ -1057,6 +1059,7 @@ ${title} レビュー 口コミ 評判 メリット デメリット
 export const generateProductServiceFlyer = async (
   info: ProductServiceInfo,
   settings: FlyerSettings,
+  productImages: string[],
   staffImages: string[],
   customerImages: string[],
   storeLogoImages: string[],
@@ -1233,6 +1236,7 @@ ${referenceImages.length > 0 ? `
 
   // Collect all images to process
   const imagesToProcess: string[] = [];
+  imagesToProcess.push(...productImages);
   imagesToProcess.push(...info.productImages);
   imagesToProcess.push(...staffImages);
   imagesToProcess.push(...customerImages);
@@ -1503,6 +1507,7 @@ ${frameworkPrompt}
 export const generateSalesLetterFlyer = async (
   salesLetterInfo: SalesLetterInfo,
   settings: FlyerSettings,
+  productImages: string[],
   staffImages: string[],
   customerImages: string[],
   storeLogoImages: string[],
@@ -1639,8 +1644,7 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
     return { inlineData: { mimeType: 'image/png', data: cleanBase64 } };
   };
 
-  // Add images in order
-  const productImages: string[] = []; // From salesLetterInfo if needed
+  // Add images in order (product images first, then staff, customer, etc.)
   for (const img of [...productImages, ...staffImages, ...customerImages, ...referenceImages, ...customIllustrations, ...storeLogoImages]) {
     const processed = await processImage(img);
     if (processed) parts.push(processed);

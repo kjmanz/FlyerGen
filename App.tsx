@@ -32,6 +32,8 @@ import {
   getCustomIllustrations,
   saveCustomerImages,
   getCustomerImages,
+  saveFrontProductImages,
+  getFrontProductImages,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -138,6 +140,11 @@ const App: React.FC = () => {
   const [customerImages, setCustomerImages] = useState<string[]>([]);
   const [selectedCustomerImageIndices, setSelectedCustomerImageIndices] = useState<Set<number>>(new Set());
 
+  // Front Product Images State (表面チラシ用商品画像)
+  const [frontProductImages, setFrontProductImages] = useState<string[]>([]);
+  const [selectedFrontProductIndices, setSelectedFrontProductIndices] = useState<Set<number>>(new Set());
+
+
   // Campaign AI Generation State
   const [isGeneratingCampaign, setIsGeneratingCampaign] = useState(false);
 
@@ -228,14 +235,15 @@ const App: React.FC = () => {
         // Try to load from Firebase first
         if (firebaseEnabled) {
           console.log('Loading from Firebase...');
-          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages, cloudCustomIllustrations, cloudCustomerImages] = await Promise.all([
+          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages, cloudCustomIllustrations, cloudCustomerImages, cloudFrontProductImages] = await Promise.all([
             getCloudImages(),
             getCloudPresets(),
             getReferenceImages(),
             getCharacterImages(),
             getStoreLogoImages(),
             getCustomIllustrations(),
-            getCustomerImages()
+            getCustomerImages(),
+            getFrontProductImages()
           ]);
 
           if (cloudImages.length > 0) {
@@ -297,6 +305,12 @@ const App: React.FC = () => {
           if (cloudCustomerImages.images.length > 0) {
             setCustomerImages(cloudCustomerImages.images);
             setSelectedCustomerImageIndices(new Set(cloudCustomerImages.selectedIndices));
+          }
+
+          // Load front product images independently (not from presets)
+          if (cloudFrontProductImages.images.length > 0) {
+            setFrontProductImages(cloudFrontProductImages.images);
+            setSelectedFrontProductIndices(new Set(cloudFrontProductImages.selectedIndices));
           }
         } else {
           // Fallback to local storage
@@ -453,6 +467,57 @@ const App: React.FC = () => {
     });
     if (!customerImagesInitialized) {
       setCustomerImagesInitialized(true);
+    }
+  };
+
+  // Sync front product images to cloud when changed (independent of presets)
+  const [frontProductImagesInitialized, setFrontProductImagesInitialized] = React.useState(false);
+  useEffect(() => {
+    // Skip initial load sync - only sync user changes
+    if (!frontProductImagesInitialized) {
+      if (frontProductImages.length > 0) {
+        setFrontProductImagesInitialized(true);
+      }
+      return;
+    }
+
+    if (firebaseEnabled) {
+      // Debounce the sync to avoid too many writes
+      const syncTimeout = setTimeout(() => {
+        console.log('Syncing front product images to cloud...');
+        saveFrontProductImages(frontProductImages, Array.from(selectedFrontProductIndices));
+      }, 1000);
+
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [frontProductImages, selectedFrontProductIndices, frontProductImagesInitialized]);
+
+  // Handle front product images change with cloud sync
+  const handleFrontProductImagesChange = (images: string[]) => {
+    // When images change, update selected indices to remove any that are out of bounds
+    const newSelectedIndices = new Set(
+      Array.from(selectedFrontProductIndices).filter(i => i < images.length)
+    );
+    setSelectedFrontProductIndices(newSelectedIndices);
+    setFrontProductImages(images);
+    if (!frontProductImagesInitialized) {
+      setFrontProductImagesInitialized(true);
+    }
+  };
+
+  // Toggle front product image selection
+  const toggleFrontProductImageSelection = (index: number) => {
+    setSelectedFrontProductIndices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+    if (!frontProductImagesInitialized) {
+      setFrontProductImagesInitialized(true);
     }
   };
 
@@ -663,6 +728,7 @@ const App: React.FC = () => {
       const selectedStoreLogoImages = storeLogoImages.filter((_, idx) => selectedLogoIndices.has(idx));
       const selectedCustomIllustrations = customIllustrations.filter((_, idx) => selectedCustomIllustrationIndices.has(idx));
       const selectedCustomerImages = customerImages.filter((_, idx) => selectedCustomerImageIndices.has(idx));
+      const selectedProductImages = frontProductImages.filter((_, idx) => selectedFrontProductIndices.has(idx));
 
       // Add opposite side reference if enabled
       const referenceWithOpposite = useOppositeSideReference && oppositeSideImage
@@ -681,6 +747,7 @@ const App: React.FC = () => {
               generateSalesLetterFlyer(
                 salesLetterInfo,
                 settings,
+                selectedProductImages,
                 selectedCharacterImages,
                 selectedCustomerImages,
                 selectedStoreLogoImages,
@@ -696,6 +763,7 @@ const App: React.FC = () => {
               generateProductServiceFlyer(
                 productServiceInfo,
                 settings,
+                selectedProductImages,
                 selectedCharacterImages,
                 selectedCustomerImages,
                 selectedStoreLogoImages,
@@ -712,6 +780,7 @@ const App: React.FC = () => {
             generateFrontFlyerImage(
               campaignInfo,
               settings,
+              selectedProductImages,
               selectedCharacterImages,
               selectedCustomerImages,
               selectedStoreLogoImages,
@@ -1982,6 +2051,56 @@ ${header.length + uint8Array.length + 20}
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${salesLetterMode ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                   </div>
+                </div>
+
+                {/* Front Product Images Section */}
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-sm">📦</div>
+                    <div>
+                      <div className="text-sm font-bold text-slate-900">商品画像</div>
+                      <div className="text-[10px] text-slate-500">チラシに掲載する商品画像をアップロード</div>
+                    </div>
+                  </div>
+
+                  <ImageUploader
+                    images={frontProductImages}
+                    onImagesChange={handleFrontProductImagesChange}
+                    maxImages={10}
+                    label=""
+                  />
+
+                  {/* Image Selection Grid with Checkmarks */}
+                  {frontProductImages.length > 0 && (
+                    <div className="mt-4">
+                      <div className="text-xs text-slate-500 mb-2">クリックで使用する画像を選択（{selectedFrontProductIndices.size}枚選択中）</div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {frontProductImages.map((img, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => toggleFrontProductImageSelection(idx)}
+                            className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedFrontProductIndices.has(idx)
+                              ? 'border-emerald-500 ring-2 ring-emerald-200'
+                              : 'border-slate-200 opacity-60 hover:opacity-100'
+                              }`}
+                          >
+                            <img
+                              src={img}
+                              alt={`商品画像 ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {selectedFrontProductIndices.has(idx) && (
+                              <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Conditional Form Display */}

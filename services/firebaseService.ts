@@ -797,3 +797,82 @@ export const getCustomIllustrations = async (): Promise<{ images: string[], sele
         return { images: [], selectedIndices: [] };
     }
 };
+
+// ===== FRONT PRODUCT IMAGES (Independent Cloud Sync) =====
+
+// Upload front product image to Firebase Storage
+const uploadFrontProductImage = async (base64Data: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `front_product_images/product_${index}_${Date.now()}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload front product image ${index}:`, e);
+        return base64Data;
+    }
+};
+
+// Save front product images to Firestore (independent of presets)
+export const saveFrontProductImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
+    if (!db || !storage) {
+        console.log('saveFrontProductImages: db or storage is null');
+        return false;
+    }
+    try {
+        console.log(`Saving ${images.length} front product images to cloud...`);
+
+        // Upload all images to Storage
+        const imageUrls = await Promise.all(
+            images.map((img, i) => uploadFrontProductImage(img, i))
+        );
+
+        // Save URLs and selected indices to Firestore
+        const docRef = doc(db, 'settings', 'front_product_images');
+        await setDoc(docRef, {
+            images: imageUrls,
+            selectedIndices: selectedIndices,
+            updatedAt: Date.now()
+        });
+
+        console.log('Front product images saved successfully');
+        return true;
+    } catch (e) {
+        console.error('Save front product images error:', e);
+        return false;
+    }
+};
+
+// Get front product images from Firestore
+export const getFrontProductImages = async (): Promise<{ images: string[], selectedIndices: number[] }> => {
+    if (!db) {
+        console.log('getFrontProductImages: db is null');
+        return { images: [], selectedIndices: [] };
+    }
+    try {
+        console.log('Fetching front product images from cloud...');
+        const docSnap = await getDocs(collection(db, 'settings'));
+
+        let images: string[] = [];
+        let selectedIndices: number[] = [];
+        docSnap.forEach((d) => {
+            if (d.id === 'front_product_images') {
+                const data = d.data();
+                images = data.images || [];
+                selectedIndices = data.selectedIndices || [];
+            }
+        });
+
+        console.log(`Fetched ${images.length} front product images from cloud`);
+        return { images, selectedIndices };
+    } catch (e) {
+        console.error('Get front product images error:', e);
+        return { images: [], selectedIndices: [] };
+    }
+};
