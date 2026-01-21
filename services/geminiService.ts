@@ -1613,7 +1613,7 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
 `;
 
   if (settings.additionalInstructions) {
-    // Add additional instructions if any
+    prompt += `\n【追加指示】\n${settings.additionalInstructions}`;
   }
 
   // Prepare content parts
