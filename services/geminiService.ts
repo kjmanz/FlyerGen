@@ -1373,6 +1373,126 @@ export const searchSalesFieldData = async (
   }
 };
 
+// セールスレター用一括AI検索（商品名から全フィールドを自動生成）
+export const searchAllSalesFields = async (
+  productName: string,
+  framework: 'aida' | 'pasona',
+  apiKey: string
+): Promise<{
+  headline: string;
+  problems: string[];
+  benefits: string[];
+  affinity: string;
+  solution: string;
+  offer: string;
+  narrowing: string;
+  desire: string;
+  cta: string;
+  socialProof: {
+    experience: string;
+    cases: string;
+    customerVoices: string[];
+  };
+}> => {
+  const ai = getClient(apiKey);
+
+  const frameworkPrompt = framework === 'pasona' ? `
+【新PASONAフレームワーク】で「${productName}」のセールスレター素材を生成してください。
+
+P（Problem）問題提起: お客様が抱える悩みを端的に表現するヘッドラインを1つ
+問題点の詳細: 具体的な悩み・問題を5つ（生活シーン付き）
+A（Affinity）共感: 「私も同じでした」「多くのお客様が同じ悩みを抱えています」などの寄り添いメッセージ
+S（Solution）解決策: この商品でどう解決するかを具体的に（お客様の生活がどう変わるか）
+O（Offer）提案・特典: 価格、特典、保証などのオファーアイデア
+N（Narrowing）絞り込み: 「先着○名様」「今月限定」などの限定性
+A（Action）行動喚起: 「今すぐお電話」などのCTA
+
+ベネフィット: 具体的な数値入りのメリット5つ（年間○○円節約、○○%削減など）
+証拠・信頼性: 実績年数、施工件数、お客様の声3つ
+` : `
+【AIDAフレームワーク】で「${productName}」のセールスレター素材を生成してください。
+
+A（Attention）注意喚起: お客様の目を引くキャッチコピーを1つ
+I（Interest）興味喚起: 具体的な悩み・問題を5つ（生活シーン付き）
+D（Desire）欲求喚起: 商品を使った後の魅力的な未来像
+A（Action）行動喚起: 「今すぐお電話」などのCTA
+
+ベネフィット: 具体的な数値入りのメリット5つ（年間○○円節約、○○%削減など）
+証拠・信頼性: 実績年数、施工件数、お客様の声3つ
+`;
+
+  const prompt = `
+あなたは日本の住宅設備・リフォーム業界のマーケティング専門家です。
+インターネットで「${productName}」について調査し、実際のデータに基づいて以下の情報を生成してください。
+
+${frameworkPrompt}
+
+【重要】
+- 具体的な数値データを必ず含めてください
+- 日本の消費者に響く表現を使ってください
+- 信頼性のある情報を心がけてください
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseModalities: ["TEXT"],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            headline: { type: Type.STRING },
+            problems: { type: Type.ARRAY, items: { type: Type.STRING } },
+            benefits: { type: Type.ARRAY, items: { type: Type.STRING } },
+            affinity: { type: Type.STRING },
+            solution: { type: Type.STRING },
+            offer: { type: Type.STRING },
+            narrowing: { type: Type.STRING },
+            desire: { type: Type.STRING },
+            cta: { type: Type.STRING },
+            socialProof: {
+              type: Type.OBJECT,
+              properties: {
+                experience: { type: Type.STRING },
+                cases: { type: Type.STRING },
+                customerVoices: { type: Type.ARRAY, items: { type: Type.STRING } }
+              }
+            }
+          },
+          required: ['headline', 'problems', 'benefits', 'cta', 'socialProof']
+        }
+      }
+    });
+
+    const text = response.text || "{}";
+    const result = JSON.parse(text);
+
+    // デフォルト値を設定
+    return {
+      headline: result.headline || '',
+      problems: result.problems || [],
+      benefits: result.benefits || [],
+      affinity: result.affinity || '',
+      solution: result.solution || '',
+      offer: result.offer || '',
+      narrowing: result.narrowing || '',
+      desire: result.desire || '',
+      cta: result.cta || '',
+      socialProof: {
+        experience: result.socialProof?.experience || '',
+        cases: result.socialProof?.cases || '',
+        customerVoices: result.socialProof?.customerVoices || []
+      }
+    };
+  } catch (e) {
+    console.error("All fields search error:", e);
+    throw e;
+  }
+};
+
 // セールスレター用チラシ画像生成
 export const generateSalesLetterFlyer = async (
   salesLetterInfo: SalesLetterInfo,
