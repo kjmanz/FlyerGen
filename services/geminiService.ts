@@ -1646,20 +1646,45 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
     if (processed) parts.push(processed);
   }
 
-  const ai = getClient(apiKey);
-  const result = await ai.models.generateImages({
-    model: "imagen-3.0-generate-002",
-    prompt: prompt,
-    config: {
-      numberOfImages: settings.patternCount,
-      aspectRatio: settings.orientation === 'vertical' ? "3:4" : "4:3"
-    }
+  // Determine aspect ratio
+  const aspectRatio = settings.orientation === 'vertical' ? '3:4' : '4:3';
+
+  // Create batch requests
+  const batchRequests = Array.from({ length: settings.patternCount }).map(() => ({
+    contents: { parts }
+  }));
+
+  console.log(`Sending ${batchRequests.length} sales letter flyer request(s) to API...`);
+
+  // API endpoint
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      requests: batchRequests,
+      imageSize: settings.imageSize,
+      aspectRatio: aspectRatio
+    })
   });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    let errorMessage = errorData.message || errorData.error || `Batch API error: ${response.status}`;
+    if (errorData.details && Array.isArray(errorData.details)) {
+      errorMessage += '\nDetails:\n' + errorData.details.map((d: any) => d.error || JSON.stringify(d)).join('\n');
+    }
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
 
   if (!result.images || result.images.length === 0) {
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Generated ${result.images.length} sales letter flyer image(s)`);
-  return result.images.map(img => `data:image/png;base64,${img.image?.bytesBase64Encoded}`);
+  console.log(`Received ${result.images.length} sales letter flyer image(s) from Batch API`);
+  return result.images;
 };
