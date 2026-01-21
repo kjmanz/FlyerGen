@@ -1,12 +1,78 @@
+/* =====================================================
+   Material Design 3 Theme for FlyerGen
+   ===================================================== */
+
+/* Material Design Color Palette */
 :root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --bg: #ffffff;
-  --bg-secondary: #f8fafc;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --border: #e2e8f0;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  /* Primary colors */
+  --md-primary: #1976D2;
+  --md-primary-light: #42A5F5;
+  --md-primary-dark: #1565C0;
+  --md-on-primary: #FFFFFF;
+
+  /* Secondary colors */
+  --md-secondary: #00897B;
+  --md-secondary-light: #4DB6AC;
+  --md-secondary-dark: #00695C;
+  --md-on-secondary: #FFFFFF;
+
+  /* Tertiary colors */
+  --md-tertiary: #7B1FA2;
+  --md-tertiary-light: #AB47BC;
+  --md-on-tertiary: #FFFFFF;
+
+  /* Error colors */
+  --md-error: #D32F2F;
+  --md-error-light: #EF5350;
+  --md-on-error: #FFFFFF;
+
+  /* Surface colors */
+  --md-surface: #FFFFFF;
+  --md-surface-dim: #F5F5F5;
+  --md-surface-variant: #E7E0EC;
+  --md-on-surface: #1C1B1F;
+  --md-on-surface-variant: #49454F;
+
+  /* Background */
+  --md-background: #FAFAFA;
+  --md-on-background: #1C1B1F;
+
+  /* Outline */
+  --md-outline: #79747E;
+  --md-outline-variant: #CAC4D0;
+
+  /* Legacy mappings for compatibility */
+  --primary: var(--md-primary);
+  --primary-hover: var(--md-primary-dark);
+  --bg: var(--md-background);
+  --bg-secondary: var(--md-surface-dim);
+  --text: var(--md-on-surface);
+  --text-secondary: var(--md-on-surface-variant);
+  --border: var(--md-outline-variant);
+
+  /* Material Design Elevation Shadows */
+  --md-elevation-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+  --md-elevation-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+  --md-elevation-3: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
+  --md-elevation-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
+  --md-elevation-5: 0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3);
+
+  --shadow: var(--md-elevation-1);
+
+  /* Shape */
+  --md-shape-corner-xs: 4px;
+  --md-shape-corner-sm: 8px;
+  --md-shape-corner-md: 12px;
+  --md-shape-corner-lg: 16px;
+  --md-shape-corner-xl: 28px;
+  --md-shape-corner-full: 9999px;
+
+  /* Motion */
+  --md-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-motion-duration-short: 150ms;
+  --md-motion-duration-medium: 250ms;
+  --md-motion-duration-long: 400ms;
 }
 
 * {
@@ -16,39 +82,315 @@
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
-  font-size: 15px;
-  line-height: 1.7;
+  background: var(--md-background);
+  color: var(--md-on-surface);
+  font-family: 'Roboto', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.25px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100vh;
 }
 
-/* Clean header */
+/* =====================================================
+   Material Design Header / App Bar
+   ===================================================== */
 .glass {
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  background: var(--md-surface) !important;
+  border-bottom: none !important;
+  box-shadow: var(--md-elevation-2) !important;
 }
 
-/* Minimal classes */
-.shadow-premium {
-  box-shadow: var(--shadow);
+/* Override header styling */
+header, [class*="sticky"][class*="top-0"] {
+  background: var(--md-surface) !important;
+  box-shadow: var(--md-elevation-2) !important;
+  border-bottom: none !important;
 }
 
-.animate-slide-up,
-.animate-fade-in {
-  animation: none;
+/* =====================================================
+   Material Design Buttons
+   ===================================================== */
+
+/* Filled buttons (primary action) */
+button,
+[type="button"],
+[type="submit"],
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  border-radius: var(--md-shape-corner-full) !important;
+  transition: all var(--md-motion-duration-short) var(--md-motion-easing-standard);
 }
 
-.btn-premium:hover {
-  opacity: 0.95;
+/* Ripple effect */
+button::after,
+[type="button"]::after,
+[type="submit"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+  pointer-events: none;
 }
 
-/* Hide spinners */
+button:hover::after,
+[type="button"]:hover::after,
+[type="submit"]:hover::after {
+  opacity: 0.08;
+}
+
+button:active::after,
+[type="button"]:active::after,
+[type="submit"]:active::after {
+  opacity: 0.12;
+}
+
+button:focus-visible,
+[type="button"]:focus-visible,
+[type="submit"]:focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
+}
+
+/* Primary filled button style - using Tailwind color classes */
+[class*="bg-indigo"],
+[class*="bg-blue-"],
+button[class*="bg-indigo"],
+button[class*="bg-blue-"] {
+  background: var(--md-primary) !important;
+  color: var(--md-on-primary) !important;
+  box-shadow: var(--md-elevation-1);
+}
+
+[class*="bg-indigo"]:hover,
+[class*="bg-blue-"]:hover,
+button[class*="bg-indigo"]:hover,
+button[class*="bg-blue-"]:hover {
+  background: var(--md-primary-light) !important;
+  box-shadow: var(--md-elevation-2);
+}
+
+/* Secondary / tonal buttons */
+[class*="bg-emerald"],
+[class*="bg-green"],
+[class*="bg-teal"] {
+  background: var(--md-secondary) !important;
+  color: var(--md-on-secondary) !important;
+}
+
+[class*="bg-emerald"]:hover,
+[class*="bg-green"]:hover,
+[class*="bg-teal"]:hover {
+  background: var(--md-secondary-light) !important;
+}
+
+/* Tertiary buttons */
+[class*="bg-violet"],
+[class*="bg-purple"] {
+  background: var(--md-tertiary) !important;
+  color: var(--md-on-tertiary) !important;
+}
+
+[class*="bg-violet"]:hover,
+[class*="bg-purple"]:hover {
+  background: var(--md-tertiary-light) !important;
+}
+
+/* Error buttons */
+[class*="bg-rose"],
+[class*="bg-red"] {
+  background: var(--md-error) !important;
+  color: var(--md-on-error) !important;
+}
+
+[class*="bg-rose"]:hover,
+[class*="bg-red"]:hover {
+  background: var(--md-error-light) !important;
+}
+
+/* Outlined buttons */
+button[class*="border"][class*="bg-white"],
+button[class*="border"]:not([class*="bg-"]),
+[class*="border"][class*="text-indigo"] {
+  background: transparent !important;
+  border: 1px solid var(--md-outline) !important;
+  color: var(--md-primary) !important;
+}
+
+button[class*="border"][class*="bg-white"]:hover,
+button[class*="border"]:not([class*="bg-"]):hover,
+[class*="border"][class*="text-indigo"]:hover {
+  background: rgba(25, 118, 210, 0.08) !important;
+  border-color: var(--md-primary) !important;
+}
+
+/* Text buttons */
+button[class*="text-"][class*="hover:bg-"]:not([class*="bg-"]):not([class*="border"]) {
+  background: transparent;
+  border: none;
+}
+
+/* Disabled state */
+button:disabled,
+button[disabled],
+[type="button"]:disabled,
+[type="submit"]:disabled {
+  background: rgba(28, 27, 31, 0.12) !important;
+  color: rgba(28, 27, 31, 0.38) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+/* FAB style for main action buttons */
+button[class*="rounded-full"][class*="shadow"],
+button[class*="rounded-xl"][class*="w-full"][class*="py-4"],
+button[class*="rounded-xl"][class*="w-full"][class*="py-3"] {
+  border-radius: var(--md-shape-corner-lg) !important;
+  box-shadow: var(--md-elevation-3) !important;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.1px;
+}
+
+button[class*="rounded-full"][class*="shadow"]:hover,
+button[class*="rounded-xl"][class*="w-full"][class*="py-4"]:hover,
+button[class*="rounded-xl"][class*="w-full"][class*="py-3"]:hover {
+  box-shadow: var(--md-elevation-4) !important;
+}
+
+/* =====================================================
+   Material Design Cards
+   ===================================================== */
+[class*="rounded-lg"][class*="shadow"],
+[class*="rounded-xl"][class*="shadow"],
+[class*="rounded-2xl"][class*="shadow"],
+[class*="rounded-lg"][class*="border"],
+[class*="rounded-xl"][class*="border"],
+[class*="rounded-2xl"][class*="border"] {
+  background: var(--md-surface) !important;
+  border: none !important;
+  border-radius: var(--md-shape-corner-md) !important;
+  box-shadow: var(--md-elevation-1) !important;
+  transition: box-shadow var(--md-motion-duration-medium) var(--md-motion-easing-standard);
+}
+
+[class*="rounded-lg"][class*="shadow"]:hover,
+[class*="rounded-xl"][class*="shadow"]:hover,
+[class*="rounded-2xl"][class*="shadow"]:hover {
+  box-shadow: var(--md-elevation-2) !important;
+}
+
+/* Elevated cards */
+[class*="shadow-lg"],
+[class*="shadow-xl"],
+[class*="shadow-2xl"] {
+  box-shadow: var(--md-elevation-3) !important;
+}
+
+[class*="shadow-lg"]:hover,
+[class*="shadow-xl"]:hover,
+[class*="shadow-2xl"]:hover {
+  box-shadow: var(--md-elevation-4) !important;
+}
+
+/* Card content padding override */
+[class*="rounded"][class*="p-4"],
+[class*="rounded"][class*="p-5"],
+[class*="rounded"][class*="p-6"] {
+  padding: 16px !important;
+}
+
+/* =====================================================
+   Material Design Text Fields
+   ===================================================== */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+textarea,
+select {
+  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  padding: 16px !important;
+  background: var(--md-surface) !important;
+  border: 1px solid var(--md-outline) !important;
+  border-radius: var(--md-shape-corner-xs) !important;
+  color: var(--md-on-surface);
+  transition: all var(--md-motion-duration-short) var(--md-motion-easing-standard);
+  caret-color: var(--md-primary);
+}
+
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="password"]:hover,
+input[type="number"]:hover,
+input[type="search"]:hover,
+input[type="url"]:hover,
+input[type="tel"]:hover,
+textarea:hover,
+select:hover {
+  border-color: var(--md-on-surface) !important;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+input[type="tel"]:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: var(--md-primary) !important;
+  border-width: 2px !important;
+  padding: 15px !important;
+  box-shadow: none !important;
+}
+
+/* Input placeholder */
+input::placeholder,
+textarea::placeholder {
+  color: var(--md-on-surface-variant);
+  opacity: 1;
+}
+
+/* Select dropdown arrow */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2349454F' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px !important;
+}
+
+/* Disabled inputs */
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background: var(--md-surface-dim) !important;
+  border-color: var(--md-outline-variant) !important;
+  color: rgba(28, 27, 31, 0.38) !important;
+  cursor: not-allowed;
+}
+
+/* Hide number input spinners */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -59,20 +401,412 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
-/* Focus */
-input:focus,
-textarea:focus,
-select:focus {
-  outline: none;
-  border-color: var(--primary) !important;
+/* =====================================================
+   Material Design Checkbox & Radio
+   ===================================================== */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: var(--md-primary);
+  cursor: pointer;
 }
 
-/* Scrollbar */
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background-color: var(--md-primary);
+  border-color: var(--md-primary);
+}
+
+/* =====================================================
+   Material Design Labels & Typography
+   ===================================================== */
+label {
+  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  color: var(--md-on-surface-variant);
+}
+
+/* Headlines */
+h1, h2, h3, h4, h5, h6,
+[class*="text-2xl"],
+[class*="text-xl"],
+[class*="text-lg"] {
+  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+  letter-spacing: 0;
+}
+
+[class*="text-2xl"] {
+  font-size: 24px !important;
+  font-weight: 400 !important;
+  line-height: 32px !important;
+}
+
+[class*="text-xl"] {
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  line-height: 28px !important;
+}
+
+[class*="text-lg"] {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  line-height: 24px !important;
+  letter-spacing: 0.15px !important;
+}
+
+/* Body text */
+[class*="text-sm"] {
+  font-size: 14px !important;
+  letter-spacing: 0.25px !important;
+}
+
+[class*="text-xs"] {
+  font-size: 12px !important;
+  letter-spacing: 0.4px !important;
+}
+
+/* =====================================================
+   Material Design Modals / Dialogs
+   ===================================================== */
+[class*="fixed"][class*="inset-0"][class*="z-50"],
+[class*="fixed"][class*="inset-0"][class*="bg-slate-900"],
+[class*="fixed"][class*="inset-0"][class*="bg-black"] {
+  background: rgba(0, 0, 0, 0.32) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Dialog container */
+[class*="fixed"][class*="inset-0"] > [class*="bg-white"][class*="rounded"],
+[class*="fixed"][class*="z-50"] > [class*="bg-white"][class*="rounded"] {
+  background: var(--md-surface) !important;
+  border-radius: var(--md-shape-corner-xl) !important;
+  box-shadow: var(--md-elevation-5) !important;
+  border: none !important;
+}
+
+/* =====================================================
+   Material Design Chips / Tags
+   ===================================================== */
+[class*="rounded-full"][class*="px-"][class*="py-"][class*="text-"],
+[class*="rounded-full"][class*="px-"][class*="text-xs"],
+[class*="rounded-full"][class*="px-"][class*="text-sm"] {
+  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.1px !important;
+  border-radius: var(--md-shape-corner-sm) !important;
+  padding: 6px 16px !important;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  transition: all var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+
+/* =====================================================
+   Material Design Dividers
+   ===================================================== */
+hr,
+[class*="border-t"],
+[class*="border-b"] {
+  border-color: var(--md-outline-variant) !important;
+}
+
+/* =====================================================
+   Material Design Progress / Loading
+   ===================================================== */
+[class*="animate-spin"] {
+  animation: md-spin 1.4s linear infinite;
+}
+
+@keyframes md-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading overlay */
+[class*="bg-white/"][class*="backdrop-blur"],
+[class*="bg-slate-"][class*="backdrop-blur"] {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* =====================================================
+   Material Design Scrollbar
+   ===================================================== */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: var(--md-outline-variant);
+  border-radius: var(--md-shape-corner-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--md-outline);
+}
+
+/* =====================================================
+   Material Design Animations
+   ===================================================== */
+.animate-slide-up {
+  animation: md-slide-up var(--md-motion-duration-medium) var(--md-motion-easing-emphasized);
+}
+
+.animate-fade-in {
+  animation: md-fade-in var(--md-motion-duration-medium) var(--md-motion-easing-standard);
+}
+
+@keyframes md-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes md-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* =====================================================
+   Material Design Surface Tints
+   ===================================================== */
+
+/* Slate backgrounds to Material surfaces */
+[class*="bg-slate-50"],
+[class*="bg-gray-50"] {
+  background: var(--md-surface-dim) !important;
+}
+
+[class*="bg-slate-100"],
+[class*="bg-gray-100"] {
+  background: var(--md-surface-variant) !important;
+}
+
+[class*="bg-slate-200"],
+[class*="bg-gray-200"] {
+  background: var(--md-outline-variant) !important;
+}
+
+/* Indigo backgrounds */
+[class*="bg-indigo-50"] {
+  background: rgba(25, 118, 210, 0.08) !important;
+}
+
+[class*="bg-indigo-100"] {
+  background: rgba(25, 118, 210, 0.12) !important;
+}
+
+/* Emerald/Green backgrounds */
+[class*="bg-emerald-50"],
+[class*="bg-green-50"] {
+  background: rgba(0, 137, 123, 0.08) !important;
+}
+
+/* Rose/Red backgrounds */
+[class*="bg-rose-50"],
+[class*="bg-red-50"] {
+  background: rgba(211, 47, 47, 0.08) !important;
+}
+
+/* Amber/Yellow backgrounds */
+[class*="bg-amber-50"],
+[class*="bg-yellow-50"] {
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+[class*="bg-amber-100"],
+[class*="bg-yellow-100"] {
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+/* =====================================================
+   Material Design Text Colors
+   ===================================================== */
+[class*="text-slate-500"],
+[class*="text-slate-600"],
+[class*="text-gray-500"],
+[class*="text-gray-600"] {
+  color: var(--md-on-surface-variant) !important;
+}
+
+[class*="text-slate-700"],
+[class*="text-slate-800"],
+[class*="text-slate-900"],
+[class*="text-gray-700"],
+[class*="text-gray-800"],
+[class*="text-gray-900"] {
+  color: var(--md-on-surface) !important;
+}
+
+[class*="text-indigo-600"],
+[class*="text-indigo-700"],
+[class*="text-blue-600"],
+[class*="text-blue-700"] {
+  color: var(--md-primary) !important;
+}
+
+[class*="text-emerald-600"],
+[class*="text-emerald-700"],
+[class*="text-green-600"],
+[class*="text-green-700"] {
+  color: var(--md-secondary) !important;
+}
+
+[class*="text-rose-600"],
+[class*="text-rose-700"],
+[class*="text-red-600"],
+[class*="text-red-700"] {
+  color: var(--md-error) !important;
+}
+
+/* =====================================================
+   Material Design Border Colors
+   ===================================================== */
+[class*="border-slate-"],
+[class*="border-gray-"] {
+  border-color: var(--md-outline-variant) !important;
+}
+
+[class*="border-indigo-"],
+[class*="border-blue-"] {
+  border-color: var(--md-primary) !important;
+}
+
+/* =====================================================
+   Material Design Focus Ring
+   ===================================================== */
+[class*="focus:ring"],
+[class*="focus-within:ring"] {
+  --tw-ring-color: rgba(25, 118, 210, 0.4) !important;
+}
+
+/* =====================================================
+   Material Design Hover States
+   ===================================================== */
+[class*="hover:bg-slate-"]:hover,
+[class*="hover:bg-gray-"]:hover {
+  background: rgba(28, 27, 31, 0.08) !important;
+}
+
+[class*="hover:bg-indigo-"]:hover {
+  background: rgba(25, 118, 210, 0.08) !important;
+}
+
+/* =====================================================
+   Material Design Image containers
+   ===================================================== */
+img {
+  border-radius: var(--md-shape-corner-sm);
+}
+
+[class*="aspect-"][class*="rounded"] img,
+[class*="overflow-hidden"][class*="rounded"] img {
+  border-radius: inherit;
+}
+
+/* =====================================================
+   Material Design Grid Layout Adjustments
+   ===================================================== */
+[class*="gap-4"] {
+  gap: 16px !important;
+}
+
+[class*="gap-3"] {
+  gap: 12px !important;
+}
+
+[class*="gap-2"] {
+  gap: 8px !important;
+}
+
+/* =====================================================
+   Material Design Transition Defaults
+   ===================================================== */
+[class*="transition"],
+a,
+button {
+  transition-timing-function: var(--md-motion-easing-standard) !important;
+  transition-duration: var(--md-motion-duration-short) !important;
+}
+
+/* =====================================================
+   Additional Material Overrides
+   ===================================================== */
+
+/* Premium shadow class */
+.shadow-premium {
+  box-shadow: var(--md-elevation-2) !important;
+}
+
+/* Button premium hover */
+.btn-premium:hover {
+  opacity: 1 !important;
+  box-shadow: var(--md-elevation-3) !important;
+}
+
+/* Backdrop blur for overlays */
+[class*="backdrop-blur"] {
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Container max widths */
+[class*="max-w-5xl"] {
+  max-width: 1024px;
+}
+
+/* History grid images */
+[class*="aspect-square"] {
+  border-radius: var(--md-shape-corner-md);
+  overflow: hidden;
+}
+
+/* Tab-like toggles */
+[class*="rounded-lg"][class*="p-1"][class*="bg-slate"],
+[class*="rounded-xl"][class*="p-1"][class*="bg-slate"] {
+  background: var(--md-surface-variant) !important;
+  border-radius: var(--md-shape-corner-full) !important;
+  padding: 4px !important;
+}
+
+/* Active tab state */
+[class*="rounded-lg"][class*="bg-white"][class*="shadow-sm"],
+[class*="rounded-md"][class*="bg-white"][class*="shadow-sm"] {
+  background: var(--md-surface) !important;
+  box-shadow: var(--md-elevation-1) !important;
+  border-radius: var(--md-shape-corner-full) !important;
+}
+
+/* Icon buttons */
+button[class*="p-2"][class*="rounded"],
+button[class*="p-1"][class*="rounded"] {
+  border-radius: var(--md-shape-corner-full) !important;
+}
+
+/* Section dividers */
+[class*="my-"][class*="border-t"] {
+  margin-top: 24px !important;
+  margin-bottom: 24px !important;
+  border-color: var(--md-outline-variant) !important;
 }
