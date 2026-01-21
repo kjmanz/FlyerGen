@@ -1573,7 +1573,7 @@ ${salesLetterInfo.socialProof.cases ? `・施工件数: ${salesLetterInfo.social
 ${salesLetterInfo.socialProof.customerVoices.length > 0 ? `・お客様の声:\n  ${salesLetterInfo.socialProof.customerVoices.map(v => `「${v}」`).join('\n  ')}` : ''}
 `;
 
-  const prompt = `
+  let prompt = `
 【役割】
 あなたは日本の家電量販店のプロのチラシデザイナーです。
 
