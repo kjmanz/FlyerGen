@@ -964,7 +964,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Upscale handler (4x only)
+  // Upscale handler
   const handleUpscale = async (item: GeneratedImage) => {
     if (item.isUpscaled) return;
     if (!replicateApiKey) {
@@ -976,8 +976,13 @@ const App: React.FC = () => {
     setUpscalingImageId(item.id);
 
     try {
+      const scaleForItem = item.is4KRegenerated ? 4 : UPSCALE_SCALE;
+      const resizeLimits = item.is4KRegenerated
+        ? { maxPixels: 1000000, maxDimension: 1024 }
+        : undefined;
+
       // Always use full resolution image (item.data), not thumbnail
-      const result = await upscaleImage(item.data, replicateApiKey, UPSCALE_SCALE);
+      const result = await upscaleImage(item.data, replicateApiKey, scaleForItem, resizeLimits);
 
       // Create new upscaled image entry
       const newId = uuidv4();
@@ -1014,10 +1019,10 @@ const App: React.FC = () => {
         id: finalId,
         data: newImageData,
         thumbnail: newThumbnail,
-        tags: [...(item.tags || []), `#アップスケール${UPSCALE_SCALE}x`],
+        tags: [...(item.tags || []), `#アップスケール${scaleForItem}x`],
         createdAt: timestamp,
         isUpscaled: true,
-        upscaleScale: UPSCALE_SCALE
+        upscaleScale: scaleForItem
       };
 
       const updatedHistory = [
@@ -1035,7 +1040,7 @@ const App: React.FC = () => {
       if (firebaseEnabled) {
         await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {
           isUpscaled: true,
-          upscaleScale: UPSCALE_SCALE
+          upscaleScale: scaleForItem
         });
         await updateFlyerUpscaleStatus(item.id, false);
       }
@@ -2984,7 +2989,9 @@ ${header.length + uint8Array.length + 20}
                               ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
                               : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                             }`}
-                          title={item.isUpscaled ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)` : `AIアップスケール(${UPSCALE_SCALE}x)`}
+                          title={item.isUpscaled
+                            ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)`
+                            : `AIアップスケール(${item.is4KRegenerated ? 4 : UPSCALE_SCALE}x)`}
                         >
                           {upscalingImageId === item.id ? (
                             <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

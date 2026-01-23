@@ -23,8 +23,14 @@ const MAX_DIMENSION = 1440;
  * Resize image if too large for the upscale API
  * Optimized with createImageBitmap for better performance
  */
-const resizeImageIfNeeded = async (imageData: string): Promise<string> => {
+const resizeImageIfNeeded = async (
+    imageData: string,
+    limits?: { maxPixels?: number; maxDimension?: number }
+): Promise<string> => {
     try {
+        const maxPixels = limits?.maxPixels ?? MAX_PIXELS;
+        const maxDimension = limits?.maxDimension ?? MAX_DIMENSION;
+
         // Convert base64 to blob for createImageBitmap
         const response = await fetch(imageData);
         const blob = await response.blob();
@@ -35,15 +41,15 @@ const resizeImageIfNeeded = async (imageData: string): Promise<string> => {
         const pixels = bitmap.width * bitmap.height;
 
         // If image is small enough, return as-is
-        if (pixels <= MAX_PIXELS && bitmap.width <= MAX_DIMENSION && bitmap.height <= MAX_DIMENSION) {
+        if (pixels <= maxPixels && bitmap.width <= maxDimension && bitmap.height <= maxDimension) {
             bitmap.close();
             return imageData;
         }
 
         // Calculate new dimensions
         const scale = Math.min(
-            MAX_DIMENSION / Math.max(bitmap.width, bitmap.height),
-            Math.sqrt(MAX_PIXELS / pixels)
+            maxDimension / Math.max(bitmap.width, bitmap.height),
+            Math.sqrt(maxPixels / pixels)
         );
 
         const newWidth = Math.floor(bitmap.width * scale);
@@ -76,14 +82,15 @@ const resizeImageIfNeeded = async (imageData: string): Promise<string> => {
 export const upscaleImage = async (
     imageData: string,
     replicateApiKey: string,
-    scale: number = 8
+    scale: number = 8,
+    resizeLimits?: { maxPixels?: number; maxDimension?: number }
 ): Promise<UpscaleResult> => {
     const apiUrl = getApiUrl();
 
     console.log(`Upscaling image with ${scale}x scale...`);
 
     // Resize if needed to avoid GPU memory errors
-    const resizedImage = await resizeImageIfNeeded(imageData);
+    const resizedImage = await resizeImageIfNeeded(imageData, resizeLimits);
 
     const response = await fetch(apiUrl, {
         method: 'POST',
