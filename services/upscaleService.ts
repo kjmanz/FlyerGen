@@ -76,7 +76,7 @@ const resizeImageIfNeeded = async (imageData: string): Promise<string> => {
 export const upscaleImage = async (
     imageData: string,
     replicateApiKey: string,
-    scale: number = 4
+    scale: number = 8
 ): Promise<UpscaleResult> => {
     const apiUrl = getApiUrl();
 

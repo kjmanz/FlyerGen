@@ -42,7 +42,7 @@ const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
-const UPSCALE_SCALE = 4;
+const UPSCALE_SCALE = 8;
 
 // Initialize Firebase on app load
 const firebaseEnabled = initFirebase();

@@ -42,7 +42,7 @@ export interface GeneratedImage {
   isFavorite?: boolean; // User-marked favorite
   createdAt: number;
   isUpscaled?: boolean; // Flag to indicate if image has been upscaled
-  upscaleScale?: number; // Upscale multiplier (4 only)
+  upscaleScale?: number; // Upscale multiplier (e.g., 4, 8)
   isEdited?: boolean; // Flag to indicate if image has been edited
   flyerType?: 'front' | 'back'; // 表面 or 裏面
 }
