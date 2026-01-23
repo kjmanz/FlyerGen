@@ -44,6 +44,7 @@ export interface GeneratedImage {
   isUpscaled?: boolean; // Flag to indicate if image has been upscaled
   upscaleScale?: number; // Upscale multiplier (e.g., 4, 8)
   isEdited?: boolean; // Flag to indicate if image has been edited
+  is4KRegenerated?: boolean; // Flag to indicate if image has been regenerated at 4K
   flyerType?: 'front' | 'back'; // 表面 or 裏面
 }
 

@@ -612,6 +612,56 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
   }
 };
 
+// Regenerate image at 4K resolution using Worker Batch API (preserves content exactly)
+export const regenerateImage4K = async (
+  imageUrl: string,
+  apiKey: string,
+  aspectRatio: string = '3:4'
+): Promise<string> => {
+  try {
+    // Fetch image and convert to base64 if it's a URL
+    let imageData = imageUrl;
+    if (imageUrl.startsWith('http')) {
+      const resp = await fetch(imageUrl);
+      const blob = await resp.blob();
+      imageData = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // Call Worker API for 4K regeneration
+    const workerUrl = API_URL.replace('/api/batch-generate', '/api/regenerate-4k');
+
+    const response = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        imageData,
+        aspectRatio
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || errorData.error || '4K regeneration failed');
+    }
+
+    const result = await response.json();
+
+    if (result.image) {
+      return result.image;
+    }
+
+    throw new Error('4K再生成に失敗しました');
+  } catch (error) {
+    console.error("4K regeneration failed:", error);
+    throw error;
+  }
+};
+
 // Remove all text from flyer image using Worker Batch API
 export const removeTextFromImage = async (
   imageUrl: string,
