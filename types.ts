@@ -59,7 +59,7 @@ export interface CampaignInfo {
   content: string;              // キャンペーン内容
   benefits: string[];           // 特典リスト（無制限）
   useProductImage: boolean;     // 商品画像を使用するか
-  productImage: string;         // 商品画像（Base64）
+  productImages: string[];      // 商品画像（Base64/URL）
 }
 
 export interface Preset {

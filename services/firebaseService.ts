@@ -892,3 +892,79 @@ export const getFrontProductImages = async (): Promise<{ images: string[], selec
         return { images: [], selectedIndices: [] };
     }
 };
+
+// ===== CAMPAIGN MAIN IMAGES (Independent Cloud Sync) =====
+
+// Upload campaign main image to Firebase Storage
+const uploadCampaignMainImage = async (base64Data: string, index: number): Promise<string> => {
+    // If already a URL (starts with http), return as-is
+    if (base64Data.startsWith('http')) return base64Data;
+
+    if (!storage) return base64Data;
+
+    try {
+        const filename = `campaign_main_images/main_${index}_${Date.now()}.png`;
+        const imageRef = ref(storage, filename);
+        await uploadString(imageRef, base64Data, 'data_url');
+        const url = await getDownloadURL(imageRef);
+        return url;
+    } catch (e) {
+        console.error(`Failed to upload campaign main image ${index}:`, e);
+        return base64Data;
+    }
+};
+
+// Save campaign main images to Firestore (independent of presets)
+export const saveCampaignMainImages = async (images: string[]): Promise<boolean> => {
+    if (!db || !storage) {
+        console.log('saveCampaignMainImages: db or storage is null');
+        return false;
+    }
+    try {
+        console.log(`Saving ${images.length} campaign main images to cloud...`);
+
+        // Upload all images to Storage
+        const imageUrls = await Promise.all(
+            images.map((img, i) => uploadCampaignMainImage(img, i))
+        );
+
+        // Save URLs to Firestore
+        const docRef = doc(db, 'settings', 'campaign_main_images');
+        await setDoc(docRef, {
+            images: imageUrls,
+            updatedAt: Date.now()
+        });
+
+        console.log('Campaign main images saved successfully');
+        return true;
+    } catch (e) {
+        console.error('Save campaign main images error:', e);
+        return false;
+    }
+};
+
+// Get campaign main images from Firestore
+export const getCampaignMainImages = async (): Promise<{ images: string[] }> => {
+    if (!db) {
+        console.log('getCampaignMainImages: db is null');
+        return { images: [] };
+    }
+    try {
+        console.log('Fetching campaign main images from cloud...');
+        const docSnap = await getDocs(collection(db, 'settings'));
+
+        let images: string[] = [];
+        docSnap.forEach((d) => {
+            if (d.id === 'campaign_main_images') {
+                const data = d.data();
+                images = data.images || [];
+            }
+        });
+
+        console.log(`Fetched ${images.length} campaign main images from cloud`);
+        return { images };
+    } catch (e) {
+        console.error('Get campaign main images error:', e);
+        return { images: [] };
+    }
+};

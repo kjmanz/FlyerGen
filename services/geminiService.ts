@@ -881,7 +881,7 @@ ${benefitsList ? `■ 特典リスト:\n${benefitsList}` : ''}
 3. 参考チラシ画像${referenceImages.length > 0 ? '（★重要★デザインを参考に）' : ''}
 4. 使用イラスト（チラシ内に配置して装飾に活用）
 5. 店名ロゴ画像
-${campaignInfo.useProductImage && campaignInfo.productImage ? '6. メイン商品画像（目立つ位置に配置）' : ''}
+${campaignInfo.useProductImage && (campaignInfo.productImages?.length || 0) > 0 ? '6. メイン商品画像（複数可・目立つ位置に配置）' : ''}
 
 ${storeLogoImages.length > 0 ? `
 【★★★ 店名ロゴについて - 絶対厳守事項 ★★★】
@@ -946,6 +946,7 @@ ${referenceImages.length > 0 ? `
   };
 
   // Collect all images to process (product images first)
+  const campaignMainImages = campaignInfo.productImages || [];
   const imagesToProcess: string[] = [];
   imagesToProcess.push(...productImages);
   imagesToProcess.push(...staffImages);
@@ -953,8 +954,8 @@ ${referenceImages.length > 0 ? `
   imagesToProcess.push(...referenceImages);
   imagesToProcess.push(...customIllustrations);
   imagesToProcess.push(...storeLogoImages);
-  if (campaignInfo.useProductImage && campaignInfo.productImage) {
-    imagesToProcess.push(campaignInfo.productImage);
+  if (campaignInfo.useProductImage && campaignMainImages.length > 0) {
+    imagesToProcess.push(...campaignMainImages);
   }
 
   // Process all images concurrently

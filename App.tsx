@@ -34,6 +34,8 @@ import {
   getCustomerImages,
   saveFrontProductImages,
   getFrontProductImages,
+  saveCampaignMainImages,
+  getCampaignMainImages,
   CloudImage,
   CloudPreset
 } from './services/firebaseService';
@@ -137,7 +139,7 @@ const App: React.FC = () => {
     content: '',
     benefits: [''],
     useProductImage: false,
-    productImage: ''
+    productImages: []
   });
 
   // Customer Images State (お客様画像)
@@ -239,7 +241,7 @@ const App: React.FC = () => {
         // Try to load from Firebase first
         if (firebaseEnabled) {
           console.log('Loading from Firebase...');
-          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages, cloudCustomIllustrations, cloudCustomerImages, cloudFrontProductImages] = await Promise.all([
+          const [cloudImages, cloudPresets, cloudReferenceImages, cloudCharacterImages, cloudStoreLogoImages, cloudCustomIllustrations, cloudCustomerImages, cloudFrontProductImages, cloudCampaignMainImages] = await Promise.all([
             getCloudImages(),
             getCloudPresets(),
             getReferenceImages(),
@@ -247,7 +249,8 @@ const App: React.FC = () => {
             getStoreLogoImages(),
             getCustomIllustrations(),
             getCustomerImages(),
-            getFrontProductImages()
+            getFrontProductImages(),
+            getCampaignMainImages()
           ]);
 
           if (cloudImages.length > 0) {
@@ -317,6 +320,11 @@ const App: React.FC = () => {
           if (cloudFrontProductImages.images.length > 0) {
             setFrontProductImages(cloudFrontProductImages.images);
             setSelectedFrontProductIndices(new Set(cloudFrontProductImages.selectedIndices));
+          }
+
+          // Load campaign main images independently (not from presets)
+          if (cloudCampaignMainImages.images.length > 0) {
+            setCampaignInfo(prev => ({ ...prev, productImages: cloudCampaignMainImages.images }));
           }
         } else {
           // Fallback to local storage
@@ -446,6 +454,36 @@ const App: React.FC = () => {
       return () => clearTimeout(syncTimeout);
     }
   }, [customerImages, selectedCustomerImageIndices, customerImagesInitialized]);
+
+  // Sync campaign main images to cloud when changed (independent of presets)
+  const [campaignMainImagesInitialized, setCampaignMainImagesInitialized] = React.useState(false);
+  useEffect(() => {
+    // Skip initial load sync - only sync user changes
+    if (!campaignMainImagesInitialized) {
+      if (campaignInfo.productImages.length > 0) {
+        setCampaignMainImagesInitialized(true);
+      }
+      return;
+    }
+
+    if (firebaseEnabled) {
+      // Debounce the sync to avoid too many writes
+      const syncTimeout = setTimeout(() => {
+        console.log('Syncing campaign main images to cloud...');
+        saveCampaignMainImages(campaignInfo.productImages);
+      }, 1000);
+
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [campaignInfo.productImages, campaignMainImagesInitialized]);
+
+  // Handle campaign main images change with cloud sync
+  const handleCampaignMainImagesChange = (images: string[]) => {
+    setCampaignInfo(prev => ({ ...prev, productImages: images }));
+    if (!campaignMainImagesInitialized) {
+      setCampaignMainImagesInitialized(true);
+    }
+  };
 
   // Handle customer images change with cloud sync
   const handleCustomerImagesChange = (images: string[]) => {
@@ -1463,6 +1501,10 @@ ${header.length + uint8Array.length + 20}
       setFrontFlyerType(data.frontFlyerType);
     }
     if (data.campaignInfo) {
+      const legacyProductImage = data.campaignInfo.productImage;
+      const campaignProductImages = Array.isArray(data.campaignInfo.productImages)
+        ? data.campaignInfo.productImages
+        : (legacyProductImage ? [legacyProductImage] : []);
       setCampaignInfo({
         campaignDescription: data.campaignInfo.campaignDescription || '',
         headline: data.campaignInfo.headline || '',
@@ -1472,7 +1514,7 @@ ${header.length + uint8Array.length + 20}
         content: data.campaignInfo.content || '',
         benefits: data.campaignInfo.benefits || [''],
         useProductImage: data.campaignInfo.useProductImage || false,
-        productImage: data.campaignInfo.productImage || ''
+        productImages: campaignProductImages
       });
     }
     if (data.productServiceInfo) {
@@ -2088,9 +2130,8 @@ ${header.length + uint8Array.length + 20}
                     <div className="mt-4">
                       <ImageUploader
                         label="メイン商品画像"
-                        images={campaignInfo.productImage ? [campaignInfo.productImage] : []}
-                        onImagesChange={(images) => setCampaignInfo({ ...campaignInfo, productImage: images[0] || '' })}
-                        maxImages={1}
+                        images={campaignInfo.productImages}
+                        onImagesChange={handleCampaignMainImagesChange}
                       />
                     </div>
                   )}
