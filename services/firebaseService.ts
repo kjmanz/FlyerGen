@@ -62,6 +62,7 @@ export interface CloudImage {
     isUpscaled?: boolean;
     upscaleScale?: number;
     isEdited?: boolean;
+    is4KRegenerated?: boolean;
     createdAt: number;
 }
 
@@ -97,7 +98,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
         ]);
 
         // Build metadata map
-        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean }>();
+        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean; isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean }>();
         if (metadataSnapshot) {
             metadataSnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -106,7 +107,8 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                     isFavorite: data.isFavorite,
                     isUpscaled: data.isUpscaled,
                     upscaleScale: data.upscaleScale,
-                    isEdited: data.isEdited
+                    isEdited: data.isEdited,
+                    is4KRegenerated: data.is4KRegenerated
                 });
             });
         }
@@ -147,6 +149,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                 isUpscaled: metadataMap.get(file.name)?.isUpscaled,
                 upscaleScale: metadataMap.get(file.name)?.upscaleScale,
                 isEdited: metadataMap.get(file.name)?.isEdited,
+                is4KRegenerated: metadataMap.get(file.name)?.is4KRegenerated,
                 createdAt: timestamp
             };
         });
@@ -185,6 +188,7 @@ export interface FlyerMetadata {
     isUpscaled?: boolean;
     upscaleScale?: number;
     isEdited?: boolean;
+    is4KRegenerated?: boolean;
     createdAt: number;
 }
 
@@ -193,7 +197,7 @@ export const saveFlyerMetadata = async (
     id: string,
     tags: string[],
     createdAt: number,
-    options?: { isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean }
+    options?: { isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean }
 ): Promise<boolean> => {
     if (!db) return false;
     try {
@@ -204,6 +208,7 @@ export const saveFlyerMetadata = async (
             ...(options?.isUpscaled !== undefined && { isUpscaled: options.isUpscaled }),
             ...(options?.upscaleScale !== undefined && { upscaleScale: options.upscaleScale }),
             ...(options?.isEdited !== undefined && { isEdited: options.isEdited }),
+            ...(options?.is4KRegenerated !== undefined && { is4KRegenerated: options.is4KRegenerated }),
             updatedAt: Date.now()
         });
         return true;

@@ -1105,7 +1105,9 @@ const App: React.FC = () => {
 
       // Save metadata to Firebase if enabled
       if (firebaseEnabled) {
-        await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {});
+        await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {
+          is4KRegenerated: true
+        });
       }
 
       alert("4K再生成が完了しました！高解像度版が履歴に追加されました。");
