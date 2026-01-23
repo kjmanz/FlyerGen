@@ -932,18 +932,25 @@ const App: React.FC = () => {
       const thumbnailData = await createThumbnail(uploadPreview);
       let imageData = uploadPreview;
       let thumbnail = thumbnailData;
+      let finalId = id;
 
       if (firebaseEnabled) {
+        const filename = `upload_${timestamp}_${id}.png`;
+        const thumbFilename = `upload_${timestamp}_${id}_thumb.jpg`;
         const [cloudUrl, thumbUrl] = await Promise.all([
-          uploadImage(uploadPreview, `upload_${timestamp}_${id}.png`),
-          uploadImage(thumbnailData, `upload_${timestamp}_${id}_thumb.jpg`)
+          uploadImage(uploadPreview, filename),
+          uploadImage(thumbnailData, thumbFilename)
         ]);
-        if (cloudUrl) imageData = cloudUrl;
+        if (cloudUrl) {
+          imageData = cloudUrl;
+          finalId = filename;
+          await saveFlyerMetadata(finalId, tags, timestamp);
+        }
         if (thumbUrl) thumbnail = thumbUrl;
       }
 
       const newImage: GeneratedImage = {
-        id,
+        id: finalId,
         data: imageData,
         thumbnail,
         tags: tags.length > 0 ? tags : undefined,
@@ -1022,7 +1029,8 @@ const App: React.FC = () => {
         tags: [...(item.tags || []), `#アップスケール${scaleForItem}x`],
         createdAt: timestamp,
         isUpscaled: true,
-        upscaleScale: scaleForItem
+        upscaleScale: scaleForItem,
+        is4KRegenerated: item.is4KRegenerated
       };
 
       const updatedHistory = [
@@ -1040,7 +1048,8 @@ const App: React.FC = () => {
       if (firebaseEnabled) {
         await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {
           isUpscaled: true,
-          upscaleScale: scaleForItem
+          upscaleScale: scaleForItem,
+          is4KRegenerated: item.is4KRegenerated
         });
         await updateFlyerUpscaleStatus(item.id, false);
       }
