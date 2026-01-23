@@ -106,6 +106,7 @@ const App: React.FC = () => {
   // Tag Filter State
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isTaggingAll, setIsTaggingAll] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc'); // desc = newest first, asc = oldest first
 
   // Image Preview Modal State
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -259,6 +260,7 @@ const App: React.FC = () => {
               isUpscaled: img.isUpscaled,
               upscaleScale: img.upscaleScale,
               isEdited: img.isEdited,
+              is4KRegenerated: img.is4KRegenerated,
               createdAt: img.createdAt
             })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
@@ -1073,17 +1075,25 @@ const App: React.FC = () => {
       const thumbnailData = await createThumbnail(result);
 
       let finalId: string = newId;
+      let newImageData = result;
+      let newThumbnail = thumbnailData || undefined;
 
       // Upload to Firebase if enabled
       if (firebaseEnabled) {
         const filename = `flyer_4k_${timestamp}_${newId}.png`;
         const thumbFilename = `flyer_4k_${timestamp}_${newId}_thumb.jpg`;
+        finalId = filename;
         try {
-          await uploadImage(result, filename);
-          if (thumbnailData) {
-            await uploadImage(thumbnailData, thumbFilename);
+          const [cloudUrl, thumbUrl] = await Promise.all([
+            uploadImage(result, filename),
+            thumbnailData ? uploadImage(thumbnailData, thumbFilename) : Promise.resolve(null)
+          ]);
+          if (cloudUrl) {
+            newImageData = cloudUrl;
           }
-          finalId = filename.replace('.png', '');
+          if (thumbUrl) {
+            newThumbnail = thumbUrl;
+          }
         } catch (uploadError) {
           console.error('Failed to upload 4K image:', uploadError);
         }
@@ -1091,8 +1101,8 @@ const App: React.FC = () => {
 
       const newItem: GeneratedImage = {
         id: finalId,
-        data: result,
-        thumbnail: thumbnailData || undefined,
+        data: newImageData,
+        thumbnail: newThumbnail,
         createdAt: timestamp,
         tags: [...(item.tags || []), '#4K再生成'],
         isFavorite: false,
@@ -2787,6 +2797,13 @@ ${header.length + uint8Array.length + 20}
                   🔄 全て再タグ付け
                 </button>
                 <button
+                  onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
+                  className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                  title="お気に入り優先で生成日時を並べ替え"
+                >
+                  {sortOrder === 'desc' ? '新しい順' : '古い順'}
+                </button>
+                <button
                   onClick={() => { setUploadPreview(""); setUploadTags(""); setIsUploadModalOpen(true); }}
                   className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-all"
                 >
@@ -2831,9 +2848,12 @@ ${header.length + uint8Array.length + 20}
                 .filter(item => selectedTag === null || (item.tags && item.tags.includes(selectedTag)))
                 .sort((a, b) => {
                   // Favorites first, then by date
-                  if (a.isFavorite && !b.isFavorite) return -1;
-                  if (!a.isFavorite && b.isFavorite) return 1;
-                  return b.createdAt - a.createdAt;
+                  const aFav = !!a.isFavorite;
+                  const bFav = !!b.isFavorite;
+                  if (aFav !== bFav) return aFav ? -1 : 1;
+                  if (a.createdAt === b.createdAt) return 0;
+                  const direction = sortOrder === 'asc' ? 1 : -1;
+                  return (a.createdAt - b.createdAt) * direction;
                 })
                 .map((item, idx) => (
                   <div key={item.id} className={`group flex flex-col bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 ${item.isFavorite ? 'ring-2 ring-amber-400' : ''}`}>

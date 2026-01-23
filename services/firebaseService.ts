@@ -85,6 +85,11 @@ export const uploadImage = async (base64Data: string, filename: string): Promise
     }
 };
 
+const extractTimestampFromFilename = (filename: string): number | null => {
+    const match = filename.match(/(\d{13})/);
+    return match ? Number(match[1]) : null;
+};
+
 // Get all images from Firebase Storage
 export const getCloudImages = async (): Promise<CloudImage[]> => {
     if (!storage) return [];
@@ -98,7 +103,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
         ]);
 
         // Build metadata map
-        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean; isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean }>();
+        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean; isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean; createdAt?: number }>();
         if (metadataSnapshot) {
             metadataSnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -108,7 +113,8 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                     isUpscaled: data.isUpscaled,
                     upscaleScale: data.upscaleScale,
                     isEdited: data.isEdited,
-                    is4KRegenerated: data.is4KRegenerated
+                    is4KRegenerated: data.is4KRegenerated,
+                    createdAt: data.createdAt
                 });
             });
         }
@@ -137,19 +143,19 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
 
         // フル画像にサムネイルとタグを関連付け
         const images: CloudImage[] = fullImages.map((file) => {
-            const match = file.name.match(/flyer_(\d+)/);
-            const timestamp = match ? parseInt(match[1]) : Date.now();
             const baseName = file.name.replace('.png', '').replace('.jpg', '');
+            const metadata = metadataMap.get(file.name) || metadataMap.get(baseName);
+            const timestamp = metadata?.createdAt ?? extractTimestampFromFilename(file.name) ?? Date.now();
             return {
                 id: file.name,
                 url: file.url,
                 thumbnail: thumbnails.get(baseName),
-                tags: metadataMap.get(file.name)?.tags,
-                isFavorite: metadataMap.get(file.name)?.isFavorite,
-                isUpscaled: metadataMap.get(file.name)?.isUpscaled,
-                upscaleScale: metadataMap.get(file.name)?.upscaleScale,
-                isEdited: metadataMap.get(file.name)?.isEdited,
-                is4KRegenerated: metadataMap.get(file.name)?.is4KRegenerated,
+                tags: metadata?.tags,
+                isFavorite: metadata?.isFavorite,
+                isUpscaled: metadata?.isUpscaled,
+                upscaleScale: metadata?.upscaleScale,
+                isEdited: metadata?.isEdited,
+                is4KRegenerated: metadata?.is4KRegenerated,
                 createdAt: timestamp
             };
         });
