@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
 import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo } from './types';
@@ -75,6 +75,17 @@ const App: React.FC = () => {
 
   // History State
   const [history, setHistory] = useState<GeneratedImage[]>([]);
+  const historyGridRef = useRef<HTMLDivElement>(null);
+  const [historyGridWidth, setHistoryGridWidth] = useState(0);
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 0));
+  const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 0));
+  const [gridOffsetTop, setGridOffsetTop] = useState(0);
+  const [measuredRowHeight, setMeasuredRowHeight] = useState<number | null>(null);
+  const [visibleRange, setVisibleRange] = useState<{ startRow: number; endRow: number }>({ startRow: 0, endRow: -1 });
+  const rowStrideRef = useRef(0);
+  const gridOffsetTopRef = useRef(0);
+  const viewportHeightRef = useRef(0);
+  const totalRowsRef = useRef(0);
 
   // Preset State
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -671,6 +682,75 @@ const App: React.FC = () => {
       setCustomIllustrationsInitialized(true);
     }
   };
+
+  const updateHistoryGridMetrics = useCallback(() => {
+    if (!historyGridRef.current) return;
+    const rect = historyGridRef.current.getBoundingClientRect();
+    setHistoryGridWidth(rect.width);
+    setGridOffsetTop(rect.top + window.scrollY);
+  }, []);
+
+  useEffect(() => {
+    updateHistoryGridMetrics();
+  }, [updateHistoryGridMetrics, history.length, showPresetList, flyerSide]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+      updateHistoryGridMetrics();
+      setMeasuredRowHeight(null);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [updateHistoryGridMetrics]);
+
+  useEffect(() => {
+    if (!historyGridRef.current || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => {
+      updateHistoryGridMetrics();
+    });
+    observer.observe(historyGridRef.current);
+    return () => observer.disconnect();
+  }, [updateHistoryGridMetrics]);
+
+  const overscanRows = 2;
+
+  const computeVisibleRange = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return { startRow: 0, endRow: -1 };
+    }
+    const total = totalRowsRef.current;
+    const stride = rowStrideRef.current;
+    if (total === 0 || stride <= 0) {
+      return { startRow: 0, endRow: -1 };
+    }
+    const scrollTop = window.scrollY || 0;
+    const offsetTop = gridOffsetTopRef.current;
+    const viewport = viewportHeightRef.current || window.innerHeight || 0;
+    const startRow = Math.max(0, Math.floor((scrollTop - offsetTop - overscanRows * stride) / stride));
+    const endRow = Math.min(total - 1, Math.floor((scrollTop + viewport - offsetTop + overscanRows * stride) / stride));
+    return { startRow, endRow };
+  }, []);
+
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const next = computeVisibleRange();
+        setVisibleRange(prev => (prev.startRow === next.startRow && prev.endRow === next.endRow ? prev : next));
+        ticking = false;
+      });
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [computeVisibleRange]);
 
   const handleSaveApiKey = async () => {
     if (!tempApiKey.trim()) {
@@ -1805,6 +1885,85 @@ ${header.length + uint8Array.length + 20}
     }
   };
 
+  const allTags = useMemo(
+    () => [...new Set(history.flatMap(item => item.tags || []))],
+    [history]
+  );
+
+  const filteredHistory = useMemo(() => {
+    const filtered = selectedTag
+      ? history.filter(item => item.tags && item.tags.includes(selectedTag))
+      : history;
+
+    return [...filtered].sort((a, b) => {
+      const aFav = !!a.isFavorite;
+      const bFav = !!b.isFavorite;
+      if (aFav !== bFav) return aFav ? -1 : 1;
+      if (a.createdAt === b.createdAt) return 0;
+      const direction = sortOrder === 'asc' ? 1 : -1;
+      return (a.createdAt - b.createdAt) * direction;
+    });
+  }, [history, selectedTag, sortOrder]);
+
+  const historyColumns = useMemo(() => {
+    if (windowWidth >= 1280) return 4;
+    if (windowWidth >= 1024) return 3;
+    if (windowWidth >= 768) return 2;
+    return 1;
+  }, [windowWidth]);
+
+  useEffect(() => {
+    setMeasuredRowHeight(null);
+  }, [historyColumns, historyGridWidth]);
+
+  const historyGridGap = 24;
+  const fallbackGridWidth = Math.max(0, Math.min(windowWidth - 48, 1024));
+  const effectiveGridWidth = historyGridWidth || fallbackGridWidth;
+  const cardWidth = historyColumns > 0
+    ? (effectiveGridWidth - historyGridGap * (historyColumns - 1)) / historyColumns
+    : effectiveGridWidth;
+  const imageHeight = cardWidth > 0 ? cardWidth * (4 / 3) : 0;
+  const estimatedRowHeight = Math.max(260, imageHeight + 160);
+  const rowHeight = measuredRowHeight ?? estimatedRowHeight;
+  const rowStride = rowHeight + historyGridGap;
+  const totalRows = historyColumns > 0 ? Math.ceil(filteredHistory.length / historyColumns) : 0;
+  const startRow = totalRows === 0 ? 0 : Math.min(visibleRange.startRow, totalRows - 1);
+  const endRow = totalRows === 0 ? -1 : Math.min(visibleRange.endRow, totalRows - 1);
+  const topSpacerHeight = totalRows === 0 ? 0 : startRow * rowStride;
+  const remainingRows = totalRows - endRow - 1;
+  const bottomSpacerHeight = remainingRows <= 0
+    ? 0
+    : remainingRows * rowHeight + Math.max(0, remainingRows - 1) * historyGridGap;
+
+  useEffect(() => {
+    rowStrideRef.current = rowStride;
+    gridOffsetTopRef.current = gridOffsetTop;
+    viewportHeightRef.current = viewportHeight;
+    totalRowsRef.current = totalRows;
+
+    const next = computeVisibleRange();
+    setVisibleRange(prev => (prev.startRow === next.startRow && prev.endRow === next.endRow ? prev : next));
+  }, [rowStride, gridOffsetTop, viewportHeight, totalRows, computeVisibleRange]);
+
+  const visibleRows = useMemo(() => {
+    const rows: { row: number; items: GeneratedImage[] }[] = [];
+    if (totalRows === 0 || endRow < startRow) return rows;
+    for (let row = startRow; row <= endRow; row += 1) {
+      rows.push({
+        row,
+        items: filteredHistory.slice(row * historyColumns, row * historyColumns + historyColumns)
+      });
+    }
+    return rows;
+  }, [filteredHistory, historyColumns, startRow, endRow, totalRows]);
+
+  const rowMeasureRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    if (!rect.height) return;
+    setMeasuredRowHeight(prev => (prev && Math.abs(prev - rect.height) < 4 ? prev : rect.height));
+  }, []);
+
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
@@ -1857,7 +2016,7 @@ ${header.length + uint8Array.length + 20}
 
         {/* Preset Management Section */}
         {showPresetList && (
-          <div className="bg-white/40 backdrop-blur-md border border-indigo-100 rounded-lg p-5 sm:p-8 mb-6 sm:mb-10 animate-slide-up shadow-indigo-500/5">
+          <div className="bg-white border border-indigo-100 rounded-lg p-5 sm:p-8 mb-6 sm:mb-10 animate-slide-up shadow-indigo-500/5">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📂</span>
@@ -2239,6 +2398,8 @@ ${header.length + uint8Array.length + 20}
                               src={img}
                               alt={`商品画像 ${idx + 1}`}
                               className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
                             />
                             {selectedFrontProductIndices.has(idx) && (
                               <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
@@ -2504,6 +2665,8 @@ ${header.length + uint8Array.length + 20}
                       src={img}
                       alt={`キャラクター ${idx + 1}`}
                       className="w-full h-20 object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                     {/* Checkmark overlay */}
                     <div
@@ -2573,6 +2736,8 @@ ${header.length + uint8Array.length + 20}
                       src={img}
                       alt={`使用イラスト ${idx + 1}`}
                       className="w-full h-20 object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                     {/* Checkmark overlay */}
                     <div
@@ -2627,6 +2792,8 @@ ${header.length + uint8Array.length + 20}
                       src={img}
                       alt={`参考デザイン ${idx + 1}`}
                       className="w-full h-20 object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                     {/* Checkmark overlay */}
                     <div
@@ -2688,6 +2855,8 @@ ${header.length + uint8Array.length + 20}
                     src={img}
                     alt={`お客様画像 ${idx + 1}`}
                     className="w-full h-20 object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                   {/* Checkmark overlay */}
                   <div
@@ -2744,6 +2913,8 @@ ${header.length + uint8Array.length + 20}
                     src={img}
                     alt={`店舗ロゴ ${idx + 1}`}
                     className="w-full h-20 object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                   {/* Checkmark overlay */}
                   <div
@@ -2831,7 +3002,7 @@ ${header.length + uint8Array.length + 20}
 
         {/* History Results */}
         {history.length > 0 && (
-          <div className="bg-white/60 backdrop-blur-sm rounded-lg shadow-premium border border-white/50 p-8 sm:p-12 animate-slide-up">
+          <div className="bg-white rounded-lg shadow-premium border border-white/50 p-8 sm:p-12 animate-slide-up">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-950 rounded-md flex items-center justify-center text-lg">📁</div>
@@ -2879,53 +3050,54 @@ ${header.length + uint8Array.length + 20}
             </div>
 
             {/* Tag Filter */}
-            {(() => {
-              const allTags = [...new Set(history.flatMap(item => item.tags || []))];
-              return allTags.length > 0 && (
-                <div className="mb-8 flex flex-wrap gap-2 items-center">
-                  <span className="text-xs font-bold text-slate-400 mr-2">タグで絞り込み:</span>
+            {allTags.length > 0 && (
+              <div className="mb-8 flex flex-wrap gap-2 items-center">
+                <span className="text-xs font-bold text-slate-400 mr-2">タグで絞り込み:</span>
+                <button
+                  onClick={() => setSelectedTag(null)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === null
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                >
+                  すべて
+                </button>
+                {allTags.map(tag => (
                   <button
-                    onClick={() => setSelectedTag(null)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === null
+                    key={tag}
+                    onClick={() => setSelectedTag(tag)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === tag
                       ? 'bg-indigo-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                   >
-                    すべて
+                    {tag}
                   </button>
-                  {allTags.map(tag => (
-                    <button
-                      key={tag}
-                      onClick={() => setSelectedTag(tag)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === tag
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
+                ))}
+              </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[...history]
-                .filter(item => selectedTag === null || (item.tags && item.tags.includes(selectedTag)))
-                .sort((a, b) => {
-                  // Favorites first, then by date
-                  const aFav = !!a.isFavorite;
-                  const bFav = !!b.isFavorite;
-                  if (aFav !== bFav) return aFav ? -1 : 1;
-                  if (a.createdAt === b.createdAt) return 0;
-                  const direction = sortOrder === 'asc' ? 1 : -1;
-                  return (a.createdAt - b.createdAt) * direction;
-                })
-                .map((item, idx) => (
-                  <div key={item.id} className={`group flex flex-col bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 ${item.isFavorite ? 'ring-2 ring-amber-400' : ''}`}>
+            <div ref={historyGridRef} className="relative">
+              {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} />}
+
+              {visibleRows.map((rowData, rowIndex) => (
+                <div
+                  key={`row-${rowData.row}`}
+                  ref={rowIndex === 0 ? rowMeasureRef : undefined}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  style={{ minHeight: rowHeight, marginBottom: rowData.row === totalRows - 1 ? 0 : historyGridGap }}
+                >
+                  {rowData.items.map((item) => (
+                    <div key={item.id} className={`history-card group flex flex-col bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ${item.isFavorite ? 'ring-2 ring-amber-400' : ''}`}>
                     {/* Image Section */}
                     <div className="relative aspect-[3/4] bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
-                      <img src={item.thumbnail || item.data} alt="Generated Flyer" className="w-full h-full object-contain" loading="lazy" />
+                      <img
+                        src={item.thumbnail || item.data}
+                        alt="Generated Flyer"
+                        className="w-full h-full object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
 
                       {/* Favorite Badge - Top Left */}
                       {item.isFavorite && (
@@ -3146,6 +3318,10 @@ ${header.length + uint8Array.length + 20}
                     </div>
                   </div>
                 ))}
+              </div>
+            ))}
+
+              {bottomSpacerHeight > 0 && <div style={{ height: bottomSpacerHeight }} />}
             </div>
           </div>
         )}
@@ -3340,7 +3516,13 @@ ${header.length + uint8Array.length + 20}
                 </label>
               ) : (
                 <div className="relative">
-                  <img src={uploadPreview} alt="Preview" className="w-full h-32 object-contain rounded-lg border border-slate-200 bg-slate-50" />
+                  <img
+                    src={uploadPreview}
+                    alt="Preview"
+                    className="w-full h-32 object-contain rounded-lg border border-slate-200 bg-slate-50"
+                    loading="lazy"
+                    decoding="async"
+                  />
                   <button onClick={() => setUploadPreview("")} className="absolute top-2 right-2 bg-white/80 hover:bg-rose-50 text-slate-400 hover:text-rose-500 p-1.5 rounded-md shadow-sm">✕</button>
                 </div>
               )}
@@ -3394,6 +3576,8 @@ ${header.length + uint8Array.length + 20}
               src={previewImage}
               alt="プレビュー"
               className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              loading="lazy"
+              decoding="async"
               onClick={(e) => e.stopPropagation()}
             />
           </div>

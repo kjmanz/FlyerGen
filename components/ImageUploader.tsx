@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface ImageUploaderProps {
   images: string[];
@@ -15,6 +15,85 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [thumbnailMap, setThumbnailMap] = useState<Record<string, string>>({});
+  const thumbnailMapRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    thumbnailMapRef.current = thumbnailMap;
+  }, [thumbnailMap]);
+
+  const createThumbnail = async (dataUrl: string, maxSize = 240): Promise<string> => {
+    try {
+      if (!('createImageBitmap' in window)) {
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = dataUrl;
+        });
+
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return dataUrl;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.7);
+      }
+
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const bitmap = await createImageBitmap(blob);
+      const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        bitmap.close();
+        return dataUrl;
+      }
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      return canvas.toDataURL('image/jpeg', 0.7);
+    } catch {
+      return dataUrl;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncThumbnails = async () => {
+      const updates: Record<string, string> = {};
+      for (const img of images) {
+        if (!img.startsWith('data:')) continue;
+        if (thumbnailMapRef.current[img]) continue;
+        const thumb = await createThumbnail(img);
+        if (cancelled) return;
+        updates[img] = thumb;
+      }
+
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setThumbnailMap(prev => ({ ...prev, ...updates }));
+      }
+    };
+
+    syncThumbnails();
+
+    setThumbnailMap(prev => {
+      const next: Record<string, string> = {};
+      images.forEach(img => {
+        if (prev[img]) next[img] = prev[img];
+      });
+      return next;
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [images]);
 
   const processFiles = (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -107,20 +186,23 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {images.map((img, idx) => (
-          <div key={idx} className="relative group aspect-square bg-gray-100 rounded-md overflow-hidden border border-gray-200">
-            <img src={img} alt="preview" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
-              <button
-                onClick={() => removeImage(idx)}
-                className="bg-rose-500 text-white rounded-md p-1.5 hover:bg-rose-600"
-                title="削除"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
+        {images.map((img, idx) => {
+          const previewSrc = thumbnailMap[img] || img;
+          return (
+            <div key={idx} className="relative group aspect-square bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+              <img src={previewSrc} alt="preview" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
+                <button
+                  onClick={() => removeImage(idx)}
+                  className="bg-rose-500 text-white rounded-md p-1.5 hover:bg-rose-600"
+                  title="削除"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         <button
           onClick={() => fileInputRef.current?.click()}

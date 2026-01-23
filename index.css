@@ -760,6 +760,12 @@ button {
   box-shadow: var(--md-elevation-2) !important;
 }
 
+/* History card scroll perf */
+.history-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 320px 480px;
+}
+
 /* Button premium hover */
 .btn-premium:hover {
   opacity: 1 !important;
