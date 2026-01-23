@@ -63,6 +63,7 @@ export interface CloudImage {
     upscaleScale?: number;
     isEdited?: boolean;
     is4KRegenerated?: boolean;
+    imageSize?: '1K' | '2K' | '4K';
     createdAt: number;
 }
 
@@ -103,7 +104,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
         ]);
 
         // Build metadata map
-        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean; isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean; createdAt?: number }>();
+        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean; isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean; imageSize?: '1K' | '2K' | '4K'; createdAt?: number }>();
         if (metadataSnapshot) {
             metadataSnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -114,6 +115,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                     upscaleScale: data.upscaleScale,
                     isEdited: data.isEdited,
                     is4KRegenerated: data.is4KRegenerated,
+                    imageSize: data.imageSize,
                     createdAt: data.createdAt
                 });
             });
@@ -156,6 +158,7 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                 upscaleScale: metadata?.upscaleScale,
                 isEdited: metadata?.isEdited,
                 is4KRegenerated: metadata?.is4KRegenerated,
+                imageSize: metadata?.imageSize,
                 createdAt: timestamp
             };
         });
@@ -195,6 +198,7 @@ export interface FlyerMetadata {
     upscaleScale?: number;
     isEdited?: boolean;
     is4KRegenerated?: boolean;
+    imageSize?: '1K' | '2K' | '4K';
     createdAt: number;
 }
 
@@ -203,7 +207,7 @@ export const saveFlyerMetadata = async (
     id: string,
     tags: string[],
     createdAt: number,
-    options?: { isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean }
+    options?: { isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean; imageSize?: '1K' | '2K' | '4K' }
 ): Promise<boolean> => {
     if (!db) return false;
     try {
@@ -215,6 +219,7 @@ export const saveFlyerMetadata = async (
             ...(options?.upscaleScale !== undefined && { upscaleScale: options.upscaleScale }),
             ...(options?.isEdited !== undefined && { isEdited: options.isEdited }),
             ...(options?.is4KRegenerated !== undefined && { is4KRegenerated: options.is4KRegenerated }),
+            ...(options?.imageSize !== undefined && { imageSize: options.imageSize }),
             updatedAt: Date.now()
         });
         return true;

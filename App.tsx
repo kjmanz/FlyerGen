@@ -261,6 +261,7 @@ const App: React.FC = () => {
               upscaleScale: img.upscaleScale,
               isEdited: img.isEdited,
               is4KRegenerated: img.is4KRegenerated,
+              imageSize: img.imageSize,
               createdAt: img.createdAt
             })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
@@ -827,7 +828,7 @@ const App: React.FC = () => {
 
           if (cloudUrl) {
             // Save metadata (tags) to Firestore
-            await saveFlyerMetadata(filename, tags, timestamp);
+            await saveFlyerMetadata(filename, tags, timestamp, { imageSize: settings.imageSize });
 
             newItems.push({
               id: filename, // Use filename as ID to match Firestore
@@ -835,14 +836,15 @@ const App: React.FC = () => {
               thumbnail: thumbUrl || thumbnailData,
               tags,
               flyerType: flyerSide,
-              createdAt: timestamp
+              createdAt: timestamp,
+              imageSize: settings.imageSize
             });
           } else {
             // Fallback to local if upload fails
-            newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp });
+            newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp, imageSize: settings.imageSize });
           }
         } else {
-          newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp });
+          newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp, imageSize: settings.imageSize });
         }
       }
 
@@ -974,7 +976,7 @@ const App: React.FC = () => {
   // Upscale handler
   const handleUpscale = async (item: GeneratedImage) => {
     if (item.isUpscaled) return;
-    if (item.is4KRegenerated) {
+    if (item.is4KRegenerated || item.imageSize === '4K') {
       alert("4K画像はアップスケールできません。");
       return;
     }
@@ -1029,6 +1031,7 @@ const App: React.FC = () => {
         thumbnail: newThumbnail,
         tags: [...(item.tags || []), `#アップスケール${scaleForItem}x`],
         createdAt: timestamp,
+        imageSize: item.imageSize,
         isUpscaled: true,
         upscaleScale: scaleForItem,
         is4KRegenerated: item.is4KRegenerated
@@ -1050,7 +1053,8 @@ const App: React.FC = () => {
         await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {
           isUpscaled: true,
           upscaleScale: scaleForItem,
-          is4KRegenerated: item.is4KRegenerated
+          is4KRegenerated: item.is4KRegenerated,
+          imageSize: item.imageSize
         });
         await updateFlyerUpscaleStatus(item.id, false);
       }
@@ -1119,6 +1123,7 @@ const App: React.FC = () => {
         data: newImageData,
         thumbnail: newThumbnail,
         createdAt: timestamp,
+        imageSize: '4K',
         tags: [...(item.tags || []), '#4K再生成'],
         isFavorite: false,
         is4KRegenerated: true
@@ -1131,7 +1136,8 @@ const App: React.FC = () => {
       // Save metadata to Firebase if enabled
       if (firebaseEnabled) {
         await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {
-          is4KRegenerated: true
+          is4KRegenerated: true,
+          imageSize: '4K'
         });
       }
 
@@ -1653,6 +1659,7 @@ ${header.length + uint8Array.length + 20}
         thumbnail: newThumbnail,
         tags: [...(editingImage.tags || []), '#編集済み'], // Inherit tags from original + add edited tag
         createdAt: timestamp,
+        imageSize: editingImage.imageSize,
         isEdited: true
       };
 
@@ -1663,7 +1670,8 @@ ${header.length + uint8Array.length + 20}
       // Save metadata to Firebase if enabled
       if (firebaseEnabled) {
         await saveFlyerMetadata(newItem.id, newItem.tags || [], timestamp, {
-          isEdited: true
+          isEdited: true,
+          imageSize: editingImage.imageSize
         });
       }
 
@@ -1730,6 +1738,7 @@ ${header.length + uint8Array.length + 20}
         thumbnail: newThumbnail,
         tags: [...(item.tags || []).filter(t => t !== '#文字消去済み'), '#文字消去済み'],
         createdAt: timestamp,
+        imageSize: item.imageSize,
         isEdited: true
       };
 
@@ -1740,7 +1749,8 @@ ${header.length + uint8Array.length + 20}
       // Save metadata to Firebase if enabled
       if (firebaseEnabled) {
         await saveFlyerMetadata(newItem.id, newItem.tags || [], timestamp, {
-          isEdited: true
+          isEdited: true,
+          imageSize: item.imageSize
         });
       }
 
@@ -2992,16 +3002,16 @@ ${header.length + uint8Array.length + 20}
                         {/* Upscale Button */}
                         <button
                           onClick={() => handleUpscale(item)}
-                          disabled={upscalingImageId === item.id || item.isUpscaled || item.is4KRegenerated}
+                          disabled={upscalingImageId === item.id || item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'}
                           className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
                             ? 'bg-slate-100 text-slate-600 cursor-wait'
-                            : item.isUpscaled || item.is4KRegenerated
+                            : item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'
                               ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
                               : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                             }`}
                           title={item.isUpscaled
                             ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)`
-                            : item.is4KRegenerated
+                            : item.is4KRegenerated || item.imageSize === '4K'
                               ? '4K画像はアップスケール不可'
                               : `AIアップスケール(${UPSCALE_SCALE}x)`}
                         >

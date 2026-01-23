@@ -41,6 +41,7 @@ export interface GeneratedImage {
   tags?: string[]; // Auto-generated category tags (e.g., "エアコン", "テレビ")
   isFavorite?: boolean; // User-marked favorite
   createdAt: number;
+  imageSize?: ImageSize;
   isUpscaled?: boolean; // Flag to indicate if image has been upscaled
   upscaleScale?: number; // Upscale multiplier (e.g., 4, 8)
   isEdited?: boolean; // Flag to indicate if image has been edited
