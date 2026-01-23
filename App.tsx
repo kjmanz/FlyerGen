@@ -42,7 +42,7 @@ const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
-const UPSCALE_SCALE = 8;
+const UPSCALE_SCALE = 4;
 
 // Initialize Firebase on app load
 const firebaseEnabled = initFirebase();
@@ -974,6 +974,10 @@ const App: React.FC = () => {
   // Upscale handler
   const handleUpscale = async (item: GeneratedImage) => {
     if (item.isUpscaled) return;
+    if (item.is4KRegenerated) {
+      alert("4K画像はアップスケールできません。");
+      return;
+    }
     if (!replicateApiKey) {
       alert("アップスケール機能を使用するには、設定画面でReplicate APIキーを入力してください。");
       setIsSettingsOpen(true);
@@ -983,13 +987,10 @@ const App: React.FC = () => {
     setUpscalingImageId(item.id);
 
     try {
-      const scaleForItem = item.is4KRegenerated ? 4 : UPSCALE_SCALE;
-      const resizeLimits = item.is4KRegenerated
-        ? { maxPixels: 1000000, maxDimension: 1024 }
-        : undefined;
+      const scaleForItem = UPSCALE_SCALE;
 
       // Always use full resolution image (item.data), not thumbnail
-      const result = await upscaleImage(item.data, replicateApiKey, scaleForItem, resizeLimits);
+      const result = await upscaleImage(item.data, replicateApiKey, scaleForItem);
 
       // Create new upscaled image entry
       const newId = uuidv4();
@@ -2991,16 +2992,18 @@ ${header.length + uint8Array.length + 20}
                         {/* Upscale Button */}
                         <button
                           onClick={() => handleUpscale(item)}
-                          disabled={upscalingImageId === item.id || item.isUpscaled}
+                          disabled={upscalingImageId === item.id || item.isUpscaled || item.is4KRegenerated}
                           className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
                             ? 'bg-slate-100 text-slate-600 cursor-wait'
-                            : item.isUpscaled
+                            : item.isUpscaled || item.is4KRegenerated
                               ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
                               : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                             }`}
                           title={item.isUpscaled
                             ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)`
-                            : `AIアップスケール(${item.is4KRegenerated ? 4 : UPSCALE_SCALE}x)`}
+                            : item.is4KRegenerated
+                              ? '4K画像はアップスケール不可'
+                              : `AIアップスケール(${UPSCALE_SCALE}x)`}
                         >
                           {upscalingImageId === item.id ? (
                             <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
