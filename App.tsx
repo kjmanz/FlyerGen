@@ -8,6 +8,7 @@ import { ImageEditModal, EditRegion } from './components/ImageEditModal';
 import { ProductServiceForm } from './components/ProductServiceForm';
 import { SalesLetterForm } from './components/SalesLetterForm';
 import { MainTabs, MainTabType } from './components/MainTabs';
+import { Sidebar } from './components/Sidebar';
 import { CompactAssetSection } from './components/CompactAssetSection';
 import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage, generateProductServiceFlyer, generateSalesLetterFlyer, regenerateImage4K } from './services/geminiService';
@@ -146,6 +147,9 @@ const App: React.FC = () => {
 
   // Main Tab State (メインタブ切り替え)
   const [mainTab, setMainTab] = useState<MainTabType>('front');
+
+  // Sidebar State (サイドバー開閉 - モバイル用)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Campaign Info State (表面用キャンペーン情報)
   const [campaignInfo, setCampaignInfo] = useState<CampaignInfo>({
@@ -290,32 +294,32 @@ const App: React.FC = () => {
             setHistory(historyFromCloud);
           }
 
-            if (cloudPresets.length > 0) {
-              const presetsFromCloud: Preset[] = cloudPresets.map(p => ({
-                id: p.id,
-                name: p.name,
-                products: p.products,
-                settings: p.settings,
-                characterImages: p.characterImages || [],
-                characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
-                referenceImages: p.referenceImages || [],
-                storeLogoImages: p.storeLogoImages || [],
-                customIllustrations: p.customIllustrations || [],
-                customerImages: p.customerImages || [],
-                frontProductImages: p.frontProductImages || [],
-                campaignMainImages: p.campaignMainImages || [],
-                selectedCharacterIndices: p.selectedCharacterIndices || [],
-                selectedReferenceIndex: typeof p.selectedReferenceIndex === 'number' ? p.selectedReferenceIndex : null,
-                selectedLogoIndices: p.selectedLogoIndices || [],
-                selectedCustomIllustrationIndices: p.selectedCustomIllustrationIndices || [],
-                selectedCustomerImageIndices: p.selectedCustomerImageIndices || [],
-                selectedFrontProductIndices: p.selectedFrontProductIndices || [],
-                selectedCampaignMainImageIndices: p.selectedCampaignMainImageIndices || [],
-                createdAt: p.createdAt,
-                updatedAt: p.updatedAt
-              }));
-              setPresets(presetsFromCloud);
-            }
+          if (cloudPresets.length > 0) {
+            const presetsFromCloud: Preset[] = cloudPresets.map(p => ({
+              id: p.id,
+              name: p.name,
+              products: p.products,
+              settings: p.settings,
+              characterImages: p.characterImages || [],
+              characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
+              referenceImages: p.referenceImages || [],
+              storeLogoImages: p.storeLogoImages || [],
+              customIllustrations: p.customIllustrations || [],
+              customerImages: p.customerImages || [],
+              frontProductImages: p.frontProductImages || [],
+              campaignMainImages: p.campaignMainImages || [],
+              selectedCharacterIndices: p.selectedCharacterIndices || [],
+              selectedReferenceIndex: typeof p.selectedReferenceIndex === 'number' ? p.selectedReferenceIndex : null,
+              selectedLogoIndices: p.selectedLogoIndices || [],
+              selectedCustomIllustrationIndices: p.selectedCustomIllustrationIndices || [],
+              selectedCustomerImageIndices: p.selectedCustomerImageIndices || [],
+              selectedFrontProductIndices: p.selectedFrontProductIndices || [],
+              selectedCampaignMainImageIndices: p.selectedCampaignMainImageIndices || [],
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt
+            }));
+            setPresets(presetsFromCloud);
+          }
 
           // Load reference images independently (not from presets)
           if (cloudReferenceImages.images.length > 0) {
@@ -2293,18 +2297,28 @@ ${header.length + uint8Array.length + 20}
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="./logo.png" alt="Logo" className="w-10 h-10 rounded-md" />
-            <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 lg:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 lg:gap-3">
+            {/* Hamburger Menu - Mobile only */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              title="設定・アセット"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <img src="./logo.png" alt="Logo" className="w-8 h-8 lg:w-10 lg:h-10 rounded-md" />
+            <h1 className="text-base lg:text-xl font-semibold text-slate-900 tracking-tight hidden sm:block">
               チラシ作成ソフト
             </h1>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
             <button
               onClick={handleGenerate}
               disabled={isGenerating}
-              className={`text-sm px-3 sm:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all ${isGenerating ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
+              className={`text-xs sm:text-sm px-2 sm:px-3 lg:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all ${isGenerating ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
             >
               {isGenerating ? (
                 <>
@@ -2320,315 +2334,567 @@ ${header.length + uint8Array.length + 20}
             </button>
             <button
               onClick={() => setShowPresetList(!showPresetList)}
-              className="p-2 sm:px-3 sm:py-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+              className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
               title="プリセット"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
             </button>
             <button
               onClick={() => { setTempApiKey(apiKey); setTempReplicateApiKey(replicateApiKey); setIsSettingsOpen(true); }}
-              className={`p-2 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5 transition-all ${apiKey ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'}`}
+              className={`p-2 rounded-full flex items-center gap-1.5 transition-all ${apiKey ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'}`}
               title={apiKey ? 'API 接続中' : 'APIキー未設定'}
             >
-              <div className={`w-2.5 h-2.5 rounded-full ${apiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
-              <span className="hidden sm:inline text-xs font-bold">{apiKey ? '接続中' : '未設定'}</span>
+              <div className={`w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full ${apiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
+              <span className="hidden lg:inline text-xs font-bold">{apiKey ? '接続中' : '未設定'}</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-fade-in">
-
-        {/* Preset Management Section */}
-        {showPresetList && (
-          <div className="bg-white border border-indigo-100 rounded-lg p-5 sm:p-8 mb-6 sm:mb-10 animate-slide-up shadow-indigo-500/5">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">📂</span>
-                <h2 className="text-xl font-semibold text-slate-900">保存済みプリセット</h2>
-              </div>
-              <button
-                onClick={handleNewProject}
-                className="text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-full transition-all"
-              >
-                ＋ 新規作成
-              </button>
+      {/* 2-Pane Layout Container */}
+      <div className="flex min-h-[calc(100vh-56px)] lg:min-h-[calc(100vh-64px)]">
+        {/* Sidebar */}
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}>
+          {/* Common Settings Section */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">⚙️</span>
+              <h2 className="font-semibold text-slate-900">共通設定</h2>
             </div>
-            {presets.length === 0 ? (
-              <div className="text-center py-10 bg-slate-50/50 rounded-md border border-dashed border-slate-200">
-                <p className="text-slate-400 text-sm font-medium">プリセットがありません</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {presets.map(preset => (
-                  <div
-                    key={preset.id}
-                    onClick={() => handleLoadPreset(preset)}
-                    className={`group bg-white p-5 rounded-md border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${currentPresetId === preset.id ? 'border-indigo-500 shadow-indigo-500/10 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md'}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">{preset.name}</h3>
-                        <p className="text-[10px] font-bold tracking-wider text-slate-400 mt-2 flex items-center gap-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          更新: {new Date(preset.updatedAt).toLocaleDateString('ja-JP')}
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                          <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
-                          <span className="px-2 py-0.5 bg-indigo-50 text-[10px] font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
-                        </div>
-                      </div>
-                      <div className="pl-2">
-                        <button
-                          onClick={(e) => handleDeletePreset(preset.id, e)}
-                          className="bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-500 p-2 rounded-md transition-all group-hover:opacity-100 sm:opacity-0"
-                          title="Delete"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Main Tabs */}
-        <div className="mb-8">
-          <MainTabs
-            activeTab={mainTab}
-            onTabChange={(tab) => {
-              setMainTab(tab);
-              // Sync flyerSide with tab for generation logic
-              if (tab === 'front') setFlyerSide('front');
-              if (tab === 'back') setFlyerSide('back');
-            }}
-          />
-        </div>
+            {/* Orientation */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-400 mb-2">チラシ形式</label>
+              <div className="flex gap-2">
+                <label className={`flex-1 flex flex-col items-center p-2 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'vertical' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200'}`}>
+                  <input type="radio" name="orientation-sidebar" className="sr-only" checked={settings.orientation === 'vertical'} onChange={() => setSettings({ ...settings, orientation: 'vertical' })} />
+                  <div className="w-4 h-6 border-2 border-slate-400 rounded bg-white mb-1"></div>
+                  <span className="text-xs font-medium text-slate-700">縦</span>
+                </label>
+                <label className={`flex-1 flex flex-col items-center p-2 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'horizontal' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200'}`}>
+                  <input type="radio" name="orientation-sidebar" className="sr-only" checked={settings.orientation === 'horizontal'} onChange={() => setSettings({ ...settings, orientation: 'horizontal' })} />
+                  <div className="w-6 h-4 border-2 border-slate-400 rounded bg-white mb-1"></div>
+                  <span className="text-xs font-medium text-slate-700">横</span>
+                </label>
+              </div>
+            </div>
 
-        {/* Action Bar for Current State */}
-        <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`w-3 h-3 rounded-full ${currentPresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
-            <div>
-              <p className="text-[10px] font-semibold tracking-[0.1em] text-slate-400">現在の状態</p>
-              {currentPresetId ? (
-                <p className="font-semibold text-indigo-700">
-                  編集中: {presets.find(p => p.id === currentPresetId)?.name || '未保存のプリセット'}
-                </p>
-              ) : (
-                <p className="font-semibold text-slate-700">新規プロジェクト（未保存）</p>
+            {/* Resolution & Pattern */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">解像度</label>
+                <select
+                  value={settings.imageSize}
+                  onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as any })}
+                  className="w-full text-sm border border-slate-200 rounded-md py-2 px-2 bg-white font-medium"
+                >
+                  <option value="1K">1K</option>
+                  <option value="2K">2K</option>
+                  <option value="4K">4K</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">パターン</label>
+                <select
+                  value={settings.patternCount}
+                  onChange={(e) => setSettings({ ...settings, patternCount: parseInt(e.target.value) })}
+                  className="w-full text-sm border border-slate-200 rounded-md py-2 px-2 bg-white font-medium"
+                >
+                  {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Background Mode */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-400 mb-2">背景</label>
+              <div className="flex gap-1">
+                <button onClick={() => setSettings({ ...settings, backgroundMode: 'creative' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'creative' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>おまかせ</button>
+                <button onClick={() => setSettings({ ...settings, backgroundMode: 'white' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'white' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>白</button>
+                <button onClick={() => setSettings({ ...settings, backgroundMode: 'custom' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'custom' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>カスタム</button>
+              </div>
+              {settings.backgroundMode === 'custom' && (
+                <textarea
+                  rows={2}
+                  placeholder="背景の指定..."
+                  value={settings.customBackground || ''}
+                  onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
+                  className="mt-2 w-full text-sm border border-slate-200 rounded-md py-2 px-2"
+                />
               )}
             </div>
           </div>
-          <button
-            onClick={openSaveModal}
-            className="btn-premium flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 active:scale-95"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-            保存
-          </button>
-        </div>
 
-        {/* Front Side Tab */}
-        {mainTab === 'front' && (
-          <>
-            {/* Front Flyer Type Selector */}
-            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-4 ml-1">表面チラシのタイプ</label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'campaign' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'campaign'} onChange={() => setFrontFlyerType('campaign')} />
-                  <div className="w-12 h-12 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-2xl mb-3">🎉</div>
-                  <div className="text-sm font-bold text-slate-900">キャンペーン訴求</div>
-                  <div className="text-[10px] text-slate-500 mt-1">セール・フェア告知</div>
-                </label>
-                <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'product-service' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'product-service'} onChange={() => setFrontFlyerType('product-service')} />
-                  <div className="w-12 h-12 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-2xl mb-3">📦</div>
-                  <div className="text-sm font-bold text-slate-900">商品・サービス紹介</div>
-                  <div className="text-[10px] text-slate-500 mt-1">機能・メリット訴求</div>
-                </label>
-              </div>
+          <hr className="border-slate-200 my-4" />
+
+          {/* Assets Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">🎨</span>
+              <h2 className="font-semibold text-slate-900">アセット</h2>
             </div>
 
-            {/* Campaign Mode Form */}
-            {frontFlyerType === 'campaign' && (
-              <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
-
-                <div className="flex items-center gap-3 mb-8 relative">
-                  <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">📢</div>
-                  <h2 className="text-xl font-semibold text-slate-900">キャンペーン情報（表面）</h2>
-                </div>
-
-                {/* Campaign Description - AI Trigger */}
-                <div className="mb-8 relative">
-                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">何のキャンペーン？</label>
-                  <div className="flex gap-3">
-                    <input
-                      type="text"
-                      placeholder="例: エアコンの買い替え促進、省エネ訴求"
-                      value={campaignInfo.campaignDescription}
-                      onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignDescription: e.target.value })}
-                      className="flex-1 rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                    />
-                    <button
-                      onClick={handleGenerateCampaignContent}
-                      disabled={isGeneratingCampaign || !campaignInfo.campaignDescription.trim()}
-                      className="px-5 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {isGeneratingCampaign ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                          生成中
-                        </>
-                      ) : (
-                        <>✨ AI生成</>
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」を押すと、ヘッドラインとキャンペーン名が自動生成されます</p>
-                </div>
-
-                {/* Headline */}
-                <div className="mb-6">
-                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ヘッドライン（お客様の悩み）</label>
-                  <input
-                    type="text"
-                    placeholder="例: まだ10年前のエアコン使っていませんか？"
-                    value={campaignInfo.headline}
-                    onChange={(e) => setCampaignInfo({ ...campaignInfo, headline: e.target.value })}
-                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                  />
-                </div>
-
-                {/* Campaign Name */}
-                <div className="mb-6">
-                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン名</label>
-                  <input
-                    type="text"
-                    placeholder="例: 夏の省エネ家電 買い替え応援フェア"
-                    value={campaignInfo.campaignName}
-                    onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignName: e.target.value })}
-                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                  />
-                </div>
-
-                {/* Campaign Period */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">開始日</label>
-                    <input
-                      type="date"
-                      value={campaignInfo.startDate}
-                      onChange={(e) => setCampaignInfo({ ...campaignInfo, startDate: e.target.value })}
-                      className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">終了日</label>
-                    <input
-                      type="date"
-                      value={campaignInfo.endDate}
-                      onChange={(e) => setCampaignInfo({ ...campaignInfo, endDate: e.target.value })}
-                      className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
-                    />
-                  </div>
-                </div>
-
-                {/* Campaign Content */}
-                <div className="mb-6">
-                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン内容</label>
-                  <textarea
-                    rows={3}
-                    placeholder="キャンペーンの詳細内容を記述..."
-                    value={campaignInfo.content}
-                    onChange={(e) => setCampaignInfo({ ...campaignInfo, content: e.target.value })}
-                    className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                  />
-                </div>
-
-                {/* Benefits List */}
-                <div className="mb-6">
-                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">特典リスト</label>
-                  {campaignInfo.benefits.map((benefit, idx) => (
-                    <div key={idx} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        placeholder={`特典 ${idx + 1}...`}
-                        value={benefit}
-                        onChange={(e) => {
-                          const newBenefits = [...campaignInfo.benefits];
-                          newBenefits[idx] = e.target.value;
-                          setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
-                        }}
-                        className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                      />
-                      {campaignInfo.benefits.length > 1 && (
-                        <button
-                          onClick={() => {
-                            const newBenefits = campaignInfo.benefits.filter((_, i) => i !== idx);
-                            setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
-                          }}
-                          className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md transition-all"
-                        >
-                          ✕
-                        </button>
-                      )}
+            <div className="space-y-3">
+              {/* Character Images */}
+              <CompactAssetSection
+                title="キャラクター"
+                icon="👤"
+                images={characterImages}
+                selectedCount={selectedCharacterIndices.size}
+                selectedIndices={Array.from(selectedCharacterIndices)}
+                isCloudSync={firebaseEnabled}
+              >
+                <ImageUploader label="キャラクター" images={characterImages} onImagesChange={handleCharacterImagesChange} />
+                <AssetSelectionGrid images={characterImages} selectedIndices={selectedCharacterIndices} onToggleSelect={toggleCharacterImageSelection} onSelectAll={selectAllCharacterImages} onClearSelection={clearCharacterSelection} onReorder={reorderCharacterImages} onRemoveDuplicates={dedupeCharacterImages} accent="indigo" />
+                {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
+                  <div className="mt-2 p-2 bg-slate-50 rounded-md">
+                    <div className="flex gap-1">
+                      <button onClick={() => setCharacterClothingMode('fixed')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'fixed' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>👔 そのまま</button>
+                      <button onClick={() => setCharacterClothingMode('match')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'match' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>🎨 合わせる</button>
                     </div>
-                  ))}
+                  </div>
+                )}
+              </CompactAssetSection>
+
+              {/* Custom Illustrations */}
+              <CompactAssetSection
+                title="イラスト"
+                icon="🎨"
+                images={customIllustrations}
+                selectedCount={selectedCustomIllustrationIndices.size}
+                selectedIndices={Array.from(selectedCustomIllustrationIndices)}
+                isCloudSync={firebaseEnabled}
+              >
+                <ImageUploader label="イラスト" images={customIllustrations} onImagesChange={handleCustomIllustrationsChange} />
+                <AssetSelectionGrid images={customIllustrations} selectedIndices={selectedCustomIllustrationIndices} onToggleSelect={toggleCustomIllustrationSelection} onSelectAll={selectAllCustomIllustrations} onClearSelection={clearCustomIllustrationSelection} onReorder={reorderCustomIllustrations} onRemoveDuplicates={dedupeCustomIllustrations} accent="indigo" />
+              </CompactAssetSection>
+
+              {/* Reference Images */}
+              <CompactAssetSection
+                title="参考デザイン"
+                icon="🖼️"
+                images={referenceImages}
+                selectedCount={selectedReferenceIndex !== null ? 1 : 0}
+                selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
+                isCloudSync={firebaseEnabled}
+              >
+                <ImageUploader label="参考" images={referenceImages} onImagesChange={handleReferenceImagesChange} />
+                <AssetSelectionGrid images={referenceImages} selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])} onToggleSelect={toggleReferenceImageSelection} onClearSelection={clearReferenceSelection} onReorder={reorderReferenceImages} onRemoveDuplicates={dedupeReferenceImages} accent="indigo" />
+              </CompactAssetSection>
+
+              {/* Customer Images */}
+              <CompactAssetSection
+                title="お客様画像"
+                icon="👥"
+                iconBgColor="bg-rose-50"
+                iconBorderColor="border-rose-100"
+                images={customerImages}
+                selectedCount={selectedCustomerImageIndices.size}
+                selectedIndices={Array.from(selectedCustomerImageIndices)}
+                isCloudSync={firebaseEnabled}
+              >
+                <ImageUploader label="お客様" images={customerImages} onImagesChange={handleCustomerImagesChange} />
+                <AssetSelectionGrid images={customerImages} selectedIndices={selectedCustomerImageIndices} onToggleSelect={toggleCustomerImageSelection} onSelectAll={selectAllCustomerImages} onClearSelection={clearCustomerSelection} onReorder={reorderCustomerImages} onRemoveDuplicates={dedupeCustomerImages} accent="rose" />
+              </CompactAssetSection>
+
+              {/* Store Logo */}
+              <CompactAssetSection
+                title="店舗ロゴ"
+                icon="🏪"
+                images={storeLogoImages}
+                selectedCount={selectedLogoIndices.size}
+                selectedIndices={Array.from(selectedLogoIndices)}
+                isCloudSync={firebaseEnabled}
+              >
+                <ImageUploader label="ロゴ" images={storeLogoImages} onImagesChange={handleStoreLogoImagesChange} />
+                <AssetSelectionGrid images={storeLogoImages} selectedIndices={selectedLogoIndices} onToggleSelect={toggleLogoImageSelection} onSelectAll={selectAllLogoImages} onClearSelection={clearLogoSelection} onReorder={reorderLogoImages} onRemoveDuplicates={dedupeLogoImages} accent="indigo" />
+                {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
+                  <div className="mt-2 p-2 bg-slate-50 rounded-md">
+                    <label className="block text-xs font-medium text-slate-400 mb-1">配置</label>
+                    <div className="flex gap-1">
+                      <button onClick={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'full-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>横幅100%</button>
+                      <button onClick={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'right-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>右50%</button>
+                    </div>
+                  </div>
+                )}
+              </CompactAssetSection>
+            </div>
+          </div>
+        </Sidebar>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 animate-fade-in">
+          <div className="max-w-4xl mx-auto">
+
+            {/* Preset Management Section */}
+            {showPresetList && (
+              <div className="bg-white border border-indigo-100 rounded-lg p-5 sm:p-8 mb-6 sm:mb-10 animate-slide-up shadow-indigo-500/5">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">📂</span>
+                    <h2 className="text-xl font-semibold text-slate-900">保存済みプリセット</h2>
+                  </div>
                   <button
-                    onClick={() => setCampaignInfo({ ...campaignInfo, benefits: [...campaignInfo.benefits, ''] })}
-                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2"
+                    onClick={handleNewProject}
+                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-full transition-all"
                   >
-                    ＋ 特典を追加
+                    ＋ 新規作成
                   </button>
                 </div>
+                {presets.length === 0 ? (
+                  <div className="text-center py-10 bg-slate-50/50 rounded-md border border-dashed border-slate-200">
+                    <p className="text-slate-400 text-sm font-medium">プリセットがありません</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {presets.map(preset => (
+                      <div
+                        key={preset.id}
+                        onClick={() => handleLoadPreset(preset)}
+                        className={`group bg-white p-5 rounded-md border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${currentPresetId === preset.id ? 'border-indigo-500 shadow-indigo-500/10 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md'}`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">{preset.name}</h3>
+                            <p className="text-[10px] font-bold tracking-wider text-slate-400 mt-2 flex items-center gap-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              更新: {new Date(preset.updatedAt).toLocaleDateString('ja-JP')}
+                            </p>
+                            <div className="flex gap-2 mt-3">
+                              <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
+                              <span className="px-2 py-0.5 bg-indigo-50 text-[10px] font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
+                            </div>
+                          </div>
+                          <div className="pl-2">
+                            <button
+                              onClick={(e) => handleDeletePreset(preset.id, e)}
+                              className="bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-500 p-2 rounded-md transition-all group-hover:opacity-100 sm:opacity-0"
+                              title="Delete"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
-                {/* Product Image (Optional) */}
-                <div className="mb-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={campaignInfo.useProductImage}
-                      onChange={(e) => setCampaignInfo({ ...campaignInfo, useProductImage: e.target.checked })}
-                      className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm font-semibold text-slate-700">メイン商品画像を使用する（任意）</span>
-                  </label>
-                  {campaignInfo.useProductImage && (
-                    <div className="mt-4">
+            {/* Main Tabs */}
+            <div className="mb-8">
+              <MainTabs
+                activeTab={mainTab}
+                onTabChange={(tab) => {
+                  setMainTab(tab);
+                  // Sync flyerSide with tab for generation logic
+                  if (tab === 'front') setFlyerSide('front');
+                  if (tab === 'back') setFlyerSide('back');
+                }}
+              />
+            </div>
+
+            {/* Action Bar for Current State */}
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-8 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`w-3 h-3 rounded-full ${currentPresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
+                <div>
+                  <p className="text-[10px] font-semibold tracking-[0.1em] text-slate-400">現在の状態</p>
+                  {currentPresetId ? (
+                    <p className="font-semibold text-indigo-700">
+                      編集中: {presets.find(p => p.id === currentPresetId)?.name || '未保存のプリセット'}
+                    </p>
+                  ) : (
+                    <p className="font-semibold text-slate-700">新規プロジェクト（未保存）</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={openSaveModal}
+                className="btn-premium flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 active:scale-95"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                保存
+              </button>
+            </div>
+
+            {/* Front Side Tab */}
+            {mainTab === 'front' && (
+              <>
+                {/* Front Flyer Type Selector */}
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-4 ml-1">表面チラシのタイプ</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'campaign' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'campaign'} onChange={() => setFrontFlyerType('campaign')} />
+                      <div className="w-12 h-12 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-2xl mb-3">🎉</div>
+                      <div className="text-sm font-bold text-slate-900">キャンペーン訴求</div>
+                      <div className="text-[10px] text-slate-500 mt-1">セール・フェア告知</div>
+                    </label>
+                    <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'product-service' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                      <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'product-service'} onChange={() => setFrontFlyerType('product-service')} />
+                      <div className="w-12 h-12 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-2xl mb-3">📦</div>
+                      <div className="text-sm font-bold text-slate-900">商品・サービス紹介</div>
+                      <div className="text-[10px] text-slate-500 mt-1">機能・メリット訴求</div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Campaign Mode Form */}
+                {frontFlyerType === 'campaign' && (
+                  <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+
+                    <div className="flex items-center gap-3 mb-8 relative">
+                      <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">📢</div>
+                      <h2 className="text-xl font-semibold text-slate-900">キャンペーン情報（表面）</h2>
+                    </div>
+
+                    {/* Campaign Description - AI Trigger */}
+                    <div className="mb-8 relative">
+                      <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">何のキャンペーン？</label>
+                      <div className="flex gap-3">
+                        <input
+                          type="text"
+                          placeholder="例: エアコンの買い替え促進、省エネ訴求"
+                          value={campaignInfo.campaignDescription}
+                          onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignDescription: e.target.value })}
+                          className="flex-1 rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                        />
+                        <button
+                          onClick={handleGenerateCampaignContent}
+                          disabled={isGeneratingCampaign || !campaignInfo.campaignDescription.trim()}
+                          className="px-5 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isGeneratingCampaign ? (
+                            <>
+                              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                              生成中
+                            </>
+                          ) : (
+                            <>✨ AI生成</>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」を押すと、ヘッドラインとキャンペーン名が自動生成されます</p>
+                    </div>
+
+                    {/* Headline */}
+                    <div className="mb-6">
+                      <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ヘッドライン（お客様の悩み）</label>
+                      <input
+                        type="text"
+                        placeholder="例: まだ10年前のエアコン使っていませんか？"
+                        value={campaignInfo.headline}
+                        onChange={(e) => setCampaignInfo({ ...campaignInfo, headline: e.target.value })}
+                        className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                      />
+                    </div>
+
+                    {/* Campaign Name */}
+                    <div className="mb-6">
+                      <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン名</label>
+                      <input
+                        type="text"
+                        placeholder="例: 夏の省エネ家電 買い替え応援フェア"
+                        value={campaignInfo.campaignName}
+                        onChange={(e) => setCampaignInfo({ ...campaignInfo, campaignName: e.target.value })}
+                        className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                      />
+                    </div>
+
+                    {/* Campaign Period */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div>
+                        <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">開始日</label>
+                        <input
+                          type="date"
+                          value={campaignInfo.startDate}
+                          onChange={(e) => setCampaignInfo({ ...campaignInfo, startDate: e.target.value })}
+                          className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">終了日</label>
+                        <input
+                          type="date"
+                          value={campaignInfo.endDate}
+                          onChange={(e) => setCampaignInfo({ ...campaignInfo, endDate: e.target.value })}
+                          className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium transition-all hover:border-slate-300"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Campaign Content */}
+                    <div className="mb-6">
+                      <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャンペーン内容</label>
+                      <textarea
+                        rows={3}
+                        placeholder="キャンペーンの詳細内容を記述..."
+                        value={campaignInfo.content}
+                        onChange={(e) => setCampaignInfo({ ...campaignInfo, content: e.target.value })}
+                        className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                      />
+                    </div>
+
+                    {/* Benefits List */}
+                    <div className="mb-6">
+                      <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">特典リスト</label>
+                      {campaignInfo.benefits.map((benefit, idx) => (
+                        <div key={idx} className="flex gap-2 mb-2">
+                          <input
+                            type="text"
+                            placeholder={`特典 ${idx + 1}...`}
+                            value={benefit}
+                            onChange={(e) => {
+                              const newBenefits = [...campaignInfo.benefits];
+                              newBenefits[idx] = e.target.value;
+                              setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
+                            }}
+                            className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                          />
+                          {campaignInfo.benefits.length > 1 && (
+                            <button
+                              onClick={() => {
+                                const newBenefits = campaignInfo.benefits.filter((_, i) => i !== idx);
+                                setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
+                              }}
+                              className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md transition-all"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => setCampaignInfo({ ...campaignInfo, benefits: [...campaignInfo.benefits, ''] })}
+                        className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2"
+                      >
+                        ＋ 特典を追加
+                      </button>
+                    </div>
+
+                    {/* Product Image (Optional) */}
+                    <div className="mb-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={campaignInfo.useProductImage}
+                          onChange={(e) => setCampaignInfo({ ...campaignInfo, useProductImage: e.target.checked })}
+                          className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-semibold text-slate-700">メイン商品画像を使用する（任意）</span>
+                      </label>
+                      {campaignInfo.useProductImage && (
+                        <div className="mt-4">
+                          <ImageUploader
+                            label="メイン商品画像"
+                            images={campaignInfo.productImages}
+                            onImagesChange={handleCampaignMainImagesChange}
+                          />
+
+                          {/* Image Selection Grid with Checkmarks */}
+                          {campaignInfo.productImages.length > 0 && (
+                            <div className="mt-4">
+                              <div className="text-xs text-slate-500 mb-2">クリックで使用する画像を選択（{selectedCampaignMainImageIndices.size}枚選択中）</div>
+                              <div className="grid grid-cols-4 gap-2">
+                                {campaignInfo.productImages.map((img, idx) => (
+                                  <div
+                                    key={idx}
+                                    onClick={() => toggleCampaignMainImageSelection(idx)}
+                                    className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedCampaignMainImageIndices.has(idx)
+                                      ? 'border-emerald-500 ring-2 ring-emerald-200'
+                                      : 'border-slate-200 opacity-60 hover:opacity-100'
+                                      }`}
+                                  >
+                                    <img
+                                      src={img}
+                                      alt={`メイン画像 ${idx + 1}`}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      decoding="async"
+                                    />
+                                    {selectedCampaignMainImageIndices.has(idx) && (
+                                      <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                )}
+
+                {/* Product/Service Mode Form */}
+                {frontFlyerType === 'product-service' && (
+                  <>
+                    {/* Sales Letter Mode Toggle */}
+                    <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center text-sm">📝</div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900">セールスレターモード</div>
+                            <div className="text-[10px] text-slate-500">AIDA / 新PASONAフレームワークで訴求力UP</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSalesLetterMode(!salesLetterMode)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${salesLetterMode ? 'bg-amber-500' : 'bg-slate-200'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${salesLetterMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Front Product Images Section */}
+                    <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-sm">📦</div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-900">商品画像</div>
+                          <div className="text-[10px] text-slate-500">チラシに掲載する商品画像をアップロード</div>
+                        </div>
+                      </div>
+
                       <ImageUploader
-                        label="メイン商品画像"
-                        images={campaignInfo.productImages}
-                        onImagesChange={handleCampaignMainImagesChange}
+                        images={frontProductImages}
+                        onImagesChange={handleFrontProductImagesChange}
+                        maxImages={10}
+                        label=""
                       />
 
                       {/* Image Selection Grid with Checkmarks */}
-                      {campaignInfo.productImages.length > 0 && (
+                      {frontProductImages.length > 0 && (
                         <div className="mt-4">
-                          <div className="text-xs text-slate-500 mb-2">クリックで使用する画像を選択（{selectedCampaignMainImageIndices.size}枚選択中）</div>
+                          <div className="text-xs text-slate-500 mb-2">クリックで使用する画像を選択（{selectedFrontProductIndices.size}枚選択中）</div>
                           <div className="grid grid-cols-4 gap-2">
-                            {campaignInfo.productImages.map((img, idx) => (
+                            {frontProductImages.map((img, idx) => (
                               <div
                                 key={idx}
-                                onClick={() => toggleCampaignMainImageSelection(idx)}
-                                className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedCampaignMainImageIndices.has(idx)
+                                onClick={() => toggleFrontProductImageSelection(idx)}
+                                className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedFrontProductIndices.has(idx)
                                   ? 'border-emerald-500 ring-2 ring-emerald-200'
                                   : 'border-slate-200 opacity-60 hover:opacity-100'
                                   }`}
                               >
                                 <img
                                   src={img}
-                                  alt={`メイン画像 ${idx + 1}`}
+                                  alt={`商品画像 ${idx + 1}`}
                                   className="w-full h-full object-cover"
                                   loading="lazy"
                                   decoding="async"
                                 />
-                                {selectedCampaignMainImageIndices.has(idx) && (
+                                {selectedFrontProductIndices.has(idx) && (
                                   <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
                                     <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -2641,1026 +2907,551 @@ ${header.length + uint8Array.length + 20}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-              </div>
-            )}
-
-            {/* Product/Service Mode Form */}
-            {frontFlyerType === 'product-service' && (
-              <>
-                {/* Sales Letter Mode Toggle */}
-                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center text-sm">📝</div>
-                      <div>
-                        <div className="text-sm font-bold text-slate-900">セールスレターモード</div>
-                        <div className="text-[10px] text-slate-500">AIDA / 新PASONAフレームワークで訴求力UP</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setSalesLetterMode(!salesLetterMode)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${salesLetterMode ? 'bg-amber-500' : 'bg-slate-200'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${salesLetterMode ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Front Product Images Section */}
-                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-sm">📦</div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-900">商品画像</div>
-                      <div className="text-[10px] text-slate-500">チラシに掲載する商品画像をアップロード</div>
-                    </div>
-                  </div>
-
-                  <ImageUploader
-                    images={frontProductImages}
-                    onImagesChange={handleFrontProductImagesChange}
-                    maxImages={10}
-                    label=""
-                  />
-
-                  {/* Image Selection Grid with Checkmarks */}
-                  {frontProductImages.length > 0 && (
-                    <div className="mt-4">
-                      <div className="text-xs text-slate-500 mb-2">クリックで使用する画像を選択（{selectedFrontProductIndices.size}枚選択中）</div>
-                      <div className="grid grid-cols-4 gap-2">
-                        {frontProductImages.map((img, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => toggleFrontProductImageSelection(idx)}
-                            className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedFrontProductIndices.has(idx)
-                              ? 'border-emerald-500 ring-2 ring-emerald-200'
-                              : 'border-slate-200 opacity-60 hover:opacity-100'
-                              }`}
-                          >
-                            <img
-                              src={img}
-                              alt={`商品画像 ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                            {selectedFrontProductIndices.has(idx) && (
-                              <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Conditional Form Display */}
-                {salesLetterMode ? (
-                  <SalesLetterForm
-                    salesLetterInfo={salesLetterInfo}
-                    setSalesLetterInfo={setSalesLetterInfo}
-                    settings={settings}
-                    setSettings={setSettings}
-                    apiKey={apiKey}
-                    onSettingsOpen={() => setIsSettingsOpen(true)}
-                  />
-                ) : (
-                  <ProductServiceForm
-                    productServiceInfo={productServiceInfo}
-                    setProductServiceInfo={setProductServiceInfo}
-                    settings={settings}
-                    setSettings={setSettings}
-                    apiKey={apiKey}
-                    onSettingsOpen={() => setIsSettingsOpen(true)}
-                  />
+                    {/* Conditional Form Display */}
+                    {salesLetterMode ? (
+                      <SalesLetterForm
+                        salesLetterInfo={salesLetterInfo}
+                        setSalesLetterInfo={setSalesLetterInfo}
+                        settings={settings}
+                        setSettings={setSettings}
+                        apiKey={apiKey}
+                        onSettingsOpen={() => setIsSettingsOpen(true)}
+                      />
+                    ) : (
+                      <ProductServiceForm
+                        productServiceInfo={productServiceInfo}
+                        setProductServiceInfo={setProductServiceInfo}
+                        settings={settings}
+                        setSettings={setSettings}
+                        apiKey={apiKey}
+                        onSettingsOpen={() => setIsSettingsOpen(true)}
+                      />
+                    )}
+                  </>
                 )}
+
+                {/* Reference Back Side for Consistency */}
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
+                  <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
+                    <label className="flex items-center gap-3 cursor-pointer mb-3">
+                      <input
+                        type="checkbox"
+                        checked={useOppositeSideReference}
+                        onChange={(e) => setUseOppositeSideReference(e.target.checked)}
+                        className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-sm font-semibold text-slate-700">裏面を参照して統一感を出す</span>
+                    </label>
+                    {useOppositeSideReference && (
+                      <div className="mt-3">
+                        <ImageUploader
+                          label="参照する裏面画像"
+                          images={oppositeSideImage ? [oppositeSideImage] : []}
+                          onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
+                          maxImages={1}
+                        />
+                        <p className="text-[10px] text-amber-600 mt-2">アップロードした裏面の画像を参考にして、デザインの統一感を持たせます。</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </>
             )}
 
-            {/* Reference Back Side for Consistency */}
-            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
-              <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
-                <label className="flex items-center gap-3 cursor-pointer mb-3">
-                  <input
-                    type="checkbox"
-                    checked={useOppositeSideReference}
-                    onChange={(e) => setUseOppositeSideReference(e.target.checked)}
-                    className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                  />
-                  <span className="text-sm font-semibold text-slate-700">裏面を参照して統一感を出す</span>
-                </label>
-                {useOppositeSideReference && (
-                  <div className="mt-3">
-                    <ImageUploader
-                      label="参照する裏面画像"
-                      images={oppositeSideImage ? [oppositeSideImage] : []}
-                      onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
-                      maxImages={1}
-                    />
-                    <p className="text-[10px] text-amber-600 mt-2">アップロードした裏面の画像を参考にして、デザインの統一感を持たせます。</p>
+            {/* Back Side Tab */}
+            {mainTab === 'back' && (
+              <>
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+
+                  <div className="flex items-center gap-3 mb-8 relative">
+                    <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
+                    <h2 className="text-xl font-semibold text-slate-900">裏面固有設定</h2>
                   </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
 
-        {/* Back Side Tab */}
-        {mainTab === 'back' && (
-          <>
-            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
-
-              <div className="flex items-center gap-3 mb-8 relative">
-                <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
-                <h2 className="text-xl font-semibold text-slate-900">裏面固有設定</h2>
-              </div>
-
-              {/* Flyer Title Input */}
-              <div className="mb-10 relative">
-                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシタイトル（任意）</label>
-                <input
-                  type="text"
-                  placeholder="例: 冬の家電セール、新生活応援フェア..."
-                  value={settings.flyerTitle || ''}
-                  onChange={(e) => setSettings({ ...settings, flyerTitle: e.target.value })}
-                  className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                />
-                <p className="text-[10px] text-slate-400 mt-2 ml-1">入力するとチラシ上部に大きく表示されます。未入力の場合はAIにおまかせ。</p>
-              </div>
-
-              {/* Background Mode */}
-              <div className="relative">
-                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード</label>
-                <div className="flex gap-3">
-                  <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                    <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
-                    <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
-                    <div>
-                      <div className="text-xs font-semibold text-slate-900">おまかせ</div>
-                      <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
-                    </div>
-                  </label>
-                  <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                    <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
-                    <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
-                    <div>
-                      <div className="text-xs font-semibold text-slate-900">白配色</div>
-                      <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
-                    </div>
-                  </label>
-                  <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                    <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
-                    <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
-                    <div>
-                      <div className="text-xs font-semibold text-slate-900">自由記述</div>
-                      <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
-                    </div>
-                  </label>
-                </div>
-                {/* Custom Background Text Area */}
-                {settings.backgroundMode === 'custom' && (
-                  <div className="mt-4">
-                    <textarea
-                      rows={3}
-                      placeholder="例: 桜の花びらが舞う春らしい背景、冬の雪景色風..."
-                      value={settings.customBackground || ''}
-                      onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
-                      className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                  {/* Flyer Title Input */}
+                  <div className="mb-10 relative">
+                    <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシタイトル（任意）</label>
+                    <input
+                      type="text"
+                      placeholder="例: 冬の家電セール、新生活応援フェア..."
+                      value={settings.flyerTitle || ''}
+                      onChange={(e) => setSettings({ ...settings, flyerTitle: e.target.value })}
+                      className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
                     />
+                    <p className="text-[10px] text-slate-400 mt-2 ml-1">入力するとチラシ上部に大きく表示されます。未入力の場合はAIにおまかせ。</p>
                   </div>
-                )}
-              </div>
-            </div>
 
-            {/* Products */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📱</div>
-                  <h2 className="text-xl font-semibold text-slate-900">掲載商品</h2>
-                </div>
-                <button
-                  onClick={addProduct}
-                  className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
-                >
-                  ＋ 商品追加
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {products.map((p, idx) => (
-                  <ProductCard
-                    key={p.id}
-                    index={idx}
-                    product={p}
-                    onChange={updateProduct}
-                    onRemove={() => removeProduct(p.id)}
-                    onDuplicate={() => duplicateProduct(p)}
-                    apiKey={apiKey}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Reference Front Side for Consistency */}
-            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
-              <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
-                <label className="flex items-center gap-3 cursor-pointer mb-3">
-                  <input
-                    type="checkbox"
-                    checked={useOppositeSideReference}
-                    onChange={(e) => setUseOppositeSideReference(e.target.checked)}
-                    className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                  />
-                  <span className="text-sm font-semibold text-slate-700">表面を参照して統一感を出す</span>
-                </label>
-                {useOppositeSideReference && (
-                  <div className="mt-3">
-                    <ImageUploader
-                      label="参照する表面画像"
-                      images={oppositeSideImage ? [oppositeSideImage] : []}
-                      onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
-                      maxImages={1}
-                    />
-                    <p className="text-[10px] text-amber-600 mt-2">アップロードした表面の画像を参考にして、デザインの統一感を持たせます。</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Common Settings Tab */}
-        {mainTab === 'common' && (
-        <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
-
-          <div className="flex items-center gap-3 mb-8 relative">
-            <div className="w-8 h-8 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
-            <h2 className="text-xl font-semibold text-slate-900">共通設定</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 relative">
-            {/* Orientation */}
-            <div>
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">チラシ形式</label>
-              <div className="flex gap-4">
-                <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'vertical' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="orientation-common" className="sr-only" checked={settings.orientation === 'vertical'} onChange={() => setSettings({ ...settings, orientation: 'vertical' })} />
-                  <div className="w-6 h-9 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
-                  <span className="text-sm font-semibold text-slate-900">縦向き</span>
-                </label>
-                <label className={`flex-1 flex flex-col items-center justify-center p-4 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'horizontal' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                  <input type="radio" name="orientation-common" className="sr-only" checked={settings.orientation === 'horizontal'} onChange={() => setSettings({ ...settings, orientation: 'horizontal' })} />
-                  <div className="w-9 h-6 border-[2.5px] border-slate-400 mx-auto mb-2 rounded-md bg-white shadow-sm"></div>
-                  <span className="text-sm font-semibold text-slate-900">横向き</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Resolution & Variations */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">解像度</label>
-                <div className="relative">
-                  <select
-                    value={settings.imageSize}
-                    onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as any })}
-                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
-                  >
-                    <option value="1K">1K</option>
-                    <option value="2K">2K</option>
-                    <option value="4K">4K</option>
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                  {/* Background Mode */}
+                  <div className="relative">
+                    <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード</label>
+                    <div className="flex gap-3">
+                      <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                        <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-900">おまかせ</div>
+                          <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
+                        </div>
+                      </label>
+                      <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                        <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
+                        <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-900">白配色</div>
+                          <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
+                        </div>
+                      </label>
+                      <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
+                        <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-900">自由記述</div>
+                          <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
+                        </div>
+                      </label>
+                    </div>
+                    {/* Custom Background Text Area */}
+                    {settings.backgroundMode === 'custom' && (
+                      <div className="mt-4">
+                        <textarea
+                          rows={3}
+                          placeholder="例: 桜の花びらが舞う春らしい背景、冬の雪景色風..."
+                          value={settings.customBackground || ''}
+                          onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
+                          className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">パターン数</label>
-                <div className="relative">
-                  <select
-                    value={settings.patternCount}
-                    onChange={(e) => setSettings({ ...settings, patternCount: parseInt(e.target.value) })}
-                    className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-bold appearance-none transition-all hover:border-slate-300"
-                  >
-                    {[1, 2, 3, 4, 5].map(v => (
-                      <option key={v} value={v}>{v}</option>
+
+                {/* Products */}
+                <div className="mb-12">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📱</div>
+                      <h2 className="text-xl font-semibold text-slate-900">掲載商品</h2>
+                    </div>
+                    <button
+                      onClick={addProduct}
+                      className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
+                    >
+                      ＋ 商品追加
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {products.map((p, idx) => (
+                      <ProductCard
+                        key={p.id}
+                        index={idx}
+                        product={p}
+                        onChange={updateProduct}
+                        onRemove={() => removeProduct(p.id)}
+                        onDuplicate={() => duplicateProduct(p)}
+                        apiKey={apiKey}
+                      />
                     ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                   </div>
                 </div>
+
+                {/* Reference Front Side for Consistency */}
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
+                  <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
+                    <label className="flex items-center gap-3 cursor-pointer mb-3">
+                      <input
+                        type="checkbox"
+                        checked={useOppositeSideReference}
+                        onChange={(e) => setUseOppositeSideReference(e.target.checked)}
+                        className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-sm font-semibold text-slate-700">表面を参照して統一感を出す</span>
+                    </label>
+                    {useOppositeSideReference && (
+                      <div className="mt-3">
+                        <ImageUploader
+                          label="参照する表面画像"
+                          images={oppositeSideImage ? [oppositeSideImage] : []}
+                          onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
+                          maxImages={1}
+                        />
+                        <p className="text-[10px] text-amber-600 mt-2">アップロードした表面の画像を参考にして、デザインの統一感を持たせます。</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+
+            {/* Additional Instructions */}
+            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-16">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📝</div>
+                <h3 className="text-lg font-semibold text-slate-900">追加指示</h3>
               </div>
+              <textarea
+                rows={4}
+                placeholder="例: 冬の家電セール、温かみのあるデザイン、家族向け..."
+                value={settings.additionalInstructions}
+                onChange={(e) => setSettings({ ...settings, additionalInstructions: e.target.value })}
+                className="block w-full rounded-md border-slate-200 border-2 py-4 px-5 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
+              />
             </div>
-          </div>
 
-          {/* Background Mode */}
-          <div className="mb-10 relative">
-            <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">背景モード（表面・裏面共通）</label>
-            <div className="flex gap-3">
-              <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                <input type="radio" name="commonBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
-                <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-900">おまかせ</div>
-                  <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
-                </div>
-              </label>
-              <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                <input type="radio" name="commonBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
-                <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-900">白配色</div>
-                  <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
-                </div>
-              </label>
-              <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
-                <input type="radio" name="commonBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
-                <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-900">自由記述</div>
-                  <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
-                </div>
-              </label>
-            </div>
-            {settings.backgroundMode === 'custom' && (
-              <div className="mt-4">
-                <textarea
-                  rows={3}
-                  placeholder="例: 桜の花びらが舞う春らしい背景、冬の雪景色風..."
-                  value={settings.customBackground || ''}
-                  onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
-                  className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-                />
-              </div>
-            )}
-          </div>
-
-        </div>
-        )}
-
-        {/* Assets Tab */}
-        {mainTab === 'assets' && (
-        <>
-        <div className="space-y-4 mb-10">
-          {/* Character Images */}
-          <CompactAssetSection
-            title="キャラクター"
-            icon="👤"
-            images={characterImages}
-              selectedCount={selectedCharacterIndices.size}
-              selectedIndices={Array.from(selectedCharacterIndices)}
-            isCloudSync={firebaseEnabled}
-          >
-            <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
-            <ImageUploader
-              label="店舗キャラクター、マスコットなど"
-              images={characterImages}
-              onImagesChange={handleCharacterImagesChange}
-            />
-            <AssetSelectionGrid
-              images={characterImages}
-              selectedIndices={selectedCharacterIndices}
-              onToggleSelect={toggleCharacterImageSelection}
-              onSelectAll={selectAllCharacterImages}
-              onClearSelection={clearCharacterSelection}
-              onReorder={reorderCharacterImages}
-              onRemoveDuplicates={dedupeCharacterImages}
-              accent="indigo"
-            />
-            {false && (
-              <div className="mt-4 grid grid-cols-4 gap-2">
-                {characterImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => toggleCharacterImageSelection(idx)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCharacterIndices.has(idx)
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                  >
-                    <img src={img} alt={`キャラクター ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
-                    {selectedCharacterIndices.has(idx) && (
-                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
-              <div className="mt-4 p-4 bg-slate-50/80 rounded-md border border-slate-100">
-                <label className="block text-xs font-semibold text-slate-400 mb-2">キャラクター衣装モード</label>
-                <div className="flex gap-2">
-                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${characterClothingMode === 'fixed' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
-                    <input type="radio" name="clothingMode" className="sr-only" checked={characterClothingMode === 'fixed'} onChange={() => setCharacterClothingMode('fixed')} />
-                    <span>👔 そのまま</span>
-                  </label>
-                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${characterClothingMode === 'match' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
-                    <input type="radio" name="clothingMode" className="sr-only" checked={characterClothingMode === 'match'} onChange={() => setCharacterClothingMode('match')} />
-                    <span>🎨 チラシに合わせる</span>
-                  </label>
-                </div>
-              </div>
-            )}
-          </CompactAssetSection>
-          {/* Custom Illustrations */}
-          <CompactAssetSection
-            title="使用イラスト"
-            icon="🎨"
-            images={customIllustrations}
-            selectedCount={selectedCustomIllustrationIndices.size}
-            selectedIndices={Array.from(selectedCustomIllustrationIndices)}
-            isCloudSync={firebaseEnabled}
-          >
-            <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
-            <ImageUploader
-              label="チラシに配置するイラスト"
-              images={customIllustrations}
-              onImagesChange={handleCustomIllustrationsChange}
-            />
-            <AssetSelectionGrid
-              images={customIllustrations}
-              selectedIndices={selectedCustomIllustrationIndices}
-              onToggleSelect={toggleCustomIllustrationSelection}
-              onSelectAll={selectAllCustomIllustrations}
-              onClearSelection={clearCustomIllustrationSelection}
-              onReorder={reorderCustomIllustrations}
-              onRemoveDuplicates={dedupeCustomIllustrations}
-              accent="indigo"
-            />
-            {false && (
-              <div className="mt-4 grid grid-cols-4 gap-2">
-                {customIllustrations.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => toggleCustomIllustrationSelection(idx)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomIllustrationIndices.has(idx)
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                  >
-                    <img src={img} alt={`使用イラスト ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
-                    {selectedCustomIllustrationIndices.has(idx) && (
-                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CompactAssetSection>
-          {/* Reference Design */}
-          <CompactAssetSection
-            title="参考デザイン"
-            icon="🖼️"
-            images={referenceImages}
-            selectedCount={selectedReferenceIndex !== null ? 1 : 0}
-            selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
-            isCloudSync={firebaseEnabled}
-          >
-            <p className="text-[10px] text-slate-500 mb-4">選択した画像のみ参考にします（1つのみ選択可能）。選択なしの場合は参考なし。</p>
-            <ImageUploader
-              label="デザイン参考にするチラシ画像"
-              images={referenceImages}
-              onImagesChange={handleReferenceImagesChange}
-            />
-            <AssetSelectionGrid
-              images={referenceImages}
-              selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])}
-              onToggleSelect={toggleReferenceImageSelection}
-              onClearSelection={clearReferenceSelection}
-              onReorder={reorderReferenceImages}
-              onRemoveDuplicates={dedupeReferenceImages}
-              accent="indigo"
-            />
-            {false && (
-              <div className="mt-4 grid grid-cols-4 gap-2">
-                {referenceImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => toggleReferenceImageSelection(idx)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedReferenceIndex === idx
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                  >
-                    <img src={img} alt={`参考デザイン ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
-                    {selectedReferenceIndex === idx && (
-                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CompactAssetSection>
-
-          {/* Customer Images */}
-          <CompactAssetSection
-            title="お客様画像"
-            icon="👥"
-            iconBgColor="bg-rose-50"
-            iconBorderColor="border-rose-100"
-            images={customerImages}
-            selectedCount={selectedCustomerImageIndices.size}
-            selectedIndices={Array.from(selectedCustomerImageIndices)}
-            isCloudSync={firebaseEnabled}
-          >
-            <p className="text-[10px] text-slate-500 mb-4">表面チラシで「お客様」として配置する画像。チェックを入れた画像のみ使用。</p>
-            <ImageUploader
-              label="お客様画像"
-              images={customerImages}
-              onImagesChange={handleCustomerImagesChange}
-            />
-            <AssetSelectionGrid
-              images={customerImages}
-              selectedIndices={selectedCustomerImageIndices}
-              onToggleSelect={toggleCustomerImageSelection}
-              onSelectAll={selectAllCustomerImages}
-              onClearSelection={clearCustomerSelection}
-              onReorder={reorderCustomerImages}
-              onRemoveDuplicates={dedupeCustomerImages}
-              accent="rose"
-            />
-            {false && (
-              <div className="mt-4 grid grid-cols-4 gap-2">
-                {customerImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => toggleCustomerImageSelection(idx)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomerImageIndices.has(idx)
-                      ? 'border-rose-600 ring-2 ring-rose-200'
-                      : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                  >
-                    <img src={img} alt={`お客様画像 ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
-                    {selectedCustomerImageIndices.has(idx) && (
-                      <div className="absolute top-1 right-1 w-5 h-5 bg-rose-600 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CompactAssetSection>
-
-          {/* Store Logo */}
-          <CompactAssetSection
-            title="店舗ロゴ"
-            icon="🏪"
-            images={storeLogoImages}
-            selectedCount={selectedLogoIndices.size}
-            selectedIndices={Array.from(selectedLogoIndices)}
-            isCloudSync={firebaseEnabled}
-          >
-            <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
-            <ImageUploader
-              label="店舗ロゴ画像"
-              images={storeLogoImages}
-              onImagesChange={handleStoreLogoImagesChange}
-            />
-            <AssetSelectionGrid
-              images={storeLogoImages}
-              selectedIndices={selectedLogoIndices}
-              onToggleSelect={toggleLogoImageSelection}
-              onSelectAll={selectAllLogoImages}
-              onClearSelection={clearLogoSelection}
-              onReorder={reorderLogoImages}
-              onRemoveDuplicates={dedupeLogoImages}
-              accent="indigo"
-            />
-            {false && (
-              <div className="mt-4 grid grid-cols-4 gap-2">
-                {storeLogoImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => toggleLogoImageSelection(idx)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedLogoIndices.has(idx)
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                  >
-                    <img src={img} alt={`店舗ロゴ ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
-                    {selectedLogoIndices.has(idx) && (
-                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
-              <div className="mt-4 p-4 bg-slate-50/80 rounded-md border border-slate-100">
-                <label className="block text-xs font-semibold text-slate-400 mb-2">ロゴの表示サイズ</label>
-                <div className="flex gap-2">
-                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${settings.logoPosition === 'full-bottom' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
-                    <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'full-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} />
-                    <span>横幅目一杯</span>
-                  </label>
-                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${settings.logoPosition === 'right-bottom' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
-                    <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'right-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} />
-                    <span>横幅半分（右端）</span>
-                  </label>
-                </div>
-              </div>
-            )}
-          </CompactAssetSection>
-        </div>
-        </>
-        )}
-
-        {/* Additional Instructions */}
-        <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📝</div>
-            <h3 className="text-lg font-semibold text-slate-900">追加指示</h3>
-          </div>
-          <textarea
-            rows={4}
-            placeholder="例: 冬の家電セール、温かみのあるデザイン、家族向け..."
-            value={settings.additionalInstructions}
-            onChange={(e) => setSettings({ ...settings, additionalInstructions: e.target.value })}
-            className="block w-full rounded-md border-slate-200 border-2 py-4 px-5 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-slate-50/30 text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
-          />
-        </div>
-
-        <div className="flex justify-center mb-20">
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className={`
+            <div className="flex justify-center mb-20">
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className={`
                btn-premium inline-flex items-center px-12 py-5 border border-transparent text-xl font-semibold rounded-[24px] shadow-2xl text-white 
                ${isGenerating ? 'bg-slate-400 cursor-not-allowed opacity-50' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
                focus:outline-none transition-all duration-300
              `}
-          >
-            {isGenerating ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-4 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span className="tracking-tight uppercase">生成中...</span>
-              </>
-            ) : (
-              <>
-                <span className="mr-3 text-2xl">✨</span>
-                <span className="tracking-tight uppercase">{flyerSide === 'front' ? '表面チラシ生成' : '裏面チラシ生成'}</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* History Results */}
-        {history.length > 0 && (
-          <div className="bg-white rounded-lg shadow-premium border border-white/50 p-8 sm:p-12 animate-slide-up">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-950 rounded-md flex items-center justify-center text-lg">📁</div>
-                <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-2">({history.length})</span></h2>
-              </div>
-              {/* Tag Buttons */}
-              <div className="flex gap-2">
-                {history.some(item => !item.tags || item.tags.length === 0) && (
-                  <button
-                    onClick={() => tagAllExistingHistory(false)}
-                    disabled={isTaggingAll}
-                    className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
-                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                      : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                      }`}
-                  >
-                    {isTaggingAll ? '🏷️ タグ付け中...' : '🏷️ タグ付け'}
-                  </button>
+              >
+                {isGenerating ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-4 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span className="tracking-tight uppercase">生成中...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="mr-3 text-2xl">✨</span>
+                    <span className="tracking-tight uppercase">{flyerSide === 'front' ? '表面チラシ生成' : '裏面チラシ生成'}</span>
+                  </>
                 )}
-                <button
-                  onClick={() => tagAllExistingHistory(true)}
-                  disabled={isTaggingAll}
-                  className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
-                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  title="すべての履歴のタグを再生成"
-                >
-                  🔄 全て再タグ付け
-                </button>
-                <button
-                  onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
-                  className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
-                  title="お気に入り優先で生成日時を並べ替え"
-                >
-                  {sortOrder === 'desc' ? '新しい順' : '古い順'}
-                </button>
-                <button
-                  onClick={() => { setUploadPreview(""); setUploadTags(""); setIsUploadModalOpen(true); }}
-                  className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-all"
-                >
-                  📤 画像アップロード
-                </button>
-              </div>
+              </button>
             </div>
 
-            {/* Tag Filter */}
-            {allTags.length > 0 && (
-              <div className="mb-8 flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-bold text-slate-400 mr-2">タグで絞り込み:</span>
-                <button
-                  onClick={() => setSelectedTag(null)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === null
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                >
-                  すべて
-                </button>
-                {allTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setSelectedTag(tag)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === tag
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* History Results */}
+            {history.length > 0 && (
+              <div className="bg-white rounded-lg shadow-premium border border-white/50 p-8 sm:p-12 animate-slide-up">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-950 rounded-md flex items-center justify-center text-lg">📁</div>
+                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-2">({history.length})</span></h2>
+                  </div>
+                  {/* Tag Buttons */}
+                  <div className="flex gap-2">
+                    {history.some(item => !item.tags || item.tags.length === 0) && (
+                      <button
+                        onClick={() => tagAllExistingHistory(false)}
+                        disabled={isTaggingAll}
+                        className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
+                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                          : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                          }`}
+                      >
+                        {isTaggingAll ? '🏷️ タグ付け中...' : '🏷️ タグ付け'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => tagAllExistingHistory(true)}
+                      disabled={isTaggingAll}
+                      className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      title="すべての履歴のタグを再生成"
+                    >
+                      🔄 全て再タグ付け
+                    </button>
+                    <button
+                      onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                      title="お気に入り優先で生成日時を並べ替え"
+                    >
+                      {sortOrder === 'desc' ? '新しい順' : '古い順'}
+                    </button>
+                    <button
+                      onClick={() => { setUploadPreview(""); setUploadTags(""); setIsUploadModalOpen(true); }}
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-all"
+                    >
+                      📤 画像アップロード
+                    </button>
+                  </div>
+                </div>
 
-            <div ref={historyGridRef} className="relative">
-              {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} />}
+                {/* Tag Filter */}
+                {allTags.length > 0 && (
+                  <div className="mb-8 flex flex-wrap gap-2 items-center">
+                    <span className="text-xs font-bold text-slate-400 mr-2">タグで絞り込み:</span>
+                    <button
+                      onClick={() => setSelectedTag(null)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === null
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                      すべて
+                    </button>
+                    {allTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTag(tag)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === tag
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-              {visibleRows.map((rowData, rowIndex) => (
-                <div
-                  key={`row-${rowData.row}`}
-                  ref={rowIndex === 0 ? rowMeasureRef : undefined}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                  style={{ minHeight: rowHeight, marginBottom: rowData.row === totalRows - 1 ? 0 : historyGridGap }}
-                >
-                  {rowData.items.map((item) => (
-                    <div key={item.id} className={`history-card group flex flex-col bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ${item.isFavorite ? 'ring-2 ring-amber-400' : ''}`}>
-                    {/* Image Section */}
-                    <div className="relative aspect-[3/4] bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
-                      <img
-                        src={item.thumbnail || item.data}
-                        alt="Generated Flyer"
-                        className="w-full h-full object-contain"
-                        loading="lazy"
-                        decoding="async"
-                      />
+                <div ref={historyGridRef} className="relative">
+                  {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} />}
 
-                      {/* Favorite Badge - Top Left */}
-                      {item.isFavorite && (
-                        <div className="absolute top-3 left-3 bg-amber-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                          ⭐ お気に入り
-                        </div>
-                      )}
+                  {visibleRows.map((rowData, rowIndex) => (
+                    <div
+                      key={`row-${rowData.row}`}
+                      ref={rowIndex === 0 ? rowMeasureRef : undefined}
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                      style={{ minHeight: rowHeight, marginBottom: rowData.row === totalRows - 1 ? 0 : historyGridGap }}
+                    >
+                      {rowData.items.map((item) => (
+                        <div key={item.id} className={`history-card group flex flex-col bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ${item.isFavorite ? 'ring-2 ring-amber-400' : ''}`}>
+                          {/* Image Section */}
+                          <div className="relative aspect-[3/4] bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
+                            <img
+                              src={item.thumbnail || item.data}
+                              alt="Generated Flyer"
+                              className="w-full h-full object-contain"
+                              loading="lazy"
+                              decoding="async"
+                            />
 
-                      {/* Status Badges - Top Right */}
-                      <div className="absolute top-3 right-3 flex flex-col gap-2">
-                        {item.isUpscaled && (
-                          <span className="bg-violet-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
-                            🔍 {item.upscaleScale ?? UPSCALE_SCALE}x
-                          </span>
-                        )}
-                        {item.is4KRegenerated && (
-                          <span className="bg-violet-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
-                            🎯 4K
-                          </span>
-                        )}
-                        {item.isEdited && (
-                          <span className="bg-amber-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
-                            ✏️ 編集済
-                          </span>
-                        )}
-                      </div>
+                            {/* Favorite Badge - Top Left */}
+                            {item.isFavorite && (
+                              <div className="absolute top-3 left-3 bg-amber-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                ⭐ お気に入り
+                              </div>
+                            )}
 
-                      {/* Hover Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-4">
-                        <button
-                          onClick={() => {
-                            const w = window.open('', '_blank');
-                            if (w) {
-                              w.document.write(`<html><head><title>Full Screen Flyer</title></head><body style="margin:0;background:#1e293b;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${item.data}" style="max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 0 20px rgba(0,0,0,0.5);" /></body></html>`);
-                              w.document.close();
-                            }
-                          }}
-                          className="bg-white text-slate-800 px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-100 transition-all shadow-xl"
-                        >
-                          🔍 画像を開く
-                        </button>
-                      </div>
-                    </div>
+                            {/* Status Badges - Top Right */}
+                            <div className="absolute top-3 right-3 flex flex-col gap-2">
+                              {item.isUpscaled && (
+                                <span className="bg-violet-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
+                                  🔍 {item.upscaleScale ?? UPSCALE_SCALE}x
+                                </span>
+                              )}
+                              {item.is4KRegenerated && (
+                                <span className="bg-violet-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
+                                  🎯 4K
+                                </span>
+                              )}
+                              {item.isEdited && (
+                                <span className="bg-amber-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
+                                  ✏️ 編集済
+                                </span>
+                              )}
+                            </div>
 
-                    {/* Info Section */}
-                    <div className="p-4 border-t border-slate-100">
-                      <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
-                        <span className="font-medium">
-                          {new Date(item.createdAt).toLocaleString('ja-JP', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => toggleFavorite(item.id)}
-                            className={`w-9 h-9 flex items-center justify-center rounded-lg text-lg transition-all hover:scale-110 ${item.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'}`}
-                            title={item.isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
-                          >
-                            {item.isFavorite ? '⭐' : '☆'}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteImage(item.id)}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                            title="削除"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons Grid */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {/* Download Button with Dropdown */}
-                        <div className="relative">
-                          <button
-                            onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
-                            className="w-full flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
-                            title="ダウンロード"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                          </button>
-
-                          {openDownloadMenu === item.id && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                            {/* Hover Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-4">
                               <button
-                                onClick={() => handleDownloadPng(item.data, item.createdAt)}
-                                className="w-full p-2.5 text-emerald-600 hover:bg-emerald-50 transition-all border-b border-slate-100 text-sm font-bold"
+                                onClick={() => {
+                                  const w = window.open('', '_blank');
+                                  if (w) {
+                                    w.document.write(`<html><head><title>Full Screen Flyer</title></head><body style="margin:0;background:#1e293b;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${item.data}" style="max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 0 20px rgba(0,0,0,0.5);" /></body></html>`);
+                                    w.document.close();
+                                  }
+                                }}
+                                className="bg-white text-slate-800 px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-100 transition-all shadow-xl"
                               >
-                                PNG
-                              </button>
-                              <button
-                                onClick={() => handleDownloadJpg(item.data, item.createdAt)}
-                                className="w-full p-2.5 text-amber-600 hover:bg-amber-50 transition-all border-b border-slate-100 text-sm font-bold"
-                              >
-                                JPG
-                              </button>
-                              <button
-                                onClick={() => handleDownloadPdf(item.data, item.createdAt)}
-                                className="w-full p-2.5 text-rose-600 hover:bg-rose-50 transition-all text-sm font-bold"
-                              >
-                                PDF
+                                🔍 画像を開く
                               </button>
                             </div>
-                          )}
+                          </div>
+
+                          {/* Info Section */}
+                          <div className="p-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
+                              <span className="font-medium">
+                                {new Date(item.createdAt).toLocaleString('ja-JP', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => toggleFavorite(item.id)}
+                                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-lg transition-all hover:scale-110 ${item.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'}`}
+                                  title={item.isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
+                                >
+                                  {item.isFavorite ? '⭐' : '☆'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteImage(item.id)}
+                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                  title="削除"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons Grid */}
+                            <div className="grid grid-cols-3 gap-2">
+                              {/* Download Button with Dropdown */}
+                              <div className="relative">
+                                <button
+                                  onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
+                                  className="w-full flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                                  title="ダウンロード"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                </button>
+
+                                {openDownloadMenu === item.id && (
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                                    <button
+                                      onClick={() => handleDownloadPng(item.data, item.createdAt)}
+                                      className="w-full p-2.5 text-emerald-600 hover:bg-emerald-50 transition-all border-b border-slate-100 text-sm font-bold"
+                                    >
+                                      PNG
+                                    </button>
+                                    <button
+                                      onClick={() => handleDownloadJpg(item.data, item.createdAt)}
+                                      className="w-full p-2.5 text-amber-600 hover:bg-amber-50 transition-all border-b border-slate-100 text-sm font-bold"
+                                    >
+                                      JPG
+                                    </button>
+                                    <button
+                                      onClick={() => handleDownloadPdf(item.data, item.createdAt)}
+                                      className="w-full p-2.5 text-rose-600 hover:bg-rose-50 transition-all text-sm font-bold"
+                                    >
+                                      PDF
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Upscale Button */}
+                              <button
+                                onClick={() => handleUpscale(item)}
+                                disabled={upscalingImageId === item.id || item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'}
+                                className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
+                                  ? 'bg-slate-100 text-slate-600 cursor-wait'
+                                  : item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'
+                                    ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
+                                    : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
+                                  }`}
+                                title={item.isUpscaled
+                                  ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)`
+                                  : item.is4KRegenerated || item.imageSize === '4K'
+                                    ? '4K画像はアップスケール不可'
+                                    : `AIアップスケール(${UPSCALE_SCALE}x)`}
+                              >
+                                {upscalingImageId === item.id ? (
+                                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                ) : item.isUpscaled ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                  </svg>
+                                )}
+                              </button>
+
+                              {/* Edit Button */}
+                              <button
+                                onClick={() => setEditingImage(item)}
+                                className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                                title="画像を編集"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            </div>
+
+                            {/* Second Row of Buttons */}
+                            <div className="grid grid-cols-3 gap-2 mt-2">
+                              {/* 4K Regeneration Button */}
+                              <button
+                                onClick={() => handleRegenerate4K(item)}
+                                disabled={regenerating4KImageId === item.id || item.is4KRegenerated}
+                                className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${regenerating4KImageId === item.id
+                                  ? 'bg-violet-100 text-violet-600 cursor-wait'
+                                  : item.is4KRegenerated
+                                    ? 'bg-violet-100 text-violet-600 cursor-not-allowed'
+                                    : 'bg-violet-500 hover:bg-violet-600 text-white active:scale-95'
+                                  }`}
+                                title={item.is4KRegenerated ? '4K再生成済み' : 'Gemini APIで4K再生成（内容はそのまま）'}
+                              >
+                                {regenerating4KImageId === item.id ? (
+                                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                ) : item.is4KRegenerated ? (
+                                  <span className="text-xs font-bold">4K✓</span>
+                                ) : (
+                                  <span className="text-xs font-bold">4K</span>
+                                )}
+                              </button>
+
+                              {/* Remove Text Button */}
+                              <button
+                                onClick={() => handleRemoveText(item)}
+                                disabled={removingTextImageId === item.id}
+                                className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${removingTextImageId === item.id
+                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                  : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
+                                  }`}
+                                title="文字を消去"
+                              >
+                                {removingTextImageId === item.id ? (
+                                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                )}
+                              </button>
+
+                              {/* Reference Button */}
+                              <button
+                                onClick={() => handleUseAsReference(item.data)}
+                                className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                                title="参考画像として使用"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-
-                        {/* Upscale Button */}
-                        <button
-                          onClick={() => handleUpscale(item)}
-                          disabled={upscalingImageId === item.id || item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'}
-                          className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
-                            ? 'bg-slate-100 text-slate-600 cursor-wait'
-                            : item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'
-                              ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
-                              : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
-                            }`}
-                          title={item.isUpscaled
-                            ? `アップスケール済み(${item.upscaleScale ?? UPSCALE_SCALE}x)`
-                            : item.is4KRegenerated || item.imageSize === '4K'
-                              ? '4K画像はアップスケール不可'
-                              : `AIアップスケール(${UPSCALE_SCALE}x)`}
-                        >
-                          {upscalingImageId === item.id ? (
-                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          ) : item.isUpscaled ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                            </svg>
-                          )}
-                        </button>
-
-                        {/* Edit Button */}
-                        <button
-                          onClick={() => setEditingImage(item)}
-                          className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
-                          title="画像を編集"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                      </div>
-
-                      {/* Second Row of Buttons */}
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        {/* 4K Regeneration Button */}
-                        <button
-                          onClick={() => handleRegenerate4K(item)}
-                          disabled={regenerating4KImageId === item.id || item.is4KRegenerated}
-                          className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${regenerating4KImageId === item.id
-                            ? 'bg-violet-100 text-violet-600 cursor-wait'
-                            : item.is4KRegenerated
-                              ? 'bg-violet-100 text-violet-600 cursor-not-allowed'
-                              : 'bg-violet-500 hover:bg-violet-600 text-white active:scale-95'
-                            }`}
-                          title={item.is4KRegenerated ? '4K再生成済み' : 'Gemini APIで4K再生成（内容はそのまま）'}
-                        >
-                          {regenerating4KImageId === item.id ? (
-                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          ) : item.is4KRegenerated ? (
-                            <span className="text-xs font-bold">4K✓</span>
-                          ) : (
-                            <span className="text-xs font-bold">4K</span>
-                          )}
-                        </button>
-
-                        {/* Remove Text Button */}
-                        <button
-                          onClick={() => handleRemoveText(item)}
-                          disabled={removingTextImageId === item.id}
-                          className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${removingTextImageId === item.id
-                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                            : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
-                            }`}
-                          title="文字を消去"
-                        >
-                          {removingTextImageId === item.id ? (
-                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          )}
-                        </button>
-
-                        {/* Reference Button */}
-                        <button
-                          onClick={() => handleUseAsReference(item.data)}
-                          className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
-                          title="参考画像として使用"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ))}
+                  ))}
 
-              {bottomSpacerHeight > 0 && <div style={{ height: bottomSpacerHeight }} />}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </main>
+        </main>
+      </div>
 
       {/* Save Preset Modal */}
       {isSaveModalOpen && (
@@ -3802,21 +3593,21 @@ ${header.length + uint8Array.length + 20}
             <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">
               「<span className="text-indigo-600 font-semibold">{presetToLoad.name}</span>」を読み込みます。
               現在の未保存データは置き換わります。
-              </p>
+            </p>
 
-              <div className="mb-6 p-3 rounded-md border border-slate-100 bg-slate-50/70">
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={loadPresetAssets}
-                    onChange={(e) => setLoadPresetAssets(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  アセットも読み込む（現在のアセットを上書き）
-                </label>
-              </div>
+            <div className="mb-6 p-3 rounded-md border border-slate-100 bg-slate-50/70">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={loadPresetAssets}
+                  onChange={(e) => setLoadPresetAssets(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                アセットも読み込む（現在のアセットを上書き）
+              </label>
+            </div>
 
-              <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <button
                 onClick={confirmLoadPreset}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold tracking-wide text-xs py-4 px-6 rounded-md shadow-indigo-600/20 transition-all active:scale-95"
@@ -3935,3 +3726,5 @@ ${header.length + uint8Array.length + 20}
 };
 
 export default App;
+
+
