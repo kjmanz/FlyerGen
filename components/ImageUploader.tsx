@@ -1,28 +1,65 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 interface ImageUploaderProps {
   images: string[];
   onImagesChange: (newImages: string[]) => void;
-  label: string;
+  label?: string;
   multiple?: boolean;
+  maxImages?: number;
+  showStats?: boolean;
+}
+
+interface ImageMeta {
+  width?: number;
+  height?: number;
+  sizeBytes?: number;
 }
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
   images,
   onImagesChange,
   label,
-  multiple = true
+  multiple = true,
+  maxImages,
+  showStats = true
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [thumbnailMap, setThumbnailMap] = useState<Record<string, string>>({});
   const thumbnailMapRef = useRef<Record<string, string>>({});
+  const [metaMap, setMetaMap] = useState<Record<string, ImageMeta>>({});
+  const metaMapRef = useRef<Record<string, ImageMeta>>({});
 
   useEffect(() => {
     thumbnailMapRef.current = thumbnailMap;
   }, [thumbnailMap]);
 
-  const createThumbnail = async (dataUrl: string, maxSize = 240): Promise<string> => {
+  useEffect(() => {
+    metaMapRef.current = metaMap;
+  }, [metaMap]);
+
+  const formatBytes = (bytes: number) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)}${units[unitIndex]}`;
+  };
+
+  const estimateDataUrlBytes = (dataUrl: string) => {
+    const base64Index = dataUrl.indexOf('base64,');
+    if (base64Index === -1) return undefined;
+    const base64 = dataUrl.slice(base64Index + 7);
+    const paddingMatch = base64.match(/=*$/);
+    const padding = paddingMatch ? paddingMatch[0].length : 0;
+    return Math.max(0, (base64.length * 3) / 4 - padding);
+  };
+
+  const createThumbnail = async (dataUrl: string, maxSize = 240): Promise<{ thumb: string; width: number; height: number }> => {
     try {
       if (!('createImageBitmap' in window)) {
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -32,19 +69,23 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           image.src = dataUrl;
         });
 
+        const originalWidth = img.width || img.naturalWidth || 0;
+        const originalHeight = img.height || img.naturalHeight || 0;
         const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext('2d');
-        if (!ctx) return dataUrl;
+        if (!ctx) return { thumb: dataUrl, width: originalWidth, height: originalHeight };
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL('image/jpeg', 0.7);
+        return { thumb: canvas.toDataURL('image/jpeg', 0.7), width: originalWidth, height: originalHeight };
       }
 
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       const bitmap = await createImageBitmap(blob);
+      const originalWidth = bitmap.width;
+      const originalHeight = bitmap.height;
       const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(bitmap.width * scale);
@@ -52,13 +93,13 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         bitmap.close();
-        return dataUrl;
+        return { thumb: dataUrl, width: originalWidth, height: originalHeight };
       }
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       bitmap.close();
-      return canvas.toDataURL('image/jpeg', 0.7);
+      return { thumb: canvas.toDataURL('image/jpeg', 0.7), width: originalWidth, height: originalHeight };
     } catch {
-      return dataUrl;
+      return { thumb: dataUrl, width: 0, height: 0 };
     }
   };
 
@@ -67,16 +108,43 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     const syncThumbnails = async () => {
       const updates: Record<string, string> = {};
+      const metaUpdates: Record<string, ImageMeta> = {};
       for (const img of images) {
-        if (!img.startsWith('data:')) continue;
-        if (thumbnailMapRef.current[img]) continue;
-        const thumb = await createThumbnail(img);
-        if (cancelled) return;
-        updates[img] = thumb;
+        const needsThumb = !thumbnailMapRef.current[img];
+        const needsMeta = !metaMapRef.current[img];
+
+        if (img.startsWith('data:')) {
+          if (!needsThumb && !needsMeta) continue;
+          const { thumb, width, height } = await createThumbnail(img);
+          if (cancelled) return;
+          if (needsThumb) updates[img] = thumb;
+          if (needsMeta) {
+            metaUpdates[img] = {
+              width,
+              height,
+              sizeBytes: estimateDataUrlBytes(img)
+            };
+          }
+          continue;
+        }
+
+        if (needsMeta) {
+          const dimensions = await new Promise<ImageMeta>((resolve) => {
+            const image = new Image();
+            image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+            image.onerror = () => resolve({});
+            image.src = img;
+          });
+          if (cancelled) return;
+          metaUpdates[img] = dimensions;
+        }
       }
 
       if (!cancelled && Object.keys(updates).length > 0) {
         setThumbnailMap(prev => ({ ...prev, ...updates }));
+      }
+      if (!cancelled && Object.keys(metaUpdates).length > 0) {
+        setMetaMap(prev => ({ ...prev, ...metaUpdates }));
       }
     };
 
@@ -84,6 +152,14 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     setThumbnailMap(prev => {
       const next: Record<string, string> = {};
+      images.forEach(img => {
+        if (prev[img]) next[img] = prev[img];
+      });
+      return next;
+    });
+
+    setMetaMap(prev => {
+      const next: Record<string, ImageMeta> = {};
       images.forEach(img => {
         if (prev[img]) next[img] = prev[img];
       });
@@ -103,9 +179,17 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     if (imageFiles.length === 0) return;
 
+    let limitedFiles = imageFiles;
+    if (multiple && maxImages) {
+      const availableSlots = Math.max(0, maxImages - images.length);
+      limitedFiles = imageFiles.slice(0, availableSlots);
+    }
+
+    if (limitedFiles.length === 0) return;
+
     const promises: Promise<string>[] = [];
 
-    imageFiles.forEach((file: File) => {
+    limitedFiles.forEach((file: File) => {
       const reader = new FileReader();
       const promise = new Promise<string>((resolve) => {
         reader.onload = (e) => {
@@ -162,6 +246,26 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     onImagesChange(newImages);
   };
 
+  const stats = useMemo(() => {
+    if (!showStats || images.length === 0) return null;
+    const metas = images.map(img => metaMap[img]).filter(Boolean) as ImageMeta[];
+    const totalBytes = metas.reduce((sum, meta) => sum + (meta.sizeBytes || 0), 0);
+    const hasSizeData = metas.some(meta => typeof meta.sizeBytes === 'number');
+    const maxWidth = metas.reduce((max, meta) => Math.max(max, meta.width || 0), 0);
+    const maxHeight = metas.reduce((max, meta) => Math.max(max, meta.height || 0), 0);
+    const WARN_SINGLE_BYTES = 5 * 1024 * 1024;
+    const WARN_TOTAL_BYTES = 25 * 1024 * 1024;
+    const hasLargeImage = metas.some(meta => (meta.sizeBytes || 0) >= WARN_SINGLE_BYTES);
+    const isLargeTotal = hasSizeData && totalBytes >= WARN_TOTAL_BYTES;
+    return {
+      totalBytes,
+      hasSizeData,
+      maxWidth,
+      maxHeight,
+      warning: hasLargeImage || isLargeTotal
+    };
+  }, [images, metaMap, showStats]);
+
   return (
     <div
       onDragOver={handleDragOver}
@@ -188,8 +292,12 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {images.map((img, idx) => {
           const previewSrc = thumbnailMap[img] || img;
+          const meta = metaMap[img];
+          const title = meta?.width && meta?.height
+            ? `${meta.width}x${meta.height}${meta.sizeBytes ? ` / ${formatBytes(meta.sizeBytes)}` : ''}`
+            : 'サイズ情報なし';
           return (
-            <div key={idx} className="relative group aspect-square bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+            <div key={idx} className="relative group aspect-square bg-gray-100 rounded-md overflow-hidden border border-gray-200" title={title}>
               <img src={previewSrc} alt="preview" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
                 <button
@@ -222,6 +330,17 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
         multiple={multiple}
         className="hidden"
       />
+
+      {stats && (
+        <div className="mt-2 text-[10px] text-slate-500 flex flex-wrap gap-2 items-center">
+          <span>合計 {images.length}枚</span>
+          <span>容量: {stats.hasSizeData ? formatBytes(stats.totalBytes) : '不明'}</span>
+          <span>最大解像度: {stats.maxWidth && stats.maxHeight ? `${stats.maxWidth}x${stats.maxHeight}` : '不明'}</span>
+          {stats.warning && (
+            <span className="text-amber-600 font-semibold">サイズが大きめです</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

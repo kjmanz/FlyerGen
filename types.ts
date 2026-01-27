@@ -62,25 +62,36 @@ export interface CampaignInfo {
   productImages: string[];      // 商品画像（Base64/URL）
 }
 
-export interface Preset {
-  id: string;
-  name: string;
-  products: Product[];
-  characterImages: string[];
-  characterClothingMode?: 'fixed' | 'match';
-  referenceImages: string[];
-  storeLogoImages: string[];
-  settings: FlyerSettings;
-  // Front side fields
-  campaignInfo?: CampaignInfo;
-  frontFlyerType?: FrontFlyerType;
-  productServiceInfo?: ProductServiceInfo;
-  // Sales letter fields
-  salesLetterInfo?: SalesLetterInfo;
-  salesLetterMode?: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
+  export interface Preset {
+    id: string;
+    name: string;
+    products: Product[];
+    characterImages: string[];
+    characterClothingMode?: 'fixed' | 'match';
+    referenceImages: string[];
+    storeLogoImages: string[];
+    customIllustrations?: string[];
+    customerImages?: string[];
+    frontProductImages?: string[];
+    campaignMainImages?: string[];
+    settings: FlyerSettings;
+    // Front side fields
+    campaignInfo?: CampaignInfo;
+    frontFlyerType?: FrontFlyerType;
+    productServiceInfo?: ProductServiceInfo;
+    // Sales letter fields
+    salesLetterInfo?: SalesLetterInfo;
+    salesLetterMode?: boolean;
+    selectedCharacterIndices?: number[];
+    selectedReferenceIndex?: number | null;
+    selectedLogoIndices?: number[];
+    selectedCustomIllustrationIndices?: number[];
+    selectedCustomerImageIndices?: number[];
+    selectedFrontProductIndices?: number[];
+    selectedCampaignMainImageIndices?: number[];
+    createdAt: number;
+    updatedAt: number;
+  }
 
 // 表面チラシのタイプ
 export type FrontFlyerType = 'campaign' | 'product-service';

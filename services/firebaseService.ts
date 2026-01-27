@@ -307,6 +307,17 @@ export interface CloudPreset {
     characterClothingMode: string;
     referenceImages: string[];
     storeLogoImages: string[];
+    customIllustrations?: string[];
+    customerImages?: string[];
+    frontProductImages?: string[];
+    campaignMainImages?: string[];
+    selectedCharacterIndices?: number[];
+    selectedReferenceIndex?: number | null;
+    selectedLogoIndices?: number[];
+    selectedCustomIllustrationIndices?: number[];
+    selectedCustomerImageIndices?: number[];
+    selectedFrontProductIndices?: number[];
+    selectedCampaignMainImageIndices?: number[];
     createdAt: number;
     updatedAt: number;
 }
@@ -350,10 +361,22 @@ export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => 
         console.log(`Saving preset to Firestore: ${preset.name} (${preset.id})`);
 
         // Upload images to Storage first to avoid Firestore 1MB limit
-        const [characterImageUrls, referenceImageUrls, storeLogoUrls] = await Promise.all([
+        const [
+            characterImageUrls,
+            referenceImageUrls,
+            storeLogoUrls,
+            customIllustrationUrls,
+            customerImageUrls,
+            frontProductImageUrls,
+            campaignMainImageUrls
+        ] = await Promise.all([
             uploadImagesArray(preset.characterImages || [], preset.id, 'char'),
             uploadImagesArray(preset.referenceImages || [], preset.id, 'ref'),
-            uploadImagesArray(preset.storeLogoImages || [], preset.id, 'logo')
+            uploadImagesArray(preset.storeLogoImages || [], preset.id, 'logo'),
+            uploadImagesArray(preset.customIllustrations || [], preset.id, 'custom'),
+            uploadImagesArray(preset.customerImages || [], preset.id, 'customer'),
+            uploadImagesArray(preset.frontProductImages || [], preset.id, 'frontprod'),
+            uploadImagesArray(preset.campaignMainImages || [], preset.id, 'campaign')
         ]);
 
         // Upload product images
@@ -372,6 +395,17 @@ export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => 
             characterClothingMode: preset.characterClothingMode,
             referenceImages: referenceImageUrls,
             storeLogoImages: storeLogoUrls,
+            customIllustrations: customIllustrationUrls,
+            customerImages: customerImageUrls,
+            frontProductImages: frontProductImageUrls,
+            campaignMainImages: campaignMainImageUrls,
+            selectedCharacterIndices: preset.selectedCharacterIndices || [],
+            selectedReferenceIndex: typeof preset.selectedReferenceIndex === 'number' ? preset.selectedReferenceIndex : null,
+            selectedLogoIndices: preset.selectedLogoIndices || [],
+            selectedCustomIllustrationIndices: preset.selectedCustomIllustrationIndices || [],
+            selectedCustomerImageIndices: preset.selectedCustomerImageIndices || [],
+            selectedFrontProductIndices: preset.selectedFrontProductIndices || [],
+            selectedCampaignMainImageIndices: preset.selectedCampaignMainImageIndices || [],
             createdAt: preset.createdAt || Date.now(),
             updatedAt: Date.now()
         };

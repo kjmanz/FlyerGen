@@ -7,6 +7,7 @@ interface CompactAssetSectionProps {
   iconBorderColor?: string;
   images: string[];
   selectedCount: number;
+  selectedIndices?: number[];
   isCloudSync: boolean;
   children: React.ReactNode;
 }
@@ -18,13 +19,17 @@ export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
   iconBorderColor = 'border-indigo-100',
   images,
   selectedCount,
+  selectedIndices = [],
   isCloudSync,
   children,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Show only selected images as thumbnails (max 6)
-  const selectedImages = images.slice(0, 6);
+  const selectedSet = new Set(selectedIndices);
+  const prioritizedImages = [
+    ...selectedIndices.map((index) => images[index]).filter(Boolean),
+    ...images.filter((_, idx) => !selectedSet.has(idx))
+  ].slice(0, 6);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-100 overflow-hidden">
@@ -56,7 +61,7 @@ export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
         {/* Thumbnails (collapsed state) */}
         {!isExpanded && images.length > 0 && (
           <div className="flex gap-1 flex-shrink-0">
-            {selectedImages.map((img, idx) => (
+            {prioritizedImages.map((img, idx) => (
               <div
                 key={idx}
                 className="w-8 h-8 rounded overflow-hidden border border-slate-200"

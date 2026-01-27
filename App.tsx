@@ -9,6 +9,7 @@ import { ProductServiceForm } from './components/ProductServiceForm';
 import { SalesLetterForm } from './components/SalesLetterForm';
 import { MainTabs, MainTabType } from './components/MainTabs';
 import { CompactAssetSection } from './components/CompactAssetSection';
+import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage, generateProductServiceFlyer, generateSalesLetterFlyer, regenerateImage4K } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
@@ -109,6 +110,7 @@ const App: React.FC = () => {
 
   // Preset Load Confirmation Modal State
   const [presetToLoad, setPresetToLoad] = useState<Preset | null>(null);
+  const [loadPresetAssets, setLoadPresetAssets] = useState(true);
 
   // Upscale State
   const [replicateApiKey, setReplicateApiKey] = useState<string>("");
@@ -288,21 +290,32 @@ const App: React.FC = () => {
             setHistory(historyFromCloud);
           }
 
-          if (cloudPresets.length > 0) {
-            const presetsFromCloud: Preset[] = cloudPresets.map(p => ({
-              id: p.id,
-              name: p.name,
-              products: p.products,
-              settings: p.settings,
-              characterImages: p.characterImages || [],
-              characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
-              referenceImages: p.referenceImages || [],
-              storeLogoImages: p.storeLogoImages || [],
-              createdAt: p.createdAt,
-              updatedAt: p.updatedAt
-            }));
-            setPresets(presetsFromCloud);
-          }
+            if (cloudPresets.length > 0) {
+              const presetsFromCloud: Preset[] = cloudPresets.map(p => ({
+                id: p.id,
+                name: p.name,
+                products: p.products,
+                settings: p.settings,
+                characterImages: p.characterImages || [],
+                characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
+                referenceImages: p.referenceImages || [],
+                storeLogoImages: p.storeLogoImages || [],
+                customIllustrations: p.customIllustrations || [],
+                customerImages: p.customerImages || [],
+                frontProductImages: p.frontProductImages || [],
+                campaignMainImages: p.campaignMainImages || [],
+                selectedCharacterIndices: p.selectedCharacterIndices || [],
+                selectedReferenceIndex: typeof p.selectedReferenceIndex === 'number' ? p.selectedReferenceIndex : null,
+                selectedLogoIndices: p.selectedLogoIndices || [],
+                selectedCustomIllustrationIndices: p.selectedCustomIllustrationIndices || [],
+                selectedCustomerImageIndices: p.selectedCustomerImageIndices || [],
+                selectedFrontProductIndices: p.selectedFrontProductIndices || [],
+                selectedCampaignMainImageIndices: p.selectedCampaignMainImageIndices || [],
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt
+              }));
+              setPresets(presetsFromCloud);
+            }
 
           // Load reference images independently (not from presets)
           if (cloudReferenceImages.images.length > 0) {
@@ -710,6 +723,238 @@ const App: React.FC = () => {
     });
     if (!customIllustrationsInitialized) {
       setCustomIllustrationsInitialized(true);
+    }
+  };
+
+  const reorderArray = <T,>(items: T[], from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return items;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    return next;
+  };
+
+  const remapSelection = (selected: Set<number>, from: number, to: number) => {
+    if (from === to) return selected;
+    const next = new Set<number>();
+    selected.forEach((index) => {
+      if (index === from) {
+        next.add(to);
+        return;
+      }
+      if (from < to && index > from && index <= to) {
+        next.add(index - 1);
+        return;
+      }
+      if (from > to && index >= to && index < from) {
+        next.add(index + 1);
+        return;
+      }
+      next.add(index);
+    });
+    return next;
+  };
+
+  const remapSingleSelection = (selected: number | null, from: number, to: number) => {
+    if (selected === null || from === to) return selected;
+    if (selected === from) return to;
+    if (from < to && selected > from && selected <= to) return selected - 1;
+    if (from > to && selected >= to && selected < from) return selected + 1;
+    return selected;
+  };
+
+  const dedupeImages = (items: string[]) => {
+    const seen = new Map<string, number>();
+    const nextImages: string[] = [];
+    const indexMap: number[] = [];
+    items.forEach((img, idx) => {
+      if (seen.has(img)) {
+        indexMap[idx] = seen.get(img) as number;
+        return;
+      }
+      const nextIndex = nextImages.length;
+      seen.set(img, nextIndex);
+      nextImages.push(img);
+      indexMap[idx] = nextIndex;
+    });
+    return { nextImages, indexMap };
+  };
+
+  const remapSelectionByIndexMap = (selected: Set<number>, indexMap: number[]) => {
+    const next = new Set<number>();
+    selected.forEach((index) => {
+      const mapped = indexMap[index];
+      if (typeof mapped === 'number') next.add(mapped);
+    });
+    return next;
+  };
+
+  const remapSingleByIndexMap = (selected: number | null, indexMap: number[]) => {
+    if (selected === null) return null;
+    const mapped = indexMap[selected];
+    return typeof mapped === 'number' ? mapped : null;
+  };
+
+  const reorderCharacterImages = (from: number, to: number) => {
+    setCharacterImages(prev => reorderArray(prev, from, to));
+    setSelectedCharacterIndices(prev => remapSelection(prev, from, to));
+    if (!characterImagesInitialized) {
+      setCharacterImagesInitialized(true);
+    }
+  };
+
+  const dedupeCharacterImages = () => {
+    if (!window.confirm('重複画像を削除しますか？')) return;
+    setCharacterImages(prev => {
+      const { nextImages, indexMap } = dedupeImages(prev);
+      setSelectedCharacterIndices(prevSelected => remapSelectionByIndexMap(prevSelected, indexMap));
+      return nextImages;
+    });
+    if (!characterImagesInitialized) {
+      setCharacterImagesInitialized(true);
+    }
+  };
+
+  const selectAllCharacterImages = () => {
+    setSelectedCharacterIndices(new Set(characterImages.map((_, idx) => idx)));
+    if (!characterImagesInitialized) {
+      setCharacterImagesInitialized(true);
+    }
+  };
+
+  const clearCharacterSelection = () => {
+    setSelectedCharacterIndices(new Set());
+    if (!characterImagesInitialized) {
+      setCharacterImagesInitialized(true);
+    }
+  };
+
+  const reorderReferenceImages = (from: number, to: number) => {
+    setReferenceImages(prev => reorderArray(prev, from, to));
+    setSelectedReferenceIndex(prev => remapSingleSelection(prev, from, to));
+    if (!referenceImagesInitialized) {
+      setReferenceImagesInitialized(true);
+    }
+  };
+
+  const dedupeReferenceImages = () => {
+    if (!window.confirm('重複画像を削除しますか？')) return;
+    setReferenceImages(prev => {
+      const { nextImages, indexMap } = dedupeImages(prev);
+      setSelectedReferenceIndex(prevSelected => remapSingleByIndexMap(prevSelected, indexMap));
+      return nextImages;
+    });
+    if (!referenceImagesInitialized) {
+      setReferenceImagesInitialized(true);
+    }
+  };
+
+  const clearReferenceSelection = () => {
+    setSelectedReferenceIndex(null);
+    if (!referenceImagesInitialized) {
+      setReferenceImagesInitialized(true);
+    }
+  };
+
+  const reorderLogoImages = (from: number, to: number) => {
+    setStoreLogoImages(prev => reorderArray(prev, from, to));
+    setSelectedLogoIndices(prev => remapSelection(prev, from, to));
+    if (!logoImagesInitialized) {
+      setLogoImagesInitialized(true);
+    }
+  };
+
+  const dedupeLogoImages = () => {
+    if (!window.confirm('重複画像を削除しますか？')) return;
+    setStoreLogoImages(prev => {
+      const { nextImages, indexMap } = dedupeImages(prev);
+      setSelectedLogoIndices(prevSelected => remapSelectionByIndexMap(prevSelected, indexMap));
+      return nextImages;
+    });
+    if (!logoImagesInitialized) {
+      setLogoImagesInitialized(true);
+    }
+  };
+
+  const selectAllLogoImages = () => {
+    setSelectedLogoIndices(new Set(storeLogoImages.map((_, idx) => idx)));
+    if (!logoImagesInitialized) {
+      setLogoImagesInitialized(true);
+    }
+  };
+
+  const clearLogoSelection = () => {
+    setSelectedLogoIndices(new Set());
+    if (!logoImagesInitialized) {
+      setLogoImagesInitialized(true);
+    }
+  };
+
+  const reorderCustomIllustrations = (from: number, to: number) => {
+    setCustomIllustrations(prev => reorderArray(prev, from, to));
+    setSelectedCustomIllustrationIndices(prev => remapSelection(prev, from, to));
+    if (!customIllustrationsInitialized) {
+      setCustomIllustrationsInitialized(true);
+    }
+  };
+
+  const dedupeCustomIllustrations = () => {
+    if (!window.confirm('重複画像を削除しますか？')) return;
+    setCustomIllustrations(prev => {
+      const { nextImages, indexMap } = dedupeImages(prev);
+      setSelectedCustomIllustrationIndices(prevSelected => remapSelectionByIndexMap(prevSelected, indexMap));
+      return nextImages;
+    });
+    if (!customIllustrationsInitialized) {
+      setCustomIllustrationsInitialized(true);
+    }
+  };
+
+  const selectAllCustomIllustrations = () => {
+    setSelectedCustomIllustrationIndices(new Set(customIllustrations.map((_, idx) => idx)));
+    if (!customIllustrationsInitialized) {
+      setCustomIllustrationsInitialized(true);
+    }
+  };
+
+  const clearCustomIllustrationSelection = () => {
+    setSelectedCustomIllustrationIndices(new Set());
+    if (!customIllustrationsInitialized) {
+      setCustomIllustrationsInitialized(true);
+    }
+  };
+
+  const reorderCustomerImages = (from: number, to: number) => {
+    setCustomerImages(prev => reorderArray(prev, from, to));
+    setSelectedCustomerImageIndices(prev => remapSelection(prev, from, to));
+    if (!customerImagesInitialized) {
+      setCustomerImagesInitialized(true);
+    }
+  };
+
+  const dedupeCustomerImages = () => {
+    if (!window.confirm('重複画像を削除しますか？')) return;
+    setCustomerImages(prev => {
+      const { nextImages, indexMap } = dedupeImages(prev);
+      setSelectedCustomerImageIndices(prevSelected => remapSelectionByIndexMap(prevSelected, indexMap));
+      return nextImages;
+    });
+    if (!customerImagesInitialized) {
+      setCustomerImagesInitialized(true);
+    }
+  };
+
+  const selectAllCustomerImages = () => {
+    setSelectedCustomerImageIndices(new Set(customerImages.map((_, idx) => idx)));
+    if (!customerImagesInitialized) {
+      setCustomerImagesInitialized(true);
+    }
+  };
+
+  const clearCustomerSelection = () => {
+    setSelectedCustomerImageIndices(new Set());
+    if (!customerImagesInitialized) {
+      setCustomerImagesInitialized(true);
     }
   };
 
@@ -1524,15 +1769,18 @@ ${header.length + uint8Array.length + 20}
       const now = Date.now();
 
       // Clone data to avoid reference issues
-      // Note: characterImages, referenceImages, and storeLogoImages are NOT saved to preset - they are synced independently from cloud
       const newPreset: Preset = {
         id: targetId,
         name: savePresetName,
         products: JSON.parse(JSON.stringify(products)),
-        characterImages: [], // Empty - character images are synced independently
+        characterImages: [...characterImages],
         characterClothingMode: characterClothingMode,
-        referenceImages: [], // Empty - reference images are synced independently
-        storeLogoImages: [], // Empty - store logo images are synced independently
+        referenceImages: [...referenceImages],
+        storeLogoImages: [...storeLogoImages],
+        customIllustrations: [...customIllustrations],
+        customerImages: [...customerImages],
+        frontProductImages: [...frontProductImages],
+        campaignMainImages: [...(campaignInfo.productImages || [])],
         settings: { ...settings },
         // Front side fields
         campaignInfo: JSON.parse(JSON.stringify(campaignInfo)),
@@ -1541,6 +1789,13 @@ ${header.length + uint8Array.length + 20}
         // Sales letter fields
         salesLetterInfo: JSON.parse(JSON.stringify(salesLetterInfo)),
         salesLetterMode: salesLetterMode,
+        selectedCharacterIndices: Array.from(selectedCharacterIndices),
+        selectedReferenceIndex: selectedReferenceIndex,
+        selectedLogoIndices: Array.from(selectedLogoIndices),
+        selectedCustomIllustrationIndices: Array.from(selectedCustomIllustrationIndices),
+        selectedCustomerImageIndices: Array.from(selectedCustomerImageIndices),
+        selectedFrontProductIndices: Array.from(selectedFrontProductIndices),
+        selectedCampaignMainImageIndices: Array.from(selectedCampaignMainImageIndices),
         createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
         updatedAt: now
       };
@@ -1578,6 +1833,7 @@ ${header.length + uint8Array.length + 20}
   };
 
   const handleLoadPreset = (preset: Preset) => {
+    setLoadPresetAssets(true);
     setPresetToLoad(preset);
   };
 
@@ -1589,10 +1845,34 @@ ${header.length + uint8Array.length + 20}
     const data = JSON.parse(JSON.stringify(preset));
 
     setProducts(data.products || []);
-    // Note: characterImages are NOT loaded from preset - they are synced independently from cloud
     setCharacterClothingMode(data.characterClothingMode || 'fixed');
-    // Note: referenceImages are NOT loaded from preset - they are synced independently from cloud
-    // Note: storeLogoImages are NOT loaded from preset - they are synced independently from cloud
+
+    if (loadPresetAssets) {
+      const nextCharacterImages = data.characterImages || [];
+      setCharacterImages(nextCharacterImages);
+      setSelectedCharacterIndices(new Set((data.selectedCharacterIndices || []).filter((i: number) => i < nextCharacterImages.length)));
+
+      const nextReferenceImages = data.referenceImages || [];
+      setReferenceImages(nextReferenceImages);
+      const nextReferenceIndex = typeof data.selectedReferenceIndex === 'number' ? data.selectedReferenceIndex : null;
+      setSelectedReferenceIndex(nextReferenceIndex !== null && nextReferenceIndex < nextReferenceImages.length ? nextReferenceIndex : null);
+
+      const nextLogoImages = data.storeLogoImages || [];
+      setStoreLogoImages(nextLogoImages);
+      setSelectedLogoIndices(new Set((data.selectedLogoIndices || []).filter((i: number) => i < nextLogoImages.length)));
+
+      const nextCustomIllustrations = data.customIllustrations || [];
+      setCustomIllustrations(nextCustomIllustrations);
+      setSelectedCustomIllustrationIndices(new Set((data.selectedCustomIllustrationIndices || []).filter((i: number) => i < nextCustomIllustrations.length)));
+
+      const nextCustomerImages = data.customerImages || [];
+      setCustomerImages(nextCustomerImages);
+      setSelectedCustomerImageIndices(new Set((data.selectedCustomerImageIndices || []).filter((i: number) => i < nextCustomerImages.length)));
+
+      const nextFrontProductImages = data.frontProductImages || [];
+      setFrontProductImages(nextFrontProductImages);
+      setSelectedFrontProductIndices(new Set((data.selectedFrontProductIndices || []).filter((i: number) => i < nextFrontProductImages.length)));
+    }
 
     // Ensure settings has all required fields with defaults
     setSettings({
@@ -1610,12 +1890,16 @@ ${header.length + uint8Array.length + 20}
     if (data.frontFlyerType) {
       setFrontFlyerType(data.frontFlyerType);
     }
+    const legacyProductImage = data.campaignInfo?.productImage;
+    const campaignInfoImages = Array.isArray(data.campaignInfo?.productImages)
+      ? data.campaignInfo.productImages
+      : (legacyProductImage ? [legacyProductImage] : []);
+    const presetCampaignImages = Array.isArray(data.campaignMainImages) && data.campaignMainImages.length > 0
+      ? data.campaignMainImages
+      : campaignInfoImages;
+
     if (data.campaignInfo) {
-      const legacyProductImage = data.campaignInfo.productImage;
-      const campaignProductImages = Array.isArray(data.campaignInfo.productImages)
-        ? data.campaignInfo.productImages
-        : (legacyProductImage ? [legacyProductImage] : []);
-      setCampaignInfo({
+      setCampaignInfo(prev => ({
         campaignDescription: data.campaignInfo.campaignDescription || '',
         headline: data.campaignInfo.headline || '',
         campaignName: data.campaignInfo.campaignName || '',
@@ -1624,8 +1908,19 @@ ${header.length + uint8Array.length + 20}
         content: data.campaignInfo.content || '',
         benefits: data.campaignInfo.benefits || [''],
         useProductImage: data.campaignInfo.useProductImage || false,
-        productImages: campaignProductImages
-      });
+        productImages: loadPresetAssets ? presetCampaignImages : prev.productImages
+      }));
+    } else if (loadPresetAssets && presetCampaignImages.length > 0) {
+      setCampaignInfo(prev => ({
+        ...prev,
+        productImages: presetCampaignImages
+      }));
+    }
+
+    if (loadPresetAssets) {
+      setSelectedCampaignMainImageIndices(
+        new Set((data.selectedCampaignMainImageIndices || []).filter((i: number) => i < presetCampaignImages.length))
+      );
     }
     if (data.productServiceInfo) {
       setProductServiceInfo(data.productServiceInfo);
@@ -2724,7 +3019,8 @@ ${header.length + uint8Array.length + 20}
             title="キャラクター"
             icon="👤"
             images={characterImages}
-            selectedCount={selectedCharacterIndices.size}
+              selectedCount={selectedCharacterIndices.size}
+              selectedIndices={Array.from(selectedCharacterIndices)}
             isCloudSync={firebaseEnabled}
           >
             <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
@@ -2733,7 +3029,17 @@ ${header.length + uint8Array.length + 20}
               images={characterImages}
               onImagesChange={handleCharacterImagesChange}
             />
-            {characterImages.length > 0 && (
+            <AssetSelectionGrid
+              images={characterImages}
+              selectedIndices={selectedCharacterIndices}
+              onToggleSelect={toggleCharacterImageSelection}
+              onSelectAll={selectAllCharacterImages}
+              onClearSelection={clearCharacterSelection}
+              onReorder={reorderCharacterImages}
+              onRemoveDuplicates={dedupeCharacterImages}
+              accent="indigo"
+            />
+            {false && (
               <div className="mt-4 grid grid-cols-4 gap-2">
                 {characterImages.map((img, idx) => (
                   <div
@@ -2778,6 +3084,7 @@ ${header.length + uint8Array.length + 20}
             icon="🎨"
             images={customIllustrations}
             selectedCount={selectedCustomIllustrationIndices.size}
+            selectedIndices={Array.from(selectedCustomIllustrationIndices)}
             isCloudSync={firebaseEnabled}
           >
             <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
@@ -2786,7 +3093,17 @@ ${header.length + uint8Array.length + 20}
               images={customIllustrations}
               onImagesChange={handleCustomIllustrationsChange}
             />
-            {customIllustrations.length > 0 && (
+            <AssetSelectionGrid
+              images={customIllustrations}
+              selectedIndices={selectedCustomIllustrationIndices}
+              onToggleSelect={toggleCustomIllustrationSelection}
+              onSelectAll={selectAllCustomIllustrations}
+              onClearSelection={clearCustomIllustrationSelection}
+              onReorder={reorderCustomIllustrations}
+              onRemoveDuplicates={dedupeCustomIllustrations}
+              accent="indigo"
+            />
+            {false && (
               <div className="mt-4 grid grid-cols-4 gap-2">
                 {customIllustrations.map((img, idx) => (
                   <div
@@ -2816,6 +3133,7 @@ ${header.length + uint8Array.length + 20}
             icon="🖼️"
             images={referenceImages}
             selectedCount={selectedReferenceIndex !== null ? 1 : 0}
+            selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
             isCloudSync={firebaseEnabled}
           >
             <p className="text-[10px] text-slate-500 mb-4">選択した画像のみ参考にします（1つのみ選択可能）。選択なしの場合は参考なし。</p>
@@ -2824,7 +3142,16 @@ ${header.length + uint8Array.length + 20}
               images={referenceImages}
               onImagesChange={handleReferenceImagesChange}
             />
-            {referenceImages.length > 0 && (
+            <AssetSelectionGrid
+              images={referenceImages}
+              selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])}
+              onToggleSelect={toggleReferenceImageSelection}
+              onClearSelection={clearReferenceSelection}
+              onReorder={reorderReferenceImages}
+              onRemoveDuplicates={dedupeReferenceImages}
+              accent="indigo"
+            />
+            {false && (
               <div className="mt-4 grid grid-cols-4 gap-2">
                 {referenceImages.map((img, idx) => (
                   <div
@@ -2857,6 +3184,7 @@ ${header.length + uint8Array.length + 20}
             iconBorderColor="border-rose-100"
             images={customerImages}
             selectedCount={selectedCustomerImageIndices.size}
+            selectedIndices={Array.from(selectedCustomerImageIndices)}
             isCloudSync={firebaseEnabled}
           >
             <p className="text-[10px] text-slate-500 mb-4">表面チラシで「お客様」として配置する画像。チェックを入れた画像のみ使用。</p>
@@ -2865,7 +3193,17 @@ ${header.length + uint8Array.length + 20}
               images={customerImages}
               onImagesChange={handleCustomerImagesChange}
             />
-            {customerImages.length > 0 && (
+            <AssetSelectionGrid
+              images={customerImages}
+              selectedIndices={selectedCustomerImageIndices}
+              onToggleSelect={toggleCustomerImageSelection}
+              onSelectAll={selectAllCustomerImages}
+              onClearSelection={clearCustomerSelection}
+              onReorder={reorderCustomerImages}
+              onRemoveDuplicates={dedupeCustomerImages}
+              accent="rose"
+            />
+            {false && (
               <div className="mt-4 grid grid-cols-4 gap-2">
                 {customerImages.map((img, idx) => (
                   <div
@@ -2896,6 +3234,7 @@ ${header.length + uint8Array.length + 20}
             icon="🏪"
             images={storeLogoImages}
             selectedCount={selectedLogoIndices.size}
+            selectedIndices={Array.from(selectedLogoIndices)}
             isCloudSync={firebaseEnabled}
           >
             <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
@@ -2904,7 +3243,17 @@ ${header.length + uint8Array.length + 20}
               images={storeLogoImages}
               onImagesChange={handleStoreLogoImagesChange}
             />
-            {storeLogoImages.length > 0 && (
+            <AssetSelectionGrid
+              images={storeLogoImages}
+              selectedIndices={selectedLogoIndices}
+              onToggleSelect={toggleLogoImageSelection}
+              onSelectAll={selectAllLogoImages}
+              onClearSelection={clearLogoSelection}
+              onReorder={reorderLogoImages}
+              onRemoveDuplicates={dedupeLogoImages}
+              accent="indigo"
+            />
+            {false && (
               <div className="mt-4 grid grid-cols-4 gap-2">
                 {storeLogoImages.map((img, idx) => (
                   <div
@@ -3453,9 +3802,21 @@ ${header.length + uint8Array.length + 20}
             <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">
               「<span className="text-indigo-600 font-semibold">{presetToLoad.name}</span>」を読み込みます。
               現在の未保存データは置き換わります。
-            </p>
+              </p>
 
-            <div className="flex flex-col gap-3">
+              <div className="mb-6 p-3 rounded-md border border-slate-100 bg-slate-50/70">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={loadPresetAssets}
+                    onChange={(e) => setLoadPresetAssets(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  アセットも読み込む（現在のアセットを上書き）
+                </label>
+              </div>
+
+              <div className="flex flex-col gap-3">
               <button
                 onClick={confirmLoadPreset}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold tracking-wide text-xs py-4 px-6 rounded-md shadow-indigo-600/20 transition-all active:scale-95"
