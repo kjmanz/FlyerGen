@@ -2235,6 +2235,8 @@ ${header.length + uint8Array.length + 20}
   }, [history, selectedTag, sortOrder]);
 
   const historyColumns = useMemo(() => {
+    // サイドバー分を考慮して調整
+    if (windowWidth >= 1536) return 5;
     if (windowWidth >= 1280) return 4;
     if (windowWidth >= 1024) return 3;
     if (windowWidth >= 768) return 2;
@@ -2245,12 +2247,14 @@ ${header.length + uint8Array.length + 20}
     setMeasuredRowHeight(null);
   }, [historyColumns, historyGridWidth]);
 
-  const historyGridGap = 24;
+  const historyGridGap = 16;
   const fallbackGridWidth = Math.max(0, Math.min(windowWidth - 48, 1024));
   const effectiveGridWidth = historyGridWidth || fallbackGridWidth;
-  const cardWidth = historyColumns > 0
+  const maxCardWidth = 220; // カードの最大幅
+  const rawCardWidth = historyColumns > 0
     ? (effectiveGridWidth - historyGridGap * (historyColumns - 1)) / historyColumns
     : effectiveGridWidth;
+  const cardWidth = Math.min(rawCardWidth, maxCardWidth);
   const imageHeight = cardWidth > 0 ? cardWidth * (4 / 3) : 0;
   const estimatedRowHeight = Math.max(260, imageHeight + 160);
   const rowHeight = measuredRowHeight ?? estimatedRowHeight;
@@ -3209,11 +3213,11 @@ ${header.length + uint8Array.length + 20}
                     <div
                       key={`row-${rowData.row}`}
                       ref={rowIndex === 0 ? rowMeasureRef : undefined}
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                      className="flex flex-wrap gap-4 justify-start"
                       style={{ minHeight: rowHeight, marginBottom: rowData.row === totalRows - 1 ? 0 : historyGridGap }}
                     >
                       {rowData.items.map((item) => (
-                        <div key={item.id} className={`history-card group flex flex-col bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ${item.isFavorite ? 'ring-2 ring-amber-400' : ''}`}>
+                        <div key={item.id} style={{ width: cardWidth, maxWidth: cardWidth }} className={`history-card group flex flex-col bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ${item.isFavorite ? 'ring-2 ring-amber-400' : ''}`}>
                           {/* Image Section */}
                           <div className="relative aspect-[3/4] bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
                             <img
