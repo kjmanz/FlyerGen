@@ -161,6 +161,8 @@ const App: React.FC = () => {
   const [frontProductImages, setFrontProductImages] = useState<string[]>([]);
   const [selectedFrontProductIndices, setSelectedFrontProductIndices] = useState<Set<number>>(new Set());
 
+  // Campaign Main Images Selection State (キャンペーン訴求メイン画像の選択状態)
+  const [selectedCampaignMainImageIndices, setSelectedCampaignMainImageIndices] = useState<Set<number>>(new Set());
 
   // Campaign AI Generation State
   const [isGeneratingCampaign, setIsGeneratingCampaign] = useState(false);
@@ -336,6 +338,7 @@ const App: React.FC = () => {
           // Load campaign main images independently (not from presets)
           if (cloudCampaignMainImages.images.length > 0) {
             setCampaignInfo(prev => ({ ...prev, productImages: cloudCampaignMainImages.images }));
+            setSelectedCampaignMainImageIndices(new Set(cloudCampaignMainImages.selectedIndices));
           }
         } else {
           // Fallback to local storage
@@ -481,16 +484,38 @@ const App: React.FC = () => {
       // Debounce the sync to avoid too many writes
       const syncTimeout = setTimeout(() => {
         console.log('Syncing campaign main images to cloud...');
-        saveCampaignMainImages(campaignInfo.productImages);
+        saveCampaignMainImages(campaignInfo.productImages, Array.from(selectedCampaignMainImageIndices));
       }, 1000);
 
       return () => clearTimeout(syncTimeout);
     }
-  }, [campaignInfo.productImages, campaignMainImagesInitialized]);
+  }, [campaignInfo.productImages, selectedCampaignMainImageIndices, campaignMainImagesInitialized]);
 
   // Handle campaign main images change with cloud sync
   const handleCampaignMainImagesChange = (images: string[]) => {
+    // When images change, update selected indices to remove any that are out of bounds
+    const currentIndices: number[] = Array.from(selectedCampaignMainImageIndices);
+    const newSelectedIndices = new Set<number>(
+      currentIndices.filter(i => i < images.length)
+    );
+    setSelectedCampaignMainImageIndices(newSelectedIndices);
     setCampaignInfo(prev => ({ ...prev, productImages: images }));
+    if (!campaignMainImagesInitialized) {
+      setCampaignMainImagesInitialized(true);
+    }
+  };
+
+  // Toggle campaign main image selection
+  const toggleCampaignMainImageSelection = (index: number) => {
+    setSelectedCampaignMainImageIndices((prev: Set<number>) => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
     if (!campaignMainImagesInitialized) {
       setCampaignMainImagesInitialized(true);
     }
@@ -2292,6 +2317,40 @@ ${header.length + uint8Array.length + 20}
                         images={campaignInfo.productImages}
                         onImagesChange={handleCampaignMainImagesChange}
                       />
+
+                      {/* Image Selection Grid with Checkmarks */}
+                      {campaignInfo.productImages.length > 0 && (
+                        <div className="mt-4">
+                          <div className="text-xs text-slate-500 mb-2">クリックで使用する画像を選択（{selectedCampaignMainImageIndices.size}枚選択中）</div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {campaignInfo.productImages.map((img, idx) => (
+                              <div
+                                key={idx}
+                                onClick={() => toggleCampaignMainImageSelection(idx)}
+                                className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedCampaignMainImageIndices.has(idx)
+                                  ? 'border-emerald-500 ring-2 ring-emerald-200'
+                                  : 'border-slate-200 opacity-60 hover:opacity-100'
+                                  }`}
+                              >
+                                <img
+                                  src={img}
+                                  alt={`メイン画像 ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                                {selectedCampaignMainImageIndices.has(idx) && (
+                                  <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

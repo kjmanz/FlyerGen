@@ -915,7 +915,7 @@ const uploadCampaignMainImage = async (base64Data: string, index: number): Promi
 };
 
 // Save campaign main images to Firestore (independent of presets)
-export const saveCampaignMainImages = async (images: string[]): Promise<boolean> => {
+export const saveCampaignMainImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
     if (!db || !storage) {
         console.log('saveCampaignMainImages: db or storage is null');
         return false;
@@ -928,10 +928,11 @@ export const saveCampaignMainImages = async (images: string[]): Promise<boolean>
             images.map((img, i) => uploadCampaignMainImage(img, i))
         );
 
-        // Save URLs to Firestore
+        // Save URLs and selected indices to Firestore
         const docRef = doc(db, 'settings', 'campaign_main_images');
         await setDoc(docRef, {
             images: imageUrls,
+            selectedIndices: selectedIndices,
             updatedAt: Date.now()
         });
 
@@ -944,27 +945,29 @@ export const saveCampaignMainImages = async (images: string[]): Promise<boolean>
 };
 
 // Get campaign main images from Firestore
-export const getCampaignMainImages = async (): Promise<{ images: string[] }> => {
+export const getCampaignMainImages = async (): Promise<{ images: string[], selectedIndices: number[] }> => {
     if (!db) {
         console.log('getCampaignMainImages: db is null');
-        return { images: [] };
+        return { images: [], selectedIndices: [] };
     }
     try {
         console.log('Fetching campaign main images from cloud...');
         const docSnap = await getDocs(collection(db, 'settings'));
 
         let images: string[] = [];
+        let selectedIndices: number[] = [];
         docSnap.forEach((d) => {
             if (d.id === 'campaign_main_images') {
                 const data = d.data();
                 images = data.images || [];
+                selectedIndices = data.selectedIndices || [];
             }
         });
 
         console.log(`Fetched ${images.length} campaign main images from cloud`);
-        return { images };
+        return { images, selectedIndices };
     } catch (e) {
         console.error('Get campaign main images error:', e);
-        return { images: [] };
+        return { images: [], selectedIndices: [] };
     }
 };
