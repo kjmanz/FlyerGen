@@ -51,11 +51,11 @@
   --border: var(--md-outline-variant);
 
   /* Material Design Elevation Shadows */
-  --md-elevation-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
-  --md-elevation-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
-  --md-elevation-3: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
-  --md-elevation-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
-  --md-elevation-5: 0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3);
+  --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --md-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px rgba(0, 0, 0, 0.3);
+  --md-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px rgba(0, 0, 0, 0.3);
 
   --shadow: var(--md-elevation-1);
 
@@ -106,7 +106,8 @@ body {
 }
 
 /* Override header styling */
-header, [class*="sticky"][class*="top-0"] {
+header,
+[class*="sticky"][class*="top-0"] {
   background: var(--md-surface) !important;
   box-shadow: var(--md-elevation-2) !important;
   border-bottom: none !important;
@@ -430,7 +431,12 @@ label {
 }
 
 /* Headlines */
-h1, h2, h3, h4, h5, h6,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
 [class*="text-2xl"],
 [class*="text-xl"],
 [class*="text-lg"] {
@@ -479,8 +485,8 @@ h1, h2, h3, h4, h5, h6,
 }
 
 /* Dialog container */
-[class*="fixed"][class*="inset-0"] > [class*="bg-white"][class*="rounded"],
-[class*="fixed"][class*="z-50"] > [class*="bg-white"][class*="rounded"] {
+[class*="fixed"][class*="inset-0"]>[class*="bg-white"][class*="rounded"],
+[class*="fixed"][class*="z-50"]>[class*="bg-white"][class*="rounded"] {
   background: var(--md-surface) !important;
   border-radius: var(--md-shape-corner-xl) !important;
   box-shadow: var(--md-elevation-5) !important;
@@ -525,6 +531,7 @@ hr,
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -574,6 +581,7 @@ hr,
     opacity: 0;
     transform: translateY(16px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -584,6 +592,7 @@ hr,
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -763,7 +772,7 @@ button {
 /* History card scroll perf */
 .history-card {
   content-visibility: auto;
-  contain-intrinsic-size: 320px 480px;
+  contain-intrinsic-size: auto 320px auto;
 }
 
 /* Button premium hover */
