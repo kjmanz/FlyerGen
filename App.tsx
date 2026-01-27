@@ -2691,24 +2691,23 @@ ${header.length + uint8Array.length + 20}
         {/* Assets Tab */}
         {mainTab === 'assets' && (
         <>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-          <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">👤</div>
-              <h3 className="text-lg font-semibold text-slate-900">キャラクター</h3>
-              {firebaseEnabled && (
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
+        <div className="space-y-4 mb-10">
+          {/* Character Images */}
+          <CompactAssetSection
+            title="キャラクター"
+            icon="👤"
+            images={characterImages}
+            selectedCount={selectedCharacterIndices.size}
+            isCloudSync={firebaseEnabled}
+          >
+            <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
             <ImageUploader
               label="店舗キャラクター、マスコットなど"
               images={characterImages}
               onImagesChange={handleCharacterImagesChange}
             />
-            {/* Checkmark selection for character images */}
             {characterImages.length > 0 && (
-              <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-4 gap-2">
                 {characterImages.map((img, idx) => (
                   <div
                     key={idx}
@@ -2718,68 +2717,50 @@ ${header.length + uint8Array.length + 20}
                       : 'border-slate-200 hover:border-slate-300'
                       }`}
                   >
-                    <img
-                      src={img}
-                      alt={`キャラクター ${idx + 1}`}
-                      className="w-full h-20 object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    {/* Checkmark overlay */}
-                    <div
-                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCharacterIndices.has(idx)
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white/80 text-slate-300 border border-slate-300'
-                        }`}
-                    >
-                      {selectedCharacterIndices.has(idx) ? '✓' : ''}
-                    </div>
-                    {/* Selection indicator */}
+                    <img src={img} alt={`キャラクター ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
                     {selectedCharacterIndices.has(idx) && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
-                        使用する
+                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             )}
-            {characterImages.length > 0 && selectedCharacterIndices.size === 0 && (
-              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
-            )}
             {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
-              <div className="mt-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
-                <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">キャラクター衣装モード</label>
-                <div className="flex gap-3">
-                  <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${characterClothingMode === 'fixed' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+              <div className="mt-4 p-4 bg-slate-50/80 rounded-md border border-slate-100">
+                <label className="block text-xs font-semibold text-slate-400 mb-2">キャラクター衣装モード</label>
+                <div className="flex gap-2">
+                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${characterClothingMode === 'fixed' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
                     <input type="radio" name="clothingMode" className="sr-only" checked={characterClothingMode === 'fixed'} onChange={() => setCharacterClothingMode('fixed')} />
                     <span>👔 そのまま</span>
                   </label>
-                  <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${characterClothingMode === 'match' ? 'border-indigo-600 bg-white shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
+                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${characterClothingMode === 'match' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
                     <input type="radio" name="clothingMode" className="sr-only" checked={characterClothingMode === 'match'} onChange={() => setCharacterClothingMode('match')} />
                     <span>🎨 チラシに合わせる</span>
                   </label>
                 </div>
               </div>
             )}
-          </div>
-          <div id="custom-illustrations-section" className="bg-white rounded-lg shadow-premium border border-slate-100 p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🎨</div>
-              <h3 className="text-lg font-semibold text-slate-900">使用イラスト</h3>
-              {firebaseEnabled && (
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
+          </CompactAssetSection>
+          {/* Custom Illustrations */}
+          <CompactAssetSection
+            title="使用イラスト"
+            icon="🎨"
+            images={customIllustrations}
+            selectedCount={selectedCustomIllustrationIndices.size}
+            isCloudSync={firebaseEnabled}
+          >
+            <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
             <ImageUploader
               label="チラシに配置するイラスト"
               images={customIllustrations}
               onImagesChange={handleCustomIllustrationsChange}
             />
-            {/* Checkmark selection for custom illustrations */}
             {customIllustrations.length > 0 && (
-              <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-4 gap-2">
                 {customIllustrations.map((img, idx) => (
                   <div
                     key={idx}
@@ -2789,233 +2770,152 @@ ${header.length + uint8Array.length + 20}
                       : 'border-slate-200 hover:border-slate-300'
                       }`}
                   >
-                    <img
-                      src={img}
-                      alt={`使用イラスト ${idx + 1}`}
-                      className="w-full h-20 object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    {/* Checkmark overlay */}
-                    <div
-                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCustomIllustrationIndices.has(idx)
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white/80 text-slate-300 border border-slate-300'
-                        }`}
-                    >
-                      {selectedCustomIllustrationIndices.has(idx) ? '✓' : ''}
-                    </div>
-                    {/* Selection indicator */}
+                    <img src={img} alt={`使用イラスト ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
                     {selectedCustomIllustrationIndices.has(idx) && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
-                        使用する
+                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             )}
-            {customIllustrations.length > 0 && selectedCustomIllustrationIndices.size === 0 && (
-              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
-            )}
-          </div>
-          <div id="reference-section" className="bg-white rounded-lg shadow-premium border border-slate-100 p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🖼️</div>
-              <h3 className="text-lg font-semibold text-slate-900">参考デザイン</h3>
-              {firebaseEnabled && (
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-500 mb-4 ml-1">選択した画像のみ参考にします（1つのみ選択可能）。選択なしの場合は参考なし。</p>
+          </CompactAssetSection>
+          {/* Reference Design */}
+          <CompactAssetSection
+            title="参考デザイン"
+            icon="🖼️"
+            images={referenceImages}
+            selectedCount={selectedReferenceIndex !== null ? 1 : 0}
+            isCloudSync={firebaseEnabled}
+          >
+            <p className="text-[10px] text-slate-500 mb-4">選択した画像のみ参考にします（1つのみ選択可能）。選択なしの場合は参考なし。</p>
             <ImageUploader
               label="デザイン参考にするチラシ画像"
               images={referenceImages}
               onImagesChange={handleReferenceImagesChange}
             />
-            {/* Checkmark selection for reference images */}
             {referenceImages.length > 0 && (
-              <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-4 gap-2">
                 {referenceImages.map((img, idx) => (
                   <div
                     key={idx}
-                    onClick={() => setPreviewImage(img)}
+                    onClick={() => toggleReferenceImageSelection(idx)}
                     className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedReferenceIndex === idx
                       ? 'border-indigo-600 ring-2 ring-indigo-200'
                       : 'border-slate-200 hover:border-slate-300'
                       }`}
                   >
-                    <img
-                      src={img}
-                      alt={`参考デザイン ${idx + 1}`}
-                      className="w-full h-20 object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    {/* Checkmark overlay */}
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleReferenceImageSelection(idx);
-                      }}
-                      className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedReferenceIndex === idx
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white/80 text-slate-300 border border-slate-300'
-                        }`}
-                    >
-                      {selectedReferenceIndex === idx ? '✓' : ''}
-                    </div>
-                    {/* Selection indicator */}
+                    <img src={img} alt={`参考デザイン ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
                     {selectedReferenceIndex === idx && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
-                        使用する
+                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             )}
-            {referenceImages.length > 0 && selectedReferenceIndex === null && (
-              <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 参考にする画像を1つ選択してください</p>
-            )}
-          </div>
-        </div>
+          </CompactAssetSection>
 
-        {/* Customer Images (for Front Side) */}
-        <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">👥</div>
-            <h3 className="text-lg font-semibold text-slate-900">お客様画像</h3>
-            {firebaseEnabled && (
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
-            )}
-          </div>
-          <p className="text-[10px] text-slate-500 mb-4 ml-1">表面チラシで「お客様」として配置する画像。チェックを入れた画像のみ使用。</p>
-          <ImageUploader
-            label="お客様画像"
+          {/* Customer Images */}
+          <CompactAssetSection
+            title="お客様画像"
+            icon="👥"
+            iconBgColor="bg-rose-50"
+            iconBorderColor="border-rose-100"
             images={customerImages}
-            onImagesChange={handleCustomerImagesChange}
-          />
-          {/* Checkmark selection for customer images */}
-          {customerImages.length > 0 && (
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {customerImages.map((img, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => toggleCustomerImageSelection(idx)}
-                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomerImageIndices.has(idx)
-                    ? 'border-rose-600 ring-2 ring-rose-200'
-                    : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                >
-                  <img
-                    src={img}
-                    alt={`お客様画像 ${idx + 1}`}
-                    className="w-full h-20 object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  {/* Checkmark overlay */}
+            selectedCount={selectedCustomerImageIndices.size}
+            isCloudSync={firebaseEnabled}
+          >
+            <p className="text-[10px] text-slate-500 mb-4">表面チラシで「お客様」として配置する画像。チェックを入れた画像のみ使用。</p>
+            <ImageUploader
+              label="お客様画像"
+              images={customerImages}
+              onImagesChange={handleCustomerImagesChange}
+            />
+            {customerImages.length > 0 && (
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                {customerImages.map((img, idx) => (
                   <div
-                    className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedCustomerImageIndices.has(idx)
-                      ? 'bg-rose-600 text-white'
-                      : 'bg-white/80 text-slate-300 border border-slate-300'
+                    key={idx}
+                    onClick={() => toggleCustomerImageSelection(idx)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedCustomerImageIndices.has(idx)
+                      ? 'border-rose-600 ring-2 ring-rose-200'
+                      : 'border-slate-200 hover:border-slate-300'
                       }`}
                   >
-                    {selectedCustomerImageIndices.has(idx) ? '✓' : ''}
+                    <img src={img} alt={`お客様画像 ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
+                    {selectedCustomerImageIndices.has(idx) && (
+                      <div className="absolute top-1 right-1 w-5 h-5 bg-rose-600 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
-                  {/* Selection indicator */}
-                  {selectedCustomerImageIndices.has(idx) && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-rose-600 text-white text-[9px] font-bold text-center py-0.5">
-                      使用する
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {customerImages.length > 0 && selectedCustomerImageIndices.size === 0 && (
-            <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
-          )}
-        </div>
-
-        {/* Store Logo */}
-        <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">🏪</div>
-            <h3 className="text-lg font-semibold text-slate-900">店舗ロゴ</h3>
-            {firebaseEnabled && (
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">☁️ 自動同期</span>
-            )}
-          </div>
-          <p className="text-[10px] text-slate-500 mb-4 ml-1">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
-          <ImageUploader
-            label="店舗ロゴ画像"
-            images={storeLogoImages}
-            onImagesChange={handleStoreLogoImagesChange}
-          />
-          {/* Checkmark selection for store logo images */}
-          {storeLogoImages.length > 0 && (
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {storeLogoImages.map((img, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => toggleLogoImageSelection(idx)}
-                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedLogoIndices.has(idx)
-                    ? 'border-indigo-600 ring-2 ring-indigo-200'
-                    : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                >
-                  <img
-                    src={img}
-                    alt={`店舗ロゴ ${idx + 1}`}
-                    className="w-full h-20 object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  {/* Checkmark overlay */}
-                  <div
-                    className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all ${selectedLogoIndices.has(idx)
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white/80 text-slate-300 border border-slate-300'
-                      }`}
-                  >
-                    {selectedLogoIndices.has(idx) ? '✓' : ''}
-                  </div>
-                  {/* Selection indicator */}
-                  {selectedLogoIndices.has(idx) && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-bold text-center py-0.5">
-                      使用する
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {storeLogoImages.length > 0 && selectedLogoIndices.size === 0 && (
-            <p className="text-[10px] text-amber-600 mt-2 ml-1">※ 使用する画像にチェックを入れてください</p>
-          )}
-          {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
-            <div className="mt-6 p-5 bg-slate-50/80 rounded-md border border-slate-100">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">ロゴの表示サイズ（最下部に配置）</label>
-              <div className="flex gap-3">
-                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'full-bottom' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
-                  <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'full-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} />
-                  <div className={`w-5 h-5 rounded flex items-center justify-center ${settings.logoPosition === 'full-bottom' ? 'bg-indigo-600 text-white' : 'bg-white border-2 border-slate-300'}`}>
-                    {settings.logoPosition === 'full-bottom' ? '✓' : ''}
-                  </div>
-                  <span>横幅目一杯</span>
-                </label>
-                <label className={`flex-1 flex items-center gap-2.5 p-3 border-2 rounded-md cursor-pointer transition-all text-xs font-bold ${settings.logoPosition === 'right-bottom' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
-                  <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'right-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} />
-                  <div className={`w-5 h-5 rounded flex items-center justify-center ${settings.logoPosition === 'right-bottom' ? 'bg-indigo-600 text-white' : 'bg-white border-2 border-slate-300'}`}>
-                    {settings.logoPosition === 'right-bottom' ? '✓' : ''}
-                  </div>
-                  <span>横幅半分（右端）</span>
-                </label>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </CompactAssetSection>
+
+          {/* Store Logo */}
+          <CompactAssetSection
+            title="店舗ロゴ"
+            icon="🏪"
+            images={storeLogoImages}
+            selectedCount={selectedLogoIndices.size}
+            isCloudSync={firebaseEnabled}
+          >
+            <p className="text-[10px] text-slate-500 mb-4">チェックを入れた画像のみ使用します。チェックなしの場合は使用しません。</p>
+            <ImageUploader
+              label="店舗ロゴ画像"
+              images={storeLogoImages}
+              onImagesChange={handleStoreLogoImagesChange}
+            />
+            {storeLogoImages.length > 0 && (
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                {storeLogoImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => toggleLogoImageSelection(idx)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedLogoIndices.has(idx)
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                  >
+                    <img src={img} alt={`店舗ロゴ ${idx + 1}`} className="w-full h-16 object-cover" loading="lazy" decoding="async" />
+                    {selectedLogoIndices.has(idx) && (
+                      <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
+              <div className="mt-4 p-4 bg-slate-50/80 rounded-md border border-slate-100">
+                <label className="block text-xs font-semibold text-slate-400 mb-2">ロゴの表示サイズ</label>
+                <div className="flex gap-2">
+                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${settings.logoPosition === 'full-bottom' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
+                    <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'full-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} />
+                    <span>横幅目一杯</span>
+                  </label>
+                  <label className={`flex-1 flex items-center gap-2 p-2 border-2 rounded-md cursor-pointer text-xs font-bold ${settings.logoPosition === 'right-bottom' ? 'border-indigo-600 bg-white' : 'border-slate-100 bg-white'}`}>
+                    <input type="radio" name="logoPosition" className="sr-only" checked={settings.logoPosition === 'right-bottom'} onChange={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} />
+                    <span>横幅半分（右端）</span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </CompactAssetSection>
         </div>
         </>
         )}
