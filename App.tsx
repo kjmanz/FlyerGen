@@ -530,7 +530,7 @@ const App: React.FC = () => {
   const handleCustomerImagesChange = (images: string[]) => {
     // When images change, update selected indices to remove any that are out of bounds
     const newSelectedIndices = new Set(
-      Array.from(selectedCustomerImageIndices).filter(i => i < images.length)
+      Array.from(selectedCustomerImageIndices as Set<number>).filter(i => i < images.length)
     );
     setSelectedCustomerImageIndices(newSelectedIndices);
     setCustomerImages(images);
@@ -581,7 +581,7 @@ const App: React.FC = () => {
   const handleFrontProductImagesChange = (images: string[]) => {
     // When images change, update selected indices to remove any that are out of bounds
     const newSelectedIndices = new Set(
-      Array.from(selectedFrontProductIndices).filter(i => i < images.length)
+      Array.from(selectedFrontProductIndices as Set<number>).filter(i => i < images.length)
     );
     setSelectedFrontProductIndices(newSelectedIndices);
     setFrontProductImages(images);
@@ -630,7 +630,7 @@ const App: React.FC = () => {
   const handleCharacterImagesChange = (images: string[]) => {
     // When images change, update selected indices to remove any that are out of bounds
     const newSelectedIndices = new Set(
-      Array.from(selectedCharacterIndices).filter(i => i < images.length)
+      Array.from(selectedCharacterIndices as Set<number>).filter(i => i < images.length)
     );
     setSelectedCharacterIndices(newSelectedIndices);
     setCharacterImages(images);
@@ -659,7 +659,7 @@ const App: React.FC = () => {
   const handleStoreLogoImagesChange = (images: string[]) => {
     // When images change, update selected indices to remove any that are out of bounds
     const newSelectedIndices = new Set(
-      Array.from(selectedLogoIndices).filter(i => i < images.length)
+      Array.from(selectedLogoIndices as Set<number>).filter(i => i < images.length)
     );
     setSelectedLogoIndices(newSelectedIndices);
     setStoreLogoImages(images);
@@ -688,7 +688,7 @@ const App: React.FC = () => {
   const handleCustomIllustrationsChange = (images: string[]) => {
     // When images change, update selected indices to remove any that are out of bounds
     const newSelectedIndices = new Set(
-      Array.from(selectedCustomIllustrationIndices).filter(i => i < images.length)
+      Array.from(selectedCustomIllustrationIndices as Set<number>).filter(i => i < images.length)
     );
     setSelectedCustomIllustrationIndices(newSelectedIndices);
     setCustomIllustrations(images);
@@ -2448,6 +2448,32 @@ ${header.length + uint8Array.length + 20}
                 )}
               </>
             )}
+
+            {/* Reference Back Side for Consistency */}
+            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
+              <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
+                <label className="flex items-center gap-3 cursor-pointer mb-3">
+                  <input
+                    type="checkbox"
+                    checked={useOppositeSideReference}
+                    onChange={(e) => setUseOppositeSideReference(e.target.checked)}
+                    className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-sm font-semibold text-slate-700">裏面を参照して統一感を出す</span>
+                </label>
+                {useOppositeSideReference && (
+                  <div className="mt-3">
+                    <ImageUploader
+                      label="参照する裏面画像"
+                      images={oppositeSideImage ? [oppositeSideImage] : []}
+                      onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
+                      maxImages={1}
+                    />
+                    <p className="text-[10px] text-amber-600 mt-2">アップロードした裏面の画像を参考にして、デザインの統一感を持たせます。</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
 
@@ -2546,6 +2572,32 @@ ${header.length + uint8Array.length + 20}
                     apiKey={apiKey}
                   />
                 ))}
+              </div>
+            </div>
+
+            {/* Reference Front Side for Consistency */}
+            <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
+              <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
+                <label className="flex items-center gap-3 cursor-pointer mb-3">
+                  <input
+                    type="checkbox"
+                    checked={useOppositeSideReference}
+                    onChange={(e) => setUseOppositeSideReference(e.target.checked)}
+                    className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-sm font-semibold text-slate-700">表面を参照して統一感を出す</span>
+                </label>
+                {useOppositeSideReference && (
+                  <div className="mt-3">
+                    <ImageUploader
+                      label="参照する表面画像"
+                      images={oppositeSideImage ? [oppositeSideImage] : []}
+                      onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
+                      maxImages={1}
+                    />
+                    <p className="text-[10px] text-amber-600 mt-2">アップロードした表面の画像を参考にして、デザインの統一感を持たせます。</p>
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -2660,31 +2712,6 @@ ${header.length + uint8Array.length + 20}
             )}
           </div>
 
-          {/* Opposite Side Reference */}
-          <div className="p-5 bg-amber-50/50 rounded-md border border-amber-100">
-            <label className="flex items-center gap-3 cursor-pointer mb-3">
-              <input
-                type="checkbox"
-                checked={useOppositeSideReference}
-                onChange={(e) => setUseOppositeSideReference(e.target.checked)}
-                className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-              />
-              <span className="text-sm font-semibold text-slate-700">
-                {flyerSide === 'front' ? '裏面を参照して統一感を出す' : '表面を参照して統一感を出す'}
-              </span>
-            </label>
-            {useOppositeSideReference && (
-              <div className="mt-3">
-                <ImageUploader
-                  label={flyerSide === 'front' ? '参照する裏面画像' : '参照する表面画像'}
-                  images={oppositeSideImage ? [oppositeSideImage] : []}
-                  onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
-                  maxImages={1}
-                />
-                <p className="text-[10px] text-amber-600 mt-2">アップロードした反対面の画像を参考にして、デザインの統一感を持たせます。</p>
-              </div>
-            )}
-          </div>
         </div>
         )}
 
