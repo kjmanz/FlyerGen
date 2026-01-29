@@ -5,20 +5,20 @@
 /* Material Design Color Palette */
 :root {
   /* Primary colors */
-  --md-primary: #1976D2;
-  --md-primary-light: #42A5F5;
-  --md-primary-dark: #1565C0;
+  --md-primary: #334155;
+  --md-primary-light: #475569;
+  --md-primary-dark: #1f2937;
   --md-on-primary: #FFFFFF;
 
   /* Secondary colors */
-  --md-secondary: #00897B;
-  --md-secondary-light: #4DB6AC;
-  --md-secondary-dark: #00695C;
+  --md-secondary: #475569;
+  --md-secondary-light: #64748b;
+  --md-secondary-dark: #334155;
   --md-on-secondary: #FFFFFF;
 
   /* Tertiary colors */
-  --md-tertiary: #7B1FA2;
-  --md-tertiary-light: #AB47BC;
+  --md-tertiary: #64748b;
+  --md-tertiary-light: #94a3b8;
   --md-on-tertiary: #FFFFFF;
 
   /* Error colors */
@@ -28,18 +28,18 @@
 
   /* Surface colors */
   --md-surface: #FFFFFF;
-  --md-surface-dim: #F5F5F5;
-  --md-surface-variant: #E7E0EC;
-  --md-on-surface: #1C1B1F;
-  --md-on-surface-variant: #49454F;
+  --md-surface-dim: #F8FAFC;
+  --md-surface-variant: #F1F5F9;
+  --md-on-surface: #0f172a;
+  --md-on-surface-variant: #475569;
 
   /* Background */
-  --md-background: #FAFAFA;
-  --md-on-background: #1C1B1F;
+  --md-background: #F8FAFC;
+  --md-on-background: #0f172a;
 
   /* Outline */
-  --md-outline: #79747E;
-  --md-outline-variant: #CAC4D0;
+  --md-outline: #94a3b8;
+  --md-outline-variant: #e2e8f0;
 
   /* Legacy mappings for compatibility */
   --primary: var(--md-primary);
@@ -620,11 +620,11 @@ hr,
 
 /* Indigo backgrounds */
 [class*="bg-indigo-50"] {
-  background: rgba(25, 118, 210, 0.08) !important;
+  background: rgba(51, 65, 85, 0.08) !important;
 }
 
 [class*="bg-indigo-100"] {
-  background: rgba(25, 118, 210, 0.12) !important;
+  background: rgba(51, 65, 85, 0.12) !important;
 }
 
 /* Emerald/Green backgrounds */
@@ -708,7 +708,7 @@ hr,
    ===================================================== */
 [class*="focus:ring"],
 [class*="focus-within:ring"] {
-  --tw-ring-color: rgba(25, 118, 210, 0.4) !important;
+  --tw-ring-color: rgba(51, 65, 85, 0.4) !important;
 }
 
 /* =====================================================
@@ -720,7 +720,21 @@ hr,
 }
 
 [class*="hover:bg-indigo-"]:hover {
-  background: rgba(25, 118, 210, 0.08) !important;
+  background: rgba(51, 65, 85, 0.08) !important;
+}
+
+/* Simplify indigo/violet gradients */
+[class*="bg-gradient-to-"][class*="from-indigo"],
+[class*="bg-gradient-to-"][class*="to-indigo"],
+[class*="bg-gradient-to-"][class*="via-indigo"],
+[class*="bg-gradient-to-"][class*="from-violet"],
+[class*="bg-gradient-to-"][class*="to-violet"],
+[class*="bg-gradient-to-"][class*="via-violet"],
+[class*="bg-gradient-to-"][class*="from-purple"],
+[class*="bg-gradient-to-"][class*="to-purple"],
+[class*="bg-gradient-to-"][class*="via-purple"] {
+  background-image: none !important;
+  background-color: var(--md-primary) !important;
 }
 
 /* =====================================================
