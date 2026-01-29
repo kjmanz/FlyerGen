@@ -1,78 +1,20 @@
-/* =====================================================
-   Material Design 3 Theme for FlyerGen
-   ===================================================== */
-
-/* Material Design Color Palette */
+/* Minimal neutral theme */
 :root {
-  /* Primary colors */
-  --md-primary: #334155;
-  --md-primary-light: #475569;
-  --md-primary-dark: #1f2937;
-  --md-on-primary: #FFFFFF;
-
-  /* Secondary colors */
-  --md-secondary: #475569;
-  --md-secondary-light: #64748b;
-  --md-secondary-dark: #334155;
-  --md-on-secondary: #FFFFFF;
-
-  /* Tertiary colors */
-  --md-tertiary: #64748b;
-  --md-tertiary-light: #94a3b8;
-  --md-on-tertiary: #FFFFFF;
-
-  /* Error colors */
-  --md-error: #D32F2F;
-  --md-error-light: #EF5350;
-  --md-on-error: #FFFFFF;
-
-  /* Surface colors */
-  --md-surface: #FFFFFF;
-  --md-surface-dim: #F8FAFC;
-  --md-surface-variant: #F1F5F9;
-  --md-on-surface: #0f172a;
-  --md-on-surface-variant: #475569;
-
-  /* Background */
-  --md-background: #F8FAFC;
-  --md-on-background: #0f172a;
-
-  /* Outline */
-  --md-outline: #94a3b8;
-  --md-outline-variant: #e2e8f0;
-
-  /* Legacy mappings for compatibility */
-  --primary: var(--md-primary);
-  --primary-hover: var(--md-primary-dark);
-  --bg: var(--md-background);
-  --bg-secondary: var(--md-surface-dim);
-  --text: var(--md-on-surface);
-  --text-secondary: var(--md-on-surface-variant);
-  --border: var(--md-outline-variant);
-
-  /* Material Design Elevation Shadows */
-  --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
-  --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
-  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
-  --md-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px rgba(0, 0, 0, 0.3);
-  --md-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px rgba(0, 0, 0, 0.3);
-
-  --shadow: var(--md-elevation-1);
-
-  /* Shape */
-  --md-shape-corner-xs: 4px;
-  --md-shape-corner-sm: 8px;
-  --md-shape-corner-md: 12px;
-  --md-shape-corner-lg: 16px;
-  --md-shape-corner-xl: 28px;
-  --md-shape-corner-full: 9999px;
-
-  /* Motion */
-  --md-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
-  --md-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
-  --md-motion-duration-short: 150ms;
-  --md-motion-duration-medium: 250ms;
-  --md-motion-duration-long: 400ms;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #475569;
+  --accent: #1f2937;
+  --accent-strong: #111827;
+  --accent-soft: rgba(31, 41, 55, 0.08);
+  --danger: #b91c1c;
+  --danger-soft: rgba(185, 28, 28, 0.08);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 6px 18px rgba(15, 23, 42, 0.10);
+  --shadow-lg: 0 14px 30px rgba(15, 23, 42, 0.12);
+  --radius: 12px;
 }
 
 * {
@@ -82,12 +24,11 @@
 }
 
 body {
-  background: var(--md-background);
-  color: var(--md-on-surface);
-  font-family: 'Roboto', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "IBM Plex Sans", "Noto Sans JP", sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  letter-spacing: 0.25px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -96,457 +37,191 @@ body {
   min-height: 100vh;
 }
 
-/* =====================================================
-   Material Design Header / App Bar
-   ===================================================== */
-.glass {
-  background: var(--md-surface) !important;
-  border-bottom: none !important;
-  box-shadow: var(--md-elevation-2) !important;
-}
-
-/* Override header styling */
+/* Top bar */
+.glass,
 header,
 [class*="sticky"][class*="top-0"] {
-  background: var(--md-surface) !important;
-  box-shadow: var(--md-elevation-2) !important;
-  border-bottom: none !important;
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
-/* =====================================================
-   Material Design Buttons
-   ===================================================== */
-
-/* Filled buttons (primary action) */
+/* Buttons */
 button,
 [type="button"],
 [type="submit"],
 .btn-premium {
-  position: relative;
-  overflow: hidden;
-  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.1px;
-  border-radius: var(--md-shape-corner-full) !important;
-  transition: all var(--md-motion-duration-short) var(--md-motion-easing-standard);
-}
-
-/* Ripple effect */
-button::after,
-[type="button"]::after,
-[type="submit"]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: currentColor;
-  opacity: 0;
-  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
-  pointer-events: none;
-}
-
-button:hover::after,
-[type="button"]:hover::after,
-[type="submit"]:hover::after {
-  opacity: 0.08;
-}
-
-button:active::after,
-[type="button"]:active::after,
-[type="submit"]:active::after {
-  opacity: 0.12;
+  border-radius: 10px !important;
+  font-weight: 600;
+  transition: background-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
 }
 
 button:focus-visible,
 [type="button"]:focus-visible,
 [type="submit"]:focus-visible {
-  outline: 2px solid var(--md-primary);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Primary filled button style - using Tailwind color classes */
+/* Primary */
 [class*="bg-indigo"],
-[class*="bg-blue-"],
-button[class*="bg-indigo"],
-button[class*="bg-blue-"] {
-  background: var(--md-primary) !important;
-  color: var(--md-on-primary) !important;
-  box-shadow: var(--md-elevation-1);
+[class*="bg-blue-"] {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  box-shadow: var(--shadow-sm);
 }
 
 [class*="bg-indigo"]:hover,
-[class*="bg-blue-"]:hover,
-button[class*="bg-indigo"]:hover,
-button[class*="bg-blue-"]:hover {
-  background: var(--md-primary-light) !important;
-  box-shadow: var(--md-elevation-2);
+[class*="bg-blue-"]:hover {
+  background: var(--accent-strong) !important;
+  box-shadow: var(--shadow-md);
 }
 
-/* Secondary / tonal buttons */
+/* Secondary (muted) */
 [class*="bg-emerald"],
 [class*="bg-green"],
-[class*="bg-teal"] {
-  background: var(--md-secondary) !important;
-  color: var(--md-on-secondary) !important;
-}
-
-[class*="bg-emerald"]:hover,
-[class*="bg-green"]:hover,
-[class*="bg-teal"]:hover {
-  background: var(--md-secondary-light) !important;
-}
-
-/* Tertiary buttons */
+[class*="bg-teal"],
 [class*="bg-violet"],
-[class*="bg-purple"] {
-  background: var(--md-tertiary) !important;
-  color: var(--md-on-tertiary) !important;
+[class*="bg-purple"],
+[class*="bg-amber"],
+[class*="bg-yellow"] {
+  background: var(--accent) !important;
+  color: #ffffff !important;
 }
 
-[class*="bg-violet"]:hover,
-[class*="bg-purple"]:hover {
-  background: var(--md-tertiary-light) !important;
-}
-
-/* Error buttons */
+/* Danger */
 [class*="bg-rose"],
 [class*="bg-red"] {
-  background: var(--md-error) !important;
-  color: var(--md-on-error) !important;
+  background: var(--danger) !important;
+  color: #ffffff !important;
 }
 
-[class*="bg-rose"]:hover,
-[class*="bg-red"]:hover {
-  background: var(--md-error-light) !important;
+/* Pale backgrounds */
+[class*="bg-"][class*="-50"],
+[class*="bg-"][class*="-100"] {
+  background: var(--surface-2) !important;
 }
 
-/* Outlined buttons */
-button[class*="border"][class*="bg-white"],
-button[class*="border"]:not([class*="bg-"]),
-[class*="border"][class*="text-indigo"] {
-  background: transparent !important;
-  border: 1px solid var(--md-outline) !important;
-  color: var(--md-primary) !important;
+/* Text colors */
+[class*="text-slate"],
+[class*="text-gray"] {
+  color: var(--muted) !important;
 }
 
-button[class*="border"][class*="bg-white"]:hover,
-button[class*="border"]:not([class*="bg-"]):hover,
-[class*="border"][class*="text-indigo"]:hover {
-  background: rgba(25, 118, 210, 0.08) !important;
-  border-color: var(--md-primary) !important;
+[class*="text-slate-900"],
+[class*="text-gray-900"] {
+  color: var(--text) !important;
 }
 
-/* Text buttons */
-button[class*="text-"][class*="hover:bg-"]:not([class*="bg-"]):not([class*="border"]) {
-  background: transparent;
-  border: none;
+[class*="text-indigo"],
+[class*="text-blue-"] {
+  color: var(--accent) !important;
 }
 
-/* Disabled state */
-button:disabled,
-button[disabled],
-[type="button"]:disabled,
-[type="submit"]:disabled {
-  background: rgba(28, 27, 31, 0.12) !important;
-  color: rgba(28, 27, 31, 0.38) !important;
-  box-shadow: none !important;
-  cursor: not-allowed;
+[class*="text-emerald"],
+[class*="text-green"],
+[class*="text-teal"],
+[class*="text-violet"],
+[class*="text-purple"],
+[class*="text-amber"],
+[class*="text-yellow"] {
+  color: var(--text) !important;
 }
 
-/* FAB style for main action buttons */
-button[class*="rounded-full"][class*="shadow"],
-button[class*="rounded-xl"][class*="w-full"][class*="py-4"],
-button[class*="rounded-xl"][class*="w-full"][class*="py-3"] {
-  border-radius: var(--md-shape-corner-lg) !important;
-  box-shadow: var(--md-elevation-3) !important;
-  font-size: 14px;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0.1px;
+[class*="text-rose"],
+[class*="text-red"] {
+  color: var(--danger) !important;
 }
 
-button[class*="rounded-full"][class*="shadow"]:hover,
-button[class*="rounded-xl"][class*="w-full"][class*="py-4"]:hover,
-button[class*="rounded-xl"][class*="w-full"][class*="py-3"]:hover {
-  box-shadow: var(--md-elevation-4) !important;
+/* Border colors */
+[class*="border-slate"],
+[class*="border-gray"] {
+  border-color: var(--border) !important;
 }
 
-/* =====================================================
-   Material Design Cards
-   ===================================================== */
-[class*="rounded-lg"][class*="shadow"],
-[class*="rounded-xl"][class*="shadow"],
-[class*="rounded-2xl"][class*="shadow"],
-[class*="rounded-lg"][class*="border"],
-[class*="rounded-xl"][class*="border"],
-[class*="rounded-2xl"][class*="border"] {
-  background: var(--md-surface) !important;
-  border: none !important;
-  border-radius: var(--md-shape-corner-md) !important;
-  box-shadow: var(--md-elevation-1) !important;
-  transition: box-shadow var(--md-motion-duration-medium) var(--md-motion-easing-standard);
+[class*="border-indigo"],
+[class*="border-blue-"] {
+  border-color: var(--accent) !important;
 }
 
-[class*="rounded-lg"][class*="shadow"]:hover,
-[class*="rounded-xl"][class*="shadow"]:hover,
-[class*="rounded-2xl"][class*="shadow"]:hover {
-  box-shadow: var(--md-elevation-2) !important;
+[class*="border-rose"],
+[class*="border-red"] {
+  border-color: var(--danger) !important;
 }
 
-/* Elevated cards */
-[class*="shadow-lg"],
-[class*="shadow-xl"],
-[class*="shadow-2xl"] {
-  box-shadow: var(--md-elevation-3) !important;
+/* Focus ring */
+[class*="focus:ring"],
+[class*="focus-within:ring"] {
+  --tw-ring-color: rgba(15, 23, 42, 0.25) !important;
 }
 
-[class*="shadow-lg"]:hover,
-[class*="shadow-xl"]:hover,
-[class*="shadow-2xl"]:hover {
-  box-shadow: var(--md-elevation-4) !important;
+/* Flatten colorful gradients */
+[class*="bg-gradient-to-"][class*="from-indigo"],
+[class*="bg-gradient-to-"][class*="to-indigo"],
+[class*="bg-gradient-to-"][class*="via-indigo"],
+[class*="bg-gradient-to-"][class*="from-violet"],
+[class*="bg-gradient-to-"][class*="to-violet"],
+[class*="bg-gradient-to-"][class*="via-violet"],
+[class*="bg-gradient-to-"][class*="from-purple"],
+[class*="bg-gradient-to-"][class*="to-purple"],
+[class*="bg-gradient-to-"][class*="via-purple"],
+[class*="bg-gradient-to-"][class*="from-amber"],
+[class*="bg-gradient-to-"][class*="via-amber"],
+[class*="bg-gradient-to-"][class*="to-amber"],
+[class*="bg-gradient-to-"][class*="from-rose"],
+[class*="bg-gradient-to-"][class*="via-rose"],
+[class*="bg-gradient-to-"][class*="to-rose"],
+[class*="bg-gradient-to-"][class*="from-emerald"],
+[class*="bg-gradient-to-"][class*="via-emerald"],
+[class*="bg-gradient-to-"][class*="to-emerald"],
+[class*="bg-gradient-to-"][class*="from-cyan"],
+[class*="bg-gradient-to-"][class*="via-cyan"],
+[class*="bg-gradient-to-"][class*="to-cyan"] {
+  background-image: none !important;
+  background-color: var(--accent) !important;
 }
 
-/* Card content padding override */
-[class*="rounded"][class*="p-4"],
-[class*="rounded"][class*="p-5"],
-[class*="rounded"][class*="p-6"] {
-  padding: 16px !important;
+/* Cards / panels */
+.shadow-premium {
+  box-shadow: var(--shadow-md) !important;
 }
 
-/* =====================================================
-   Material Design Text Fields
-   ===================================================== */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="search"],
-input[type="url"],
-input[type="tel"],
-textarea,
-select {
-  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  letter-spacing: 0.5px;
-  padding: 16px !important;
-  background: var(--md-surface) !important;
-  border: 1px solid var(--md-outline) !important;
-  border-radius: var(--md-shape-corner-xs) !important;
-  color: var(--md-on-surface);
-  transition: all var(--md-motion-duration-short) var(--md-motion-easing-standard);
-  caret-color: var(--md-primary);
+.btn-premium:hover {
+  box-shadow: var(--shadow-lg) !important;
 }
 
-input[type="text"]:hover,
-input[type="email"]:hover,
-input[type="password"]:hover,
-input[type="number"]:hover,
-input[type="search"]:hover,
-input[type="url"]:hover,
-input[type="tel"]:hover,
-textarea:hover,
-select:hover {
-  border-color: var(--md-on-surface) !important;
+.history-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px auto;
 }
 
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="number"]:focus,
-input[type="search"]:focus,
-input[type="url"]:focus,
-input[type="tel"]:focus,
-textarea:focus,
-select:focus {
-  outline: none !important;
-  border-color: var(--md-primary) !important;
-  border-width: 2px !important;
-  padding: 15px !important;
-  box-shadow: none !important;
-}
-
-/* Input placeholder */
-input::placeholder,
-textarea::placeholder {
-  color: var(--md-on-surface-variant);
-  opacity: 1;
-}
-
-/* Select dropdown arrow */
-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2349454F' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 40px !important;
-}
-
-/* Disabled inputs */
-input:disabled,
-textarea:disabled,
-select:disabled {
-  background: var(--md-surface-dim) !important;
-  border-color: var(--md-outline-variant) !important;
-  color: rgba(28, 27, 31, 0.38) !important;
-  cursor: not-allowed;
-}
-
-/* Hide number input spinners */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-input[type=number] {
-  -moz-appearance: textfield;
-}
-
-/* =====================================================
-   Material Design Checkbox & Radio
-   ===================================================== */
-input[type="checkbox"],
-input[type="radio"] {
-  width: 18px !important;
-  height: 18px !important;
-  accent-color: var(--md-primary);
-  cursor: pointer;
-}
-
-input[type="checkbox"]:checked,
-input[type="radio"]:checked {
-  background-color: var(--md-primary);
-  border-color: var(--md-primary);
-}
-
-/* =====================================================
-   Material Design Labels & Typography
-   ===================================================== */
-label {
-  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.4px;
-  color: var(--md-on-surface-variant);
-}
-
-/* Headlines */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-[class*="text-2xl"],
-[class*="text-xl"],
-[class*="text-lg"] {
-  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
-  letter-spacing: 0;
-}
-
-[class*="text-2xl"] {
-  font-size: 24px !important;
-  font-weight: 400 !important;
-  line-height: 32px !important;
-}
-
-[class*="text-xl"] {
-  font-size: 20px !important;
-  font-weight: 500 !important;
-  line-height: 28px !important;
-}
-
-[class*="text-lg"] {
-  font-size: 16px !important;
-  font-weight: 500 !important;
-  line-height: 24px !important;
-  letter-spacing: 0.15px !important;
-}
-
-/* Body text */
-[class*="text-sm"] {
-  font-size: 14px !important;
-  letter-spacing: 0.25px !important;
-}
-
-[class*="text-xs"] {
-  font-size: 12px !important;
-  letter-spacing: 0.4px !important;
-}
-
-/* =====================================================
-   Material Design Modals / Dialogs
-   ===================================================== */
-[class*="fixed"][class*="inset-0"][class*="z-50"],
+/* Modals */
 [class*="fixed"][class*="inset-0"][class*="bg-slate-900"],
 [class*="fixed"][class*="inset-0"][class*="bg-black"] {
-  background: rgba(0, 0, 0, 0.32) !important;
+  background: rgba(15, 23, 42, 0.45) !important;
   backdrop-filter: blur(4px) !important;
 }
 
-/* Dialog container */
-[class*="fixed"][class*="inset-0"]>[class*="bg-white"][class*="rounded"],
-[class*="fixed"][class*="z-50"]>[class*="bg-white"][class*="rounded"] {
-  background: var(--md-surface) !important;
-  border-radius: var(--md-shape-corner-xl) !important;
-  box-shadow: var(--md-elevation-5) !important;
-  border: none !important;
+/* Animations */
+.animate-slide-up {
+  animation: simple-slide-up 220ms ease-out;
 }
 
-/* =====================================================
-   Material Design Chips / Tags
-   ===================================================== */
-[class*="rounded-full"][class*="px-"][class*="py-"][class*="text-"],
-[class*="rounded-full"][class*="px-"][class*="text-xs"],
-[class*="rounded-full"][class*="px-"][class*="text-sm"] {
-  font-family: 'Roboto', 'Noto Sans JP', sans-serif;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.1px !important;
-  border-radius: var(--md-shape-corner-sm) !important;
-  padding: 6px 16px !important;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  transition: all var(--md-motion-duration-short) var(--md-motion-easing-standard);
+.animate-fade-in {
+  animation: simple-fade-in 180ms ease-out;
 }
 
-/* =====================================================
-   Material Design Dividers
-   ===================================================== */
-hr,
-[class*="border-t"],
-[class*="border-b"] {
-  border-color: var(--md-outline-variant) !important;
+@keyframes simple-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* =====================================================
-   Material Design Progress / Loading
-   ===================================================== */
-[class*="animate-spin"] {
-  animation: md-spin 1.4s linear infinite;
+@keyframes simple-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes md-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Loading overlay */
-[class*="bg-white/"][class*="backdrop-blur"],
-[class*="bg-slate-"][class*="backdrop-blur"] {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(8px) !important;
-}
-
-/* =====================================================
-   Material Design Scrollbar
-   ===================================================== */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -557,285 +232,10 @@ hr,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--md-outline-variant);
-  border-radius: var(--md-shape-corner-full);
+  background: var(--border);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--md-outline);
-}
-
-/* =====================================================
-   Material Design Animations
-   ===================================================== */
-.animate-slide-up {
-  animation: md-slide-up var(--md-motion-duration-medium) var(--md-motion-easing-emphasized);
-}
-
-.animate-fade-in {
-  animation: md-fade-in var(--md-motion-duration-medium) var(--md-motion-easing-standard);
-}
-
-@keyframes md-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes md-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-/* =====================================================
-   Material Design Surface Tints
-   ===================================================== */
-
-/* Slate backgrounds to Material surfaces */
-[class*="bg-slate-50"],
-[class*="bg-gray-50"] {
-  background: var(--md-surface-dim) !important;
-}
-
-[class*="bg-slate-100"],
-[class*="bg-gray-100"] {
-  background: var(--md-surface-variant) !important;
-}
-
-[class*="bg-slate-200"],
-[class*="bg-gray-200"] {
-  background: var(--md-outline-variant) !important;
-}
-
-/* Indigo backgrounds */
-[class*="bg-indigo-50"] {
-  background: rgba(51, 65, 85, 0.08) !important;
-}
-
-[class*="bg-indigo-100"] {
-  background: rgba(51, 65, 85, 0.12) !important;
-}
-
-/* Emerald/Green backgrounds */
-[class*="bg-emerald-50"],
-[class*="bg-green-50"] {
-  background: rgba(0, 137, 123, 0.08) !important;
-}
-
-/* Rose/Red backgrounds */
-[class*="bg-rose-50"],
-[class*="bg-red-50"] {
-  background: rgba(211, 47, 47, 0.08) !important;
-}
-
-/* Amber/Yellow backgrounds */
-[class*="bg-amber-50"],
-[class*="bg-yellow-50"] {
-  background: rgba(245, 158, 11, 0.08) !important;
-}
-
-[class*="bg-amber-100"],
-[class*="bg-yellow-100"] {
-  background: rgba(245, 158, 11, 0.12) !important;
-}
-
-/* =====================================================
-   Material Design Text Colors
-   ===================================================== */
-[class*="text-slate-500"],
-[class*="text-slate-600"],
-[class*="text-gray-500"],
-[class*="text-gray-600"] {
-  color: var(--md-on-surface-variant) !important;
-}
-
-[class*="text-slate-700"],
-[class*="text-slate-800"],
-[class*="text-slate-900"],
-[class*="text-gray-700"],
-[class*="text-gray-800"],
-[class*="text-gray-900"] {
-  color: var(--md-on-surface) !important;
-}
-
-[class*="text-indigo-600"],
-[class*="text-indigo-700"],
-[class*="text-blue-600"],
-[class*="text-blue-700"] {
-  color: var(--md-primary) !important;
-}
-
-[class*="text-emerald-600"],
-[class*="text-emerald-700"],
-[class*="text-green-600"],
-[class*="text-green-700"] {
-  color: var(--md-secondary) !important;
-}
-
-[class*="text-rose-600"],
-[class*="text-rose-700"],
-[class*="text-red-600"],
-[class*="text-red-700"] {
-  color: var(--md-error) !important;
-}
-
-/* =====================================================
-   Material Design Border Colors
-   ===================================================== */
-[class*="border-slate-"],
-[class*="border-gray-"] {
-  border-color: var(--md-outline-variant) !important;
-}
-
-[class*="border-indigo-"],
-[class*="border-blue-"] {
-  border-color: var(--md-primary) !important;
-}
-
-/* =====================================================
-   Material Design Focus Ring
-   ===================================================== */
-[class*="focus:ring"],
-[class*="focus-within:ring"] {
-  --tw-ring-color: rgba(51, 65, 85, 0.4) !important;
-}
-
-/* =====================================================
-   Material Design Hover States
-   ===================================================== */
-[class*="hover:bg-slate-"]:hover,
-[class*="hover:bg-gray-"]:hover {
-  background: rgba(28, 27, 31, 0.08) !important;
-}
-
-[class*="hover:bg-indigo-"]:hover {
-  background: rgba(51, 65, 85, 0.08) !important;
-}
-
-/* Simplify indigo/violet gradients */
-[class*="bg-gradient-to-"][class*="from-indigo"],
-[class*="bg-gradient-to-"][class*="to-indigo"],
-[class*="bg-gradient-to-"][class*="via-indigo"],
-[class*="bg-gradient-to-"][class*="from-violet"],
-[class*="bg-gradient-to-"][class*="to-violet"],
-[class*="bg-gradient-to-"][class*="via-violet"],
-[class*="bg-gradient-to-"][class*="from-purple"],
-[class*="bg-gradient-to-"][class*="to-purple"],
-[class*="bg-gradient-to-"][class*="via-purple"] {
-  background-image: none !important;
-  background-color: var(--md-primary) !important;
-}
-
-/* =====================================================
-   Material Design Image containers
-   ===================================================== */
-img {
-  border-radius: var(--md-shape-corner-sm);
-}
-
-[class*="aspect-"][class*="rounded"] img,
-[class*="overflow-hidden"][class*="rounded"] img {
-  border-radius: inherit;
-}
-
-/* =====================================================
-   Material Design Grid Layout Adjustments
-   ===================================================== */
-[class*="gap-4"] {
-  gap: 16px !important;
-}
-
-[class*="gap-3"] {
-  gap: 12px !important;
-}
-
-[class*="gap-2"] {
-  gap: 8px !important;
-}
-
-/* =====================================================
-   Material Design Transition Defaults
-   ===================================================== */
-[class*="transition"],
-a,
-button {
-  transition-timing-function: var(--md-motion-easing-standard) !important;
-  transition-duration: var(--md-motion-duration-short) !important;
-}
-
-/* =====================================================
-   Additional Material Overrides
-   ===================================================== */
-
-/* Premium shadow class */
-.shadow-premium {
-  box-shadow: var(--md-elevation-2) !important;
-}
-
-/* History card scroll perf */
-.history-card {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 320px auto;
-}
-
-/* Button premium hover */
-.btn-premium:hover {
-  opacity: 1 !important;
-  box-shadow: var(--md-elevation-3) !important;
-}
-
-/* Backdrop blur for overlays */
-[class*="backdrop-blur"] {
-  backdrop-filter: blur(8px) !important;
-}
-
-/* Container max widths */
-[class*="max-w-5xl"] {
-  max-width: 1024px;
-}
-
-/* History grid images */
-[class*="aspect-square"] {
-  border-radius: var(--md-shape-corner-md);
-  overflow: hidden;
-}
-
-/* Tab-like toggles */
-[class*="rounded-lg"][class*="p-1"][class*="bg-slate"],
-[class*="rounded-xl"][class*="p-1"][class*="bg-slate"] {
-  background: var(--md-surface-variant) !important;
-  border-radius: var(--md-shape-corner-full) !important;
-  padding: 4px !important;
-}
-
-/* Active tab state */
-[class*="rounded-lg"][class*="bg-white"][class*="shadow-sm"],
-[class*="rounded-md"][class*="bg-white"][class*="shadow-sm"] {
-  background: var(--md-surface) !important;
-  box-shadow: var(--md-elevation-1) !important;
-  border-radius: var(--md-shape-corner-full) !important;
-}
-
-/* Icon buttons */
-button[class*="p-2"][class*="rounded"],
-button[class*="p-1"][class*="rounded"] {
-  border-radius: var(--md-shape-corner-full) !important;
-}
-
-/* Section dividers */
-[class*="my-"][class*="border-t"] {
-  margin-top: 24px !important;
-  margin-bottom: 24px !important;
-  border-color: var(--md-outline-variant) !important;
+  background: #cbd5e1;
 }
