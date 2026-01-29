@@ -65,16 +65,10 @@ export interface CampaignInfo {
   export interface Preset {
     id: string;
     name: string;
-    products: Product[];
-    characterImages: string[];
-    characterClothingMode?: 'fixed' | 'match';
-    referenceImages: string[];
-    storeLogoImages: string[];
-    customIllustrations?: string[];
-    customerImages?: string[];
-    frontProductImages?: string[];
-    campaignMainImages?: string[];
+    side: 'front' | 'back';
     settings: FlyerSettings;
+    products?: Product[];
+    characterClothingMode?: 'fixed' | 'match';
     // Front side fields
     campaignInfo?: CampaignInfo;
     frontFlyerType?: FrontFlyerType;
@@ -82,13 +76,6 @@ export interface CampaignInfo {
     // Sales letter fields
     salesLetterInfo?: SalesLetterInfo;
     salesLetterMode?: boolean;
-    selectedCharacterIndices?: number[];
-    selectedReferenceIndex?: number | null;
-    selectedLogoIndices?: number[];
-    selectedCustomIllustrationIndices?: number[];
-    selectedCustomerImageIndices?: number[];
-    selectedFrontProductIndices?: number[];
-    selectedCampaignMainImageIndices?: number[];
     createdAt: number;
     updatedAt: number;
   }

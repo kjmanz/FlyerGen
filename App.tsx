@@ -93,7 +93,10 @@ const App: React.FC = () => {
 
   // Preset State
   const [presets, setPresets] = useState<Preset[]>([]);
-  const [currentPresetId, setCurrentPresetId] = useState<string | null>(null);
+  const [currentPresetIds, setCurrentPresetIds] = useState<{ front: string | null; back: string | null }>({
+    front: null,
+    back: null
+  });
   const [showPresetList, setShowPresetList] = useState(false);
 
   // Save Modal State
@@ -111,7 +114,6 @@ const App: React.FC = () => {
 
   // Preset Load Confirmation Modal State
   const [presetToLoad, setPresetToLoad] = useState<Preset | null>(null);
-  const [loadPresetAssets, setLoadPresetAssets] = useState(true);
 
   // Upscale State
   const [replicateApiKey, setReplicateApiKey] = useState<string>("");
@@ -147,6 +149,20 @@ const App: React.FC = () => {
 
   // Main Tab State (メインタブ切り替え)
   const [mainTab, setMainTab] = useState<MainTabType>('front');
+
+  const activePresetId = currentPresetIds[mainTab];
+  const presetsForSide = useMemo(() => presets.filter(p => p.side === mainTab), [presets, mainTab]);
+  const createBlankProduct = () => ({
+    id: uuidv4(),
+    images: [],
+    productCode: '',
+    productName: '',
+    specs: '',
+    originalPrice: '',
+    salePrice: '',
+    salePriceLabel: '',
+    catchCopy: ''
+  });
 
   // Sidebar State (サイドバー開閉 - モバイル用)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -295,29 +311,24 @@ const App: React.FC = () => {
           }
 
           if (cloudPresets.length > 0) {
-            const presetsFromCloud: Preset[] = cloudPresets.map(p => ({
-              id: p.id,
-              name: p.name,
-              products: p.products,
-              settings: p.settings,
-              characterImages: p.characterImages || [],
-              characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
-              referenceImages: p.referenceImages || [],
-              storeLogoImages: p.storeLogoImages || [],
-              customIllustrations: p.customIllustrations || [],
-              customerImages: p.customerImages || [],
-              frontProductImages: p.frontProductImages || [],
-              campaignMainImages: p.campaignMainImages || [],
-              selectedCharacterIndices: p.selectedCharacterIndices || [],
-              selectedReferenceIndex: typeof p.selectedReferenceIndex === 'number' ? p.selectedReferenceIndex : null,
-              selectedLogoIndices: p.selectedLogoIndices || [],
-              selectedCustomIllustrationIndices: p.selectedCustomIllustrationIndices || [],
-              selectedCustomerImageIndices: p.selectedCustomerImageIndices || [],
-              selectedFrontProductIndices: p.selectedFrontProductIndices || [],
-              selectedCampaignMainImageIndices: p.selectedCampaignMainImageIndices || [],
-              createdAt: p.createdAt,
-              updatedAt: p.updatedAt
-            }));
+            const presetsFromCloud: Preset[] = cloudPresets.map(p => {
+              const inferredSide = p.side || (p.frontFlyerType || p.campaignInfo || p.productServiceInfo || p.salesLetterInfo || p.salesLetterMode ? 'front' : 'back');
+              return {
+                id: p.id,
+                name: p.name,
+                side: inferredSide === 'front' ? 'front' : 'back',
+                products: Array.isArray(p.products) ? p.products : [],
+                settings: p.settings,
+                characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
+                campaignInfo: p.campaignInfo ? { ...p.campaignInfo, productImages: [] } : undefined,
+                frontFlyerType: p.frontFlyerType,
+                productServiceInfo: p.productServiceInfo,
+                salesLetterInfo: p.salesLetterInfo,
+                salesLetterMode: p.salesLetterMode,
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt
+              };
+            });
             setPresets(presetsFromCloud);
           }
 
@@ -372,7 +383,27 @@ const App: React.FC = () => {
             const sortedHistory = savedHistory.sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(sortedHistory);
           }
-          if (savedPresets) setPresets(savedPresets);
+          if (savedPresets) {
+            const normalizedPresets: Preset[] = savedPresets.map(p => {
+              const inferredSide = p.side || (p.frontFlyerType || p.campaignInfo || p.productServiceInfo || p.salesLetterInfo || p.salesLetterMode ? 'front' : 'back');
+              return {
+                id: p.id,
+                name: p.name,
+                side: inferredSide === 'front' ? 'front' : 'back',
+                products: Array.isArray(p.products) ? p.products : [],
+                settings: p.settings,
+                characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
+                campaignInfo: p.campaignInfo ? { ...p.campaignInfo, productImages: [] } : undefined,
+                frontFlyerType: p.frontFlyerType,
+                productServiceInfo: p.productServiceInfo,
+                salesLetterInfo: p.salesLetterInfo,
+                salesLetterMode: p.salesLetterMode,
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt
+              };
+            });
+            setPresets(normalizedPresets);
+          }
         }
       } catch (e) {
         console.error("Failed to load data", e);
@@ -1747,8 +1778,8 @@ ${header.length + uint8Array.length + 20}
   // --- Preset Logic ---
 
   const openSaveModal = () => {
-    if (currentPresetId) {
-      const current = presets.find(p => p.id === currentPresetId);
+    if (activePresetId) {
+      const current = presets.find(p => p.id === activePresetId);
       setSavePresetName(current ? current.name : "");
     } else {
       setSavePresetName("");
@@ -1766,43 +1797,33 @@ ${header.length + uint8Array.length + 20}
 
     try {
       let targetId = uuidv4();
-      if (!asNew && currentPresetId) {
-        targetId = currentPresetId;
+      if (!asNew && activePresetId) {
+        targetId = activePresetId;
       }
 
       const now = Date.now();
+      const presetSide = mainTab;
 
-      // Clone data to avoid reference issues
       const newPreset: Preset = {
         id: targetId,
         name: savePresetName,
-        products: JSON.parse(JSON.stringify(products)),
-        characterImages: [...characterImages],
-        characterClothingMode: characterClothingMode,
-        referenceImages: [...referenceImages],
-        storeLogoImages: [...storeLogoImages],
-        customIllustrations: [...customIllustrations],
-        customerImages: [...customerImages],
-        frontProductImages: [...frontProductImages],
-        campaignMainImages: [...(campaignInfo.productImages || [])],
+        side: presetSide,
         settings: { ...settings },
-        // Front side fields
-        campaignInfo: JSON.parse(JSON.stringify(campaignInfo)),
-        frontFlyerType: frontFlyerType,
-        productServiceInfo: JSON.parse(JSON.stringify(productServiceInfo)),
-        // Sales letter fields
-        salesLetterInfo: JSON.parse(JSON.stringify(salesLetterInfo)),
-        salesLetterMode: salesLetterMode,
-        selectedCharacterIndices: Array.from(selectedCharacterIndices),
-        selectedReferenceIndex: selectedReferenceIndex,
-        selectedLogoIndices: Array.from(selectedLogoIndices),
-        selectedCustomIllustrationIndices: Array.from(selectedCustomIllustrationIndices),
-        selectedCustomerImageIndices: Array.from(selectedCustomerImageIndices),
-        selectedFrontProductIndices: Array.from(selectedFrontProductIndices),
-        selectedCampaignMainImageIndices: Array.from(selectedCampaignMainImageIndices),
+        characterClothingMode: characterClothingMode,
         createdAt: presets.find(p => p.id === targetId)?.createdAt || now,
         updatedAt: now
       };
+
+      if (presetSide === 'back') {
+        newPreset.products = JSON.parse(JSON.stringify(products));
+      } else {
+        const campaignInfoSnapshot = JSON.parse(JSON.stringify(campaignInfo));
+        newPreset.campaignInfo = { ...campaignInfoSnapshot, productImages: [] };
+        newPreset.frontFlyerType = frontFlyerType;
+        newPreset.productServiceInfo = JSON.parse(JSON.stringify(productServiceInfo));
+        newPreset.salesLetterInfo = JSON.parse(JSON.stringify(salesLetterInfo));
+        newPreset.salesLetterMode = salesLetterMode;
+      }
 
       let updatedPresets: Preset[];
       // Check if updating existing or adding new
@@ -1813,7 +1834,7 @@ ${header.length + uint8Array.length + 20}
       }
 
       setPresets(updatedPresets);
-      setCurrentPresetId(targetId);
+      setCurrentPresetIds(prev => ({ ...prev, [presetSide]: targetId }));
 
       // Save to local storage
       await set(DB_KEY_PRESETS, updatedPresets);
@@ -1837,7 +1858,6 @@ ${header.length + uint8Array.length + 20}
   };
 
   const handleLoadPreset = (preset: Preset) => {
-    setLoadPresetAssets(true);
     setPresetToLoad(preset);
   };
 
@@ -1848,34 +1868,21 @@ ${header.length + uint8Array.length + 20}
     // Deep clone to ensure we have fresh mutable data and prevent reference issues
     const data = JSON.parse(JSON.stringify(preset));
 
-    setProducts(data.products || []);
-    setCharacterClothingMode(data.characterClothingMode || 'fixed');
+    const presetSide: 'front' | 'back' = data.side === 'front' ? 'front' : 'back';
+    if (presetSide !== mainTab) {
+      setMainTab(presetSide);
+      setFlyerSide(presetSide);
+    }
 
-    if (loadPresetAssets) {
-      const nextCharacterImages = data.characterImages || [];
-      setCharacterImages(nextCharacterImages);
-      setSelectedCharacterIndices(new Set((data.selectedCharacterIndices || []).filter((i: number) => i < nextCharacterImages.length)));
+    if (data.characterClothingMode) {
+      setCharacterClothingMode(data.characterClothingMode);
+    }
 
-      const nextReferenceImages = data.referenceImages || [];
-      setReferenceImages(nextReferenceImages);
-      const nextReferenceIndex = typeof data.selectedReferenceIndex === 'number' ? data.selectedReferenceIndex : null;
-      setSelectedReferenceIndex(nextReferenceIndex !== null && nextReferenceIndex < nextReferenceImages.length ? nextReferenceIndex : null);
-
-      const nextLogoImages = data.storeLogoImages || [];
-      setStoreLogoImages(nextLogoImages);
-      setSelectedLogoIndices(new Set((data.selectedLogoIndices || []).filter((i: number) => i < nextLogoImages.length)));
-
-      const nextCustomIllustrations = data.customIllustrations || [];
-      setCustomIllustrations(nextCustomIllustrations);
-      setSelectedCustomIllustrationIndices(new Set((data.selectedCustomIllustrationIndices || []).filter((i: number) => i < nextCustomIllustrations.length)));
-
-      const nextCustomerImages = data.customerImages || [];
-      setCustomerImages(nextCustomerImages);
-      setSelectedCustomerImageIndices(new Set((data.selectedCustomerImageIndices || []).filter((i: number) => i < nextCustomerImages.length)));
-
-      const nextFrontProductImages = data.frontProductImages || [];
-      setFrontProductImages(nextFrontProductImages);
-      setSelectedFrontProductIndices(new Set((data.selectedFrontProductIndices || []).filter((i: number) => i < nextFrontProductImages.length)));
+    if (presetSide === 'back') {
+      const nextProducts = Array.isArray(data.products) && data.products.length > 0
+        ? data.products
+        : [createBlankProduct()];
+      setProducts(nextProducts);
     }
 
     // Ensure settings has all required fields with defaults
@@ -1891,53 +1898,35 @@ ${header.length + uint8Array.length + 20}
     });
 
     // Load front side fields
-    if (data.frontFlyerType) {
-      setFrontFlyerType(data.frontFlyerType);
-    }
-    const legacyProductImage = data.campaignInfo?.productImage;
-    const campaignInfoImages = Array.isArray(data.campaignInfo?.productImages)
-      ? data.campaignInfo.productImages
-      : (legacyProductImage ? [legacyProductImage] : []);
-    const presetCampaignImages = Array.isArray(data.campaignMainImages) && data.campaignMainImages.length > 0
-      ? data.campaignMainImages
-      : campaignInfoImages;
-
-    if (data.campaignInfo) {
-      setCampaignInfo(prev => ({
-        campaignDescription: data.campaignInfo.campaignDescription || '',
-        headline: data.campaignInfo.headline || '',
-        campaignName: data.campaignInfo.campaignName || '',
-        startDate: data.campaignInfo.startDate || '',
-        endDate: data.campaignInfo.endDate || '',
-        content: data.campaignInfo.content || '',
-        benefits: data.campaignInfo.benefits || [''],
-        useProductImage: data.campaignInfo.useProductImage || false,
-        productImages: loadPresetAssets ? presetCampaignImages : prev.productImages
-      }));
-    } else if (loadPresetAssets && presetCampaignImages.length > 0) {
-      setCampaignInfo(prev => ({
-        ...prev,
-        productImages: presetCampaignImages
-      }));
+    if (presetSide === 'front') {
+      if (data.frontFlyerType) {
+        setFrontFlyerType(data.frontFlyerType);
+      }
+      if (data.campaignInfo) {
+        setCampaignInfo(prev => ({
+          campaignDescription: data.campaignInfo.campaignDescription || '',
+          headline: data.campaignInfo.headline || '',
+          campaignName: data.campaignInfo.campaignName || '',
+          startDate: data.campaignInfo.startDate || '',
+          endDate: data.campaignInfo.endDate || '',
+          content: data.campaignInfo.content || '',
+          benefits: data.campaignInfo.benefits || [''],
+          useProductImage: data.campaignInfo.useProductImage || false,
+          productImages: prev.productImages
+        }));
+      }
+      if (data.productServiceInfo) {
+        setProductServiceInfo(data.productServiceInfo);
+      }
+      if (data.salesLetterInfo) {
+        setSalesLetterInfo(data.salesLetterInfo);
+      }
+      if (typeof data.salesLetterMode === 'boolean') {
+        setSalesLetterMode(data.salesLetterMode);
+      }
     }
 
-    if (loadPresetAssets) {
-      setSelectedCampaignMainImageIndices(
-        new Set((data.selectedCampaignMainImageIndices || []).filter((i: number) => i < presetCampaignImages.length))
-      );
-    }
-    if (data.productServiceInfo) {
-      setProductServiceInfo(data.productServiceInfo);
-    }
-    // Load sales letter fields
-    if (data.salesLetterInfo) {
-      setSalesLetterInfo(data.salesLetterInfo);
-    }
-    if (typeof data.salesLetterMode === 'boolean') {
-      setSalesLetterMode(data.salesLetterMode);
-    }
-
-    setCurrentPresetId(data.id);
+    setCurrentPresetIds(prev => ({ ...prev, [presetSide]: data.id }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Close modal
@@ -1952,7 +1941,10 @@ ${header.length + uint8Array.length + 20}
     if (window.confirm("このプリセットを削除してもよろしいですか？")) {
       const updatedPresets = presets.filter(p => p.id !== id);
       setPresets(updatedPresets);
-      if (currentPresetId === id) setCurrentPresetId(null);
+      const targetPreset = presets.find(p => p.id === id);
+      if (targetPreset) {
+        setCurrentPresetIds(prev => (prev[targetPreset.side] === id ? { ...prev, [targetPreset.side]: null } : prev));
+      }
       await set(DB_KEY_PRESETS, updatedPresets);
 
       if (firebaseEnabled) {
@@ -1977,7 +1969,7 @@ ${header.length + uint8Array.length + 20}
         logoPosition: 'full-bottom',
         additionalInstructions: ''
       });
-      setCurrentPresetId(null);
+      setCurrentPresetIds(prev => ({ ...prev, [mainTab]: null }));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -2545,17 +2537,17 @@ ${header.length + uint8Array.length + 20}
                     ＋ 新規作成
                   </button>
                 </div>
-                {presets.length === 0 ? (
+                {presetsForSide.length === 0 ? (
                   <div className="text-center py-10 bg-slate-50/50 rounded-md border border-dashed border-slate-200">
                     <p className="text-slate-400 text-sm font-medium">プリセットがありません</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {presets.map(preset => (
+                    {presetsForSide.map(preset => (
                       <div
                         key={preset.id}
                         onClick={() => handleLoadPreset(preset)}
-                        className={`group bg-white p-5 rounded-md border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${currentPresetId === preset.id ? 'border-indigo-500 shadow-indigo-500/10 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md'}`}
+                        className={`group bg-white p-5 rounded-md border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${activePresetId === preset.id ? 'border-indigo-500 shadow-indigo-500/10 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md'}`}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
@@ -2565,7 +2557,11 @@ ${header.length + uint8Array.length + 20}
                               更新: {new Date(preset.updatedAt).toLocaleDateString('ja-JP')}
                             </p>
                             <div className="flex gap-2 mt-3">
-                              <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
+                              {preset.side === 'back' ? (
+                                <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.frontFlyerType === 'product-service' ? '商品/サービス' : 'キャンペーン'}</span>
+                              )}
                               <span className="px-2 py-0.5 bg-indigo-50 text-[10px] font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
                             </div>
                           </div>
@@ -2602,12 +2598,12 @@ ${header.length + uint8Array.length + 20}
             {/* Action Bar for Current State */}
             <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-8 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-3 h-3 rounded-full ${currentPresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
+                <div className={`w-3 h-3 rounded-full ${activePresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
                 <div>
                   <p className="text-[10px] font-semibold tracking-[0.1em] text-slate-400">現在の状態</p>
-                  {currentPresetId ? (
+                  {activePresetId ? (
                     <p className="font-semibold text-indigo-700">
-                      編集中: {presets.find(p => p.id === currentPresetId)?.name || '未保存のプリセット'}
+                      編集中: {presets.find(p => p.id === activePresetId)?.name || '未保存のプリセット'}
                     </p>
                   ) : (
                     <p className="font-semibold text-slate-700">新規プロジェクト（未保存）</p>
@@ -3478,7 +3474,7 @@ ${header.length + uint8Array.length + 20}
             </div>
 
             <div className="flex flex-col gap-3">
-              {currentPresetId && (
+              {activePresetId && (
                 <button
                   onClick={() => executeSavePreset(false)}
                   disabled={isSaving}
@@ -3490,9 +3486,9 @@ ${header.length + uint8Array.length + 20}
               <button
                 onClick={() => executeSavePreset(true)}
                 disabled={isSaving}
-                className={`w-full font-semibold tracking-wide text-xs py-4 px-6 rounded-md transition-all border-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${currentPresetId ? 'bg-white text-indigo-600 border-indigo-600 hover:bg-indigo-50' : 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent shadow-indigo-600/20'}`}
+                className={`w-full font-semibold tracking-wide text-xs py-4 px-6 rounded-md transition-all border-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${activePresetId ? 'bg-white text-indigo-600 border-indigo-600 hover:bg-indigo-50' : 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent shadow-indigo-600/20'}`}
               >
-                {isSaving ? '保存中...' : (currentPresetId ? '新規プリセットとして保存' : '保存')}
+                {isSaving ? '保存中...' : (activePresetId ? '新規プリセットとして保存' : '保存')}
               </button>
               <button
                 onClick={() => setIsSaveModalOpen(false)}
@@ -3596,20 +3592,9 @@ ${header.length + uint8Array.length + 20}
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">プリセット読み込み</h3>
             <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">
               「<span className="text-indigo-600 font-semibold">{presetToLoad.name}</span>」を読み込みます。
-              現在の未保存データは置き換わります。
+              アセットはそのまま保持されます。
             </p>
 
-            <div className="mb-6 p-3 rounded-md border border-slate-100 bg-slate-50/70">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={loadPresetAssets}
-                  onChange={(e) => setLoadPresetAssets(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                アセットも読み込む（現在のアセットを上書き）
-              </label>
-            </div>
 
             <div className="flex flex-col gap-3">
               <button

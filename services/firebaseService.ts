@@ -301,23 +301,15 @@ export const updateFlyerUpscaleStatus = async (
 export interface CloudPreset {
     id: string;
     name: string;
-    products: any[];
-    settings: any;
-    characterImages: string[];
-    characterClothingMode: string;
-    referenceImages: string[];
-    storeLogoImages: string[];
-    customIllustrations?: string[];
-    customerImages?: string[];
-    frontProductImages?: string[];
-    campaignMainImages?: string[];
-    selectedCharacterIndices?: number[];
-    selectedReferenceIndex?: number | null;
-    selectedLogoIndices?: number[];
-    selectedCustomIllustrationIndices?: number[];
-    selectedCustomerImageIndices?: number[];
-    selectedFrontProductIndices?: number[];
-    selectedCampaignMainImageIndices?: number[];
+    side: 'front' | 'back';
+    products?: any[];
+    settings?: any;
+    characterClothingMode?: string;
+    campaignInfo?: any;
+    frontFlyerType?: string;
+    productServiceInfo?: any;
+    salesLetterInfo?: any;
+    salesLetterMode?: boolean;
     createdAt: number;
     updatedAt: number;
 }
@@ -360,52 +352,29 @@ export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => 
     try {
         console.log(`Saving preset to Firestore: ${preset.name} (${preset.id})`);
 
-        // Upload images to Storage first to avoid Firestore 1MB limit
-        const [
-            characterImageUrls,
-            referenceImageUrls,
-            storeLogoUrls,
-            customIllustrationUrls,
-            customerImageUrls,
-            frontProductImageUrls,
-            campaignMainImageUrls
-        ] = await Promise.all([
-            uploadImagesArray(preset.characterImages || [], preset.id, 'char'),
-            uploadImagesArray(preset.referenceImages || [], preset.id, 'ref'),
-            uploadImagesArray(preset.storeLogoImages || [], preset.id, 'logo'),
-            uploadImagesArray(preset.customIllustrations || [], preset.id, 'custom'),
-            uploadImagesArray(preset.customerImages || [], preset.id, 'customer'),
-            uploadImagesArray(preset.frontProductImages || [], preset.id, 'frontprod'),
-            uploadImagesArray(preset.campaignMainImages || [], preset.id, 'campaign')
-        ]);
-
-        // Upload product images
-        const productsWithUrls = await Promise.all(preset.products.map(async (product, pIndex) => {
+        const products = Array.isArray(preset.products) ? preset.products : [];
+        const productsWithUrls = await Promise.all(products.map(async (product, pIndex) => {
             const productImageUrls = await uploadImagesArray(product.images || [], preset.id, `prod${pIndex}`);
             return { ...product, images: productImageUrls };
         }));
+
+        const campaignInfo = preset.campaignInfo
+            ? { ...preset.campaignInfo, productImages: [] }
+            : undefined;
 
         // Save to Firestore with URLs instead of base64
         const presetData = {
             id: preset.id,
             name: preset.name,
+            side: preset.side || 'back',
             products: productsWithUrls,
             settings: preset.settings,
-            characterImages: characterImageUrls,
             characterClothingMode: preset.characterClothingMode,
-            referenceImages: referenceImageUrls,
-            storeLogoImages: storeLogoUrls,
-            customIllustrations: customIllustrationUrls,
-            customerImages: customerImageUrls,
-            frontProductImages: frontProductImageUrls,
-            campaignMainImages: campaignMainImageUrls,
-            selectedCharacterIndices: preset.selectedCharacterIndices || [],
-            selectedReferenceIndex: typeof preset.selectedReferenceIndex === 'number' ? preset.selectedReferenceIndex : null,
-            selectedLogoIndices: preset.selectedLogoIndices || [],
-            selectedCustomIllustrationIndices: preset.selectedCustomIllustrationIndices || [],
-            selectedCustomerImageIndices: preset.selectedCustomerImageIndices || [],
-            selectedFrontProductIndices: preset.selectedFrontProductIndices || [],
-            selectedCampaignMainImageIndices: preset.selectedCampaignMainImageIndices || [],
+            campaignInfo,
+            frontFlyerType: preset.frontFlyerType,
+            productServiceInfo: preset.productServiceInfo,
+            salesLetterInfo: preset.salesLetterInfo,
+            salesLetterMode: preset.salesLetterMode,
             createdAt: preset.createdAt || Date.now(),
             updatedAt: Date.now()
         };
