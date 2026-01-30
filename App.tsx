@@ -3134,14 +3134,14 @@ ${header.length + uint8Array.length + 20}
 
             {/* History Results */}
             {history.length > 0 && (
-              <div className="bg-white rounded-lg shadow-premium border border-white/50 p-8 sm:p-12 animate-slide-up">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-white rounded-lg shadow-premium border border-white/50 p-4 sm:p-8 md:p-12 animate-slide-up">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-950 rounded-md flex items-center justify-center text-lg">📁</div>
-                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-2">({history.length})</span></h2>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-950 rounded-md flex items-center justify-center text-base sm:text-lg">📁</div>
+                    <h2 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-1 sm:ml-2">({history.length})</span></h2>
                   </div>
-                  {/* Tag Buttons */}
-                  <div className="flex gap-2">
+                  {/* Tag Buttons - Hidden on mobile, shown on sm+ */}
+                  <div className="hidden sm:flex gap-2 flex-wrap">
                     {history.some(item => !item.tags || item.tags.length === 0) && (
                       <button
                         onClick={() => tagAllExistingHistory(false)}
@@ -3179,33 +3179,53 @@ ${header.length + uint8Array.length + 20}
                       📤 画像アップロード
                     </button>
                   </div>
+                  {/* Mobile action buttons */}
+                  <div className="flex sm:hidden gap-2">
+                    <button
+                      onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600"
+                    >
+                      {sortOrder === 'desc' ? '↓新' : '↑古'}
+                    </button>
+                    <button
+                      onClick={() => { setUploadPreview(""); setUploadTags(""); setIsUploadModalOpen(true); }}
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700"
+                    >
+                      📤
+                    </button>
+                  </div>
                 </div>
 
                 {/* Tag Filter */}
                 {allTags.length > 0 && (
-                  <div className="mb-8 flex flex-wrap gap-2 items-center">
-                    <span className="text-xs font-bold text-slate-400 mr-2">タグで絞り込み:</span>
-                    <button
-                      onClick={() => setSelectedTag(null)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === null
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                    >
-                      すべて
-                    </button>
-                    {allTags.map(tag => (
+                  <div className="mb-6 sm:mb-8">
+                    <div className="flex items-center gap-2 mb-2 sm:hidden">
+                      <span className="text-xs font-bold text-slate-400">タグ絞り込み:</span>
+                    </div>
+                    <div className="flex gap-2 items-center overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
+                      <span className="hidden sm:inline text-xs font-bold text-slate-400 mr-2 flex-shrink-0">タグで絞り込み:</span>
                       <button
-                        key={tag}
-                        onClick={() => setSelectedTag(tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${selectedTag === tag
+                        onClick={() => setSelectedTag(null)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex-shrink-0 ${selectedTag === null
                           ? 'bg-indigo-600 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                       >
-                        {tag}
+                        すべて
                       </button>
-                    ))}
+                      {allTags.slice(0, windowWidth < 640 ? 8 : allTags.length).map(tag => (
+                        <button
+                          key={tag}
+                          onClick={() => setSelectedTag(tag)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex-shrink-0 whitespace-nowrap ${selectedTag === tag
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -3216,7 +3236,7 @@ ${header.length + uint8Array.length + 20}
                     <div
                       key={`row-${rowData.row}`}
                       ref={rowIndex === 0 ? rowMeasureRef : undefined}
-                      className="flex flex-wrap gap-4 justify-start"
+                      className="flex flex-wrap gap-4 justify-center sm:justify-start"
                       style={{ minHeight: rowHeight, marginBottom: rowData.row === totalRows - 1 ? 0 : historyGridGap }}
                     >
                       {rowData.items.map((item) => (
@@ -3275,31 +3295,30 @@ ${header.length + uint8Array.length + 20}
                           </div>
 
                           {/* Info Section */}
-                          <div className="p-4 border-t border-slate-100">
-                            <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
+                          <div className="p-3 sm:p-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-500 mb-2 sm:mb-3">
                               <span className="font-medium">
                                 {new Date(item.createdAt).toLocaleString('ja-JP', {
-                                  year: 'numeric',
                                   month: 'short',
                                   day: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit'
                                 })}
                               </span>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 sm:gap-2">
                                 <button
                                   onClick={() => toggleFavorite(item.id)}
-                                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-lg transition-all hover:scale-110 ${item.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'}`}
+                                  className={`w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-base sm:text-lg transition-all hover:scale-110 ${item.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'}`}
                                   title={item.isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
                                 >
                                   {item.isFavorite ? '⭐' : '☆'}
                                 </button>
                                 <button
                                   onClick={() => handleDeleteImage(item.id)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                                  className="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
                                   title="削除"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
                                 </button>
@@ -3307,36 +3326,36 @@ ${header.length + uint8Array.length + 20}
                             </div>
 
                             {/* Action Buttons Grid */}
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                               {/* Download Button with Dropdown */}
                               <div className="relative">
                                 <button
                                   onClick={() => setOpenDownloadMenu(openDownloadMenu === item.id ? null : item.id)}
-                                  className="w-full flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                                  className="w-full flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2 sm:p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
                                   title="ダウンロード"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                   </svg>
                                 </button>
 
                                 {openDownloadMenu === item.id && (
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-24 sm:w-32 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
                                     <button
                                       onClick={() => handleDownloadPng(item.data, item.createdAt)}
-                                      className="w-full p-2.5 text-emerald-600 hover:bg-emerald-50 transition-all border-b border-slate-100 text-sm font-bold"
+                                      className="w-full p-2 sm:p-2.5 text-emerald-600 hover:bg-emerald-50 transition-all border-b border-slate-100 text-xs sm:text-sm font-bold"
                                     >
                                       PNG
                                     </button>
                                     <button
                                       onClick={() => handleDownloadJpg(item.data, item.createdAt)}
-                                      className="w-full p-2.5 text-amber-600 hover:bg-amber-50 transition-all border-b border-slate-100 text-sm font-bold"
+                                      className="w-full p-2 sm:p-2.5 text-amber-600 hover:bg-amber-50 transition-all border-b border-slate-100 text-xs sm:text-sm font-bold"
                                     >
                                       JPG
                                     </button>
                                     <button
                                       onClick={() => handleDownloadPdf(item.data, item.createdAt)}
-                                      className="w-full p-2.5 text-rose-600 hover:bg-rose-50 transition-all text-sm font-bold"
+                                      className="w-full p-2 sm:p-2.5 text-rose-600 hover:bg-rose-50 transition-all text-xs sm:text-sm font-bold"
                                     >
                                       PDF
                                     </button>
@@ -3348,7 +3367,7 @@ ${header.length + uint8Array.length + 20}
                               <button
                                 onClick={() => handleUpscale(item)}
                                 disabled={upscalingImageId === item.id || item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'}
-                                className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
+                                className={`flex items-center justify-center p-2 sm:p-2.5 rounded-lg transition-all shadow-sm ${upscalingImageId === item.id
                                   ? 'bg-slate-100 text-slate-600 cursor-wait'
                                   : item.isUpscaled || item.is4KRegenerated || item.imageSize === '4K'
                                     ? 'bg-slate-100 text-slate-600 cursor-not-allowed'
@@ -3361,16 +3380,16 @@ ${header.length + uint8Array.length + 20}
                                     : `AIアップスケール(${UPSCALE_SCALE}x)`}
                               >
                                 {upscalingImageId === item.id ? (
-                                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                   </svg>
                                 ) : item.isUpscaled ? (
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                   </svg>
                                 ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                                   </svg>
                                 )}
@@ -3379,22 +3398,22 @@ ${header.length + uint8Array.length + 20}
                               {/* Edit Button */}
                               <button
                                 onClick={() => setEditingImage(item)}
-                                className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                                className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2 sm:p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
                                 title="画像を編集"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                               </button>
                             </div>
 
                             {/* Second Row of Buttons */}
-                            <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-1.5 sm:mt-2">
                               {/* 4K Regeneration Button */}
                               <button
                                 onClick={() => handleRegenerate4K(item)}
                                 disabled={regenerating4KImageId === item.id || item.is4KRegenerated}
-                                className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${regenerating4KImageId === item.id
+                                className={`flex items-center justify-center p-2 sm:p-2.5 rounded-lg transition-all shadow-sm ${regenerating4KImageId === item.id
                                   ? 'bg-violet-100 text-violet-600 cursor-wait'
                                   : item.is4KRegenerated
                                     ? 'bg-violet-100 text-violet-600 cursor-not-allowed'
@@ -3403,14 +3422,14 @@ ${header.length + uint8Array.length + 20}
                                 title={item.is4KRegenerated ? '4K再生成済み' : 'Gemini APIで4K再生成（内容はそのまま）'}
                               >
                                 {regenerating4KImageId === item.id ? (
-                                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                   </svg>
                                 ) : item.is4KRegenerated ? (
-                                  <span className="text-xs font-bold">4K✓</span>
+                                  <span className="text-[10px] sm:text-xs font-bold">4K✓</span>
                                 ) : (
-                                  <span className="text-xs font-bold">4K</span>
+                                  <span className="text-[10px] sm:text-xs font-bold">4K</span>
                                 )}
                               </button>
 
@@ -3418,19 +3437,19 @@ ${header.length + uint8Array.length + 20}
                               <button
                                 onClick={() => handleRemoveText(item)}
                                 disabled={removingTextImageId === item.id}
-                                className={`flex items-center justify-center p-2.5 rounded-lg transition-all shadow-sm ${removingTextImageId === item.id
+                                className={`flex items-center justify-center p-2 sm:p-2.5 rounded-lg transition-all shadow-sm ${removingTextImageId === item.id
                                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                   : 'bg-slate-500 hover:bg-slate-600 text-white active:scale-95'
                                   }`}
                                 title="文字を消去"
                               >
                                 {removingTextImageId === item.id ? (
-                                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                   </svg>
                                 ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                   </svg>
                                 )}
@@ -3439,10 +3458,10 @@ ${header.length + uint8Array.length + 20}
                               {/* Reference Button */}
                               <button
                                 onClick={() => handleUseAsReference(item.data)}
-                                className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
+                                className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white p-2 sm:p-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
                                 title="参考画像として使用"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                               </button>
