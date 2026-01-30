@@ -358,26 +358,35 @@ export const saveCloudPreset = async (preset: CloudPreset): Promise<boolean> => 
             return { ...product, images: productImageUrls };
         }));
 
-        const campaignInfo = preset.campaignInfo
-            ? { ...preset.campaignInfo, productImages: [] }
-            : undefined;
-
         // Save to Firestore with URLs instead of base64
-        const presetData = {
+        // Note: Firestore doesn't accept undefined values, so we only include defined fields
+        const presetData: Record<string, any> = {
             id: preset.id,
             name: preset.name,
             side: preset.side || 'back',
             products: productsWithUrls,
             settings: preset.settings,
-            characterClothingMode: preset.characterClothingMode,
-            campaignInfo,
-            frontFlyerType: preset.frontFlyerType,
-            productServiceInfo: preset.productServiceInfo,
-            salesLetterInfo: preset.salesLetterInfo,
-            salesLetterMode: preset.salesLetterMode,
+            characterClothingMode: preset.characterClothingMode || 'fixed',
             createdAt: preset.createdAt || Date.now(),
             updatedAt: Date.now()
         };
+
+        // Only add optional fields if they are defined (Firestore rejects undefined)
+        if (preset.campaignInfo) {
+            presetData.campaignInfo = { ...preset.campaignInfo, productImages: [] };
+        }
+        if (preset.frontFlyerType !== undefined) {
+            presetData.frontFlyerType = preset.frontFlyerType;
+        }
+        if (preset.productServiceInfo !== undefined) {
+            presetData.productServiceInfo = preset.productServiceInfo;
+        }
+        if (preset.salesLetterInfo !== undefined) {
+            presetData.salesLetterInfo = preset.salesLetterInfo;
+        }
+        if (preset.salesLetterMode !== undefined) {
+            presetData.salesLetterMode = preset.salesLetterMode;
+        }
 
         const docRef = doc(db, 'presets', preset.id);
         await setDoc(docRef, presetData);
