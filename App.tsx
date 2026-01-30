@@ -2231,8 +2231,8 @@ ${header.length + uint8Array.length + 20}
     if (windowWidth >= 1536) return 5;
     if (windowWidth >= 1280) return 4;
     if (windowWidth >= 1024) return 3;
-    if (windowWidth >= 768) return 2;
-    return 1;
+    if (windowWidth >= 400) return 2;  // スマホでも2列表示
+    return 1;  // 極小画面のみ1列
   }, [windowWidth]);
 
   useEffect(() => {
@@ -3236,7 +3236,7 @@ ${header.length + uint8Array.length + 20}
                     <div
                       key={`row-${rowData.row}`}
                       ref={rowIndex === 0 ? rowMeasureRef : undefined}
-                      className="flex flex-wrap gap-4 justify-center sm:justify-start"
+                      className="flex flex-wrap gap-4 justify-start"
                       style={{ minHeight: rowHeight, marginBottom: rowData.row === totalRows - 1 ? 0 : historyGridGap }}
                     >
                       {rowData.items.map((item) => (
