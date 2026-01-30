@@ -151,7 +151,11 @@ const App: React.FC = () => {
   const [mainTab, setMainTab] = useState<MainTabType>('front');
 
   const activePresetId = currentPresetIds[mainTab];
-  const presetsForSide = useMemo(() => presets.filter(p => p.side === mainTab), [presets, mainTab]);
+  // プリセット表示: mainTabが'common'や'assets'の場合はflyerSideでフィルタ
+  const presetsForSide = useMemo(() => {
+    const targetSide = (mainTab === 'front' || mainTab === 'back') ? mainTab : flyerSide;
+    return presets.filter(p => p.side === targetSide);
+  }, [presets, mainTab, flyerSide]);
   const createBlankProduct = () => ({
     id: uuidv4(),
     images: [],
@@ -1802,7 +1806,8 @@ ${header.length + uint8Array.length + 20}
       }
 
       const now = Date.now();
-      const presetSide = mainTab;
+      // プリセットのsideは常に'front'または'back'（mainTabが'common'や'assets'の場合はflyerSideを使用）
+      const presetSide = (mainTab === 'front' || mainTab === 'back') ? mainTab : flyerSide;
 
       const newPreset: Preset = {
         id: targetId,
