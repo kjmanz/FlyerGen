@@ -316,11 +316,19 @@ const App: React.FC = () => {
 
           if (cloudPresets.length > 0) {
             const presetsFromCloud: Preset[] = cloudPresets.map(p => {
-              const inferredSide = p.side || (p.frontFlyerType || p.campaignInfo || p.productServiceInfo || p.salesLetterInfo || p.salesLetterMode ? 'front' : 'back');
+              // sideが'front'/'back'以外の場合（'common'/'assets'等）は内容から推測
+              let inferredSide: 'front' | 'back';
+              if (p.side === 'front' || p.side === 'back') {
+                inferredSide = p.side;
+              } else if (p.frontFlyerType || p.campaignInfo || p.productServiceInfo || p.salesLetterInfo || p.salesLetterMode !== undefined) {
+                inferredSide = 'front';
+              } else {
+                inferredSide = 'back';
+              }
               return {
                 id: p.id,
                 name: p.name,
-                side: inferredSide === 'front' ? 'front' : 'back',
+                side: inferredSide,
                 products: Array.isArray(p.products) ? p.products : [],
                 settings: p.settings,
                 characterClothingMode: (p.characterClothingMode || 'fixed') as 'fixed' | 'match',
