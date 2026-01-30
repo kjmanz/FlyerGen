@@ -2331,9 +2331,16 @@ ${header.length + uint8Array.length + 20}
             <button
               onClick={() => setShowPresetList(!showPresetList)}
               className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-              title="プリセット"
+              title="プリセット読み込み"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
+            </button>
+            <button
+              onClick={() => setIsSaveModalOpen(true)}
+              className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+              title="プリセット保存"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
             </button>
             <button
               onClick={() => { setTempApiKey(apiKey); setTempReplicateApiKey(replicateApiKey); setIsSettingsOpen(true); }}
