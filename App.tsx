@@ -1405,18 +1405,6 @@ const App: React.FC = () => {
     }
   };
 
-  // 履歴から反対側の最新画像を参考デザインに追加
-  const handleLoadOppositeSideDesign = () => {
-    const targetType = mainTab === 'front' ? 'back' : 'front';
-    const latestItem = history.find(item => item.flyerType === targetType);
-    if (latestItem) {
-      setReferenceImages([latestItem.data]);
-      setSelectedReferenceIndex(0);
-    } else {
-      alert(`${targetType === 'front' ? '表面' : '裏面'}の生成履歴がありません。`);
-    }
-  };
-
   // Upscale handler
   const handleUpscale = async (item: GeneratedImage) => {
     if (item.isUpscaled) return;
@@ -2498,15 +2486,6 @@ ${header.length + uint8Array.length + 20}
                 selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
                 isCloudSync={firebaseEnabled}
               >
-                {/* Load opposite side design button */}
-                {(mainTab === 'front' || mainTab === 'back') && (
-                  <button
-                    onClick={handleLoadOppositeSideDesign}
-                    className="w-full mb-3 py-2 px-3 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-all flex items-center justify-center gap-1"
-                  >
-                    📋 {mainTab === 'front' ? '裏面' : '表面'}のデザインを読み込む
-                  </button>
-                )}
                 <ImageUploader label="参考" images={referenceImages} onImagesChange={handleReferenceImagesChange} />
                 <AssetSelectionGrid images={referenceImages} selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])} onToggleSelect={toggleReferenceImageSelection} onClearSelection={clearReferenceSelection} onReorder={reorderReferenceImages} onRemoveDuplicates={dedupeReferenceImages} accent="indigo" />
               </CompactAssetSection>
