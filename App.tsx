@@ -198,9 +198,6 @@ const App: React.FC = () => {
   // Campaign AI Generation State
   const [isGeneratingCampaign, setIsGeneratingCampaign] = useState(false);
 
-  // Opposite Side Reference Images (反対面参照用)
-  const [oppositeSideImage, setOppositeSideImage] = useState<string>('');
-  const [useOppositeSideReference, setUseOppositeSideReference] = useState(false);
 
   // Product/Service Introduction State (商品・サービス紹介)
   const [frontFlyerType, setFrontFlyerType] = useState<FrontFlyerType>('campaign');
@@ -1176,11 +1173,6 @@ const App: React.FC = () => {
       const selectedCustomerImages = customerImages.filter((_, idx) => selectedCustomerImageIndices.has(idx));
       const selectedProductImages = frontProductImages.filter((_, idx) => selectedFrontProductIndices.has(idx));
 
-      // Add opposite side reference if enabled
-      const referenceWithOpposite = useOppositeSideReference && oppositeSideImage
-        ? [...selectedReferenceImages, oppositeSideImage]
-        : selectedReferenceImages;
-
       let results: string[];
       let tags: string[];
 
@@ -1198,7 +1190,7 @@ const App: React.FC = () => {
                 selectedCustomerImages,
                 selectedStoreLogoImages,
                 selectedCustomIllustrations,
-                referenceWithOpposite,
+                selectedReferenceImages,
                 apiKey
               ),
               Promise.resolve(['表面', 'セールスレター', salesLetterInfo.productName].filter(Boolean))
@@ -1214,7 +1206,7 @@ const App: React.FC = () => {
                 selectedCustomerImages,
                 selectedStoreLogoImages,
                 selectedCustomIllustrations,
-                referenceWithOpposite,
+                selectedReferenceImages,
                 apiKey
               ),
               Promise.resolve(['表面', '商品紹介', productServiceInfo.title].filter(Boolean))
@@ -1231,7 +1223,7 @@ const App: React.FC = () => {
               selectedCustomerImages,
               selectedStoreLogoImages,
               selectedCustomIllustrations,
-              referenceWithOpposite,
+              selectedReferenceImages,
               apiKey
             ),
             Promise.resolve(['表面', campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
@@ -1240,7 +1232,7 @@ const App: React.FC = () => {
       } else {
         // 裏面生成処理（既存ロジック）
         [results, tags] = await Promise.all([
-          generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, referenceWithOpposite, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
+          generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, selectedReferenceImages, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
           generateTagsFromProducts(products, apiKey)
         ]);
         tags = ['裏面', ...tags];
@@ -1410,6 +1402,18 @@ const App: React.FC = () => {
       alert("アップロードに失敗しました。");
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  // 履歴から反対側の最新画像を参考デザインに追加
+  const handleLoadOppositeSideDesign = () => {
+    const targetType = mainTab === 'front' ? 'back' : 'front';
+    const latestItem = history.find(item => item.flyerType === targetType);
+    if (latestItem) {
+      setReferenceImages([latestItem.data]);
+      setSelectedReferenceIndex(0);
+    } else {
+      alert(`${targetType === 'front' ? '表面' : '裏面'}の生成履歴がありません。`);
     }
   };
 
@@ -2494,6 +2498,15 @@ ${header.length + uint8Array.length + 20}
                 selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
                 isCloudSync={firebaseEnabled}
               >
+                {/* Load opposite side design button */}
+                {(mainTab === 'front' || mainTab === 'back') && (
+                  <button
+                    onClick={handleLoadOppositeSideDesign}
+                    className="w-full mb-3 py-2 px-3 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-all flex items-center justify-center gap-1"
+                  >
+                    📋 {mainTab === 'front' ? '裏面' : '表面'}のデザインを読み込む
+                  </button>
+                )}
                 <ImageUploader label="参考" images={referenceImages} onImagesChange={handleReferenceImagesChange} />
                 <AssetSelectionGrid images={referenceImages} selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])} onToggleSelect={toggleReferenceImageSelection} onClearSelection={clearReferenceSelection} onReorder={reorderReferenceImages} onRemoveDuplicates={dedupeReferenceImages} accent="indigo" />
               </CompactAssetSection>
@@ -2950,32 +2963,6 @@ ${header.length + uint8Array.length + 20}
                     )}
                   </>
                 )}
-
-                {/* Reference Back Side for Consistency */}
-                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
-                  <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
-                    <label className="flex items-center gap-3 cursor-pointer mb-3">
-                      <input
-                        type="checkbox"
-                        checked={useOppositeSideReference}
-                        onChange={(e) => setUseOppositeSideReference(e.target.checked)}
-                        className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                      />
-                      <span className="text-sm font-semibold text-slate-700">裏面を参照して統一感を出す</span>
-                    </label>
-                    {useOppositeSideReference && (
-                      <div className="mt-3">
-                        <ImageUploader
-                          label="参照する裏面画像"
-                          images={oppositeSideImage ? [oppositeSideImage] : []}
-                          onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
-                          maxImages={1}
-                        />
-                        <p className="text-[10px] text-amber-600 mt-2">アップロードした裏面の画像を参考にして、デザインの統一感を持たせます。</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </>
             )}
 
@@ -3074,32 +3061,6 @@ ${header.length + uint8Array.length + 20}
                         apiKey={apiKey}
                       />
                     ))}
-                  </div>
-                </div>
-
-                {/* Reference Front Side for Consistency */}
-                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
-                  <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
-                    <label className="flex items-center gap-3 cursor-pointer mb-3">
-                      <input
-                        type="checkbox"
-                        checked={useOppositeSideReference}
-                        onChange={(e) => setUseOppositeSideReference(e.target.checked)}
-                        className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                      />
-                      <span className="text-sm font-semibold text-slate-700">表面を参照して統一感を出す</span>
-                    </label>
-                    {useOppositeSideReference && (
-                      <div className="mt-3">
-                        <ImageUploader
-                          label="参照する表面画像"
-                          images={oppositeSideImage ? [oppositeSideImage] : []}
-                          onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
-                          maxImages={1}
-                        />
-                        <p className="text-[10px] text-amber-600 mt-2">アップロードした表面の画像を参考にして、デザインの統一感を持たせます。</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </>
