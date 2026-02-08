@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Product, FlyerSettings, SpecSearchResult, CampaignInfo, ProductServiceInfo, ContentSections, ReviewSearchResult, SalesLetterInfo, SalesFramework } from "../types";
+import { Product, FlyerSettings, SpecSearchResult, CampaignInfo, ProductServiceInfo, ContentSections, ReviewSearchResult, SalesLetterInfo, SalesFramework, type BrandTone } from "../types";
 
 // Helper to get client instance with provided API key
 const getClient = (apiKey: string) => {
@@ -96,6 +96,42 @@ const inferAspectRatioFromDataUrl = async (
   }
 };
 
+const getBrandToneInstruction = (tone: BrandTone): string => {
+  if (tone === 'friendly') return '親しみやすく温かい';
+  if (tone === 'premium') return '高級感と上質感';
+  if (tone === 'energetic') return '元気で勢いのある';
+  return '誠実で信頼感のある';
+};
+
+const buildBrandRulesInstruction = (settings: FlyerSettings): string => {
+  const rules = settings.brandRules;
+  if (!rules?.enabled) {
+    return '';
+  }
+
+  const brandName = typeof rules.brandName === 'string' ? rules.brandName.trim() : '';
+  const requiredPhrases = Array.isArray(rules.requiredPhrases)
+    ? rules.requiredPhrases.map((item) => item.trim()).filter((item) => item.length > 0)
+    : [];
+  const forbiddenPhrases = Array.isArray(rules.forbiddenPhrases)
+    ? rules.forbiddenPhrases.map((item) => item.trim()).filter((item) => item.length > 0)
+    : [];
+  const primaryColor = rules.primaryColor || '#1d4ed8';
+  const secondaryColor = rules.secondaryColor || '#f59e0b';
+  const toneInstruction = getBrandToneInstruction(rules.tone || 'trust');
+
+  return `
+【★最優先★ ブランドルール固定】
+${brandName ? `- ブランド名: 「${brandName}」` : '- ブランド名: 指定なし'}
+- デザイントーン: ${toneInstruction}
+- 基本配色: メイン ${primaryColor} / 補助 ${secondaryColor}
+${requiredPhrases.length > 0 ? `- 必須フレーズ（必ずどこかに自然に入れる）: ${requiredPhrases.join(' / ')}` : ''}
+${forbiddenPhrases.length > 0 ? `- 禁止フレーズ（絶対に使用しない）: ${forbiddenPhrases.join(' / ')}` : ''}
+${rules.strictLogoPolicy ? '- ロゴは改変・再描画・色変更・縦横比変更を一切禁止し、提供ロゴをそのまま配置する。' : ''}
+- 上記ブランドルールは、他の追加指示より優先して厳守すること。
+`;
+};
+
 export const searchProductSpecs = async (productCode: string, apiKey: string): Promise<SpecSearchResult> => {
   const ai = getClient(apiKey);
 
@@ -176,6 +212,8 @@ export const generateFlyerImage = async (
   customIllustrations: string[],
   apiKey: string
 ): Promise<string[]> => {
+  const brandRulesInstruction = buildBrandRulesInstruction(settings);
+
   // Background instruction logic
   let backgroundInstruction: string;
   if (settings.backgroundMode === 'white') {
@@ -252,6 +290,9 @@ export const generateFlyerImage = async (
 
   if (settings.additionalInstructions) {
     prompt += `\n【追加指示】\n${settings.additionalInstructions}`;
+  }
+  if (brandRulesInstruction) {
+    prompt += `\n${brandRulesInstruction}`;
   }
 
   // Character clothing instruction
@@ -958,6 +999,8 @@ export const generateFrontFlyerImage = async (
   referenceImages: string[],
   apiKey: string
 ): Promise<string[]> => {
+  const brandRulesInstruction = buildBrandRulesInstruction(settings);
+
   // Background instruction logic
   let backgroundInstruction: string;
   if (settings.backgroundMode === 'white') {
@@ -1074,6 +1117,9 @@ ${referenceImages.length > 0 ? `
 
   if (settings.additionalInstructions) {
     prompt += `\n【追加指示】\n${settings.additionalInstructions}`;
+  }
+  if (brandRulesInstruction) {
+    prompt += `\n${brandRulesInstruction}`;
   }
 
   // Prepare content parts
@@ -1295,6 +1341,8 @@ export const generateProductServiceFlyer = async (
   referenceImages: string[],
   apiKey: string
 ): Promise<string[]> => {
+  const brandRulesInstruction = buildBrandRulesInstruction(settings);
+
   // Background instruction logic
   let backgroundInstruction: string;
   if (settings.backgroundMode === 'white') {
@@ -1447,6 +1495,9 @@ ${referenceImages.length > 0 ? `
 
   if (settings.additionalInstructions) {
     prompt += `\n【追加指示】\n${settings.additionalInstructions}`;
+  }
+  if (brandRulesInstruction) {
+    prompt += `\n${brandRulesInstruction}`;
   }
 
   // Prepare content parts
@@ -1760,6 +1811,8 @@ export const generateSalesLetterFlyer = async (
   referenceImages: string[],
   apiKey: string
 ): Promise<string[]> => {
+  const brandRulesInstruction = buildBrandRulesInstruction(settings);
+
   // Background instruction
   let backgroundInstruction: string;
   if (settings.backgroundMode === 'white') {
@@ -1881,6 +1934,9 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
 
   if (settings.additionalInstructions) {
     prompt += `\n【追加指示】\n${settings.additionalInstructions}`;
+  }
+  if (brandRulesInstruction) {
+    prompt += `\n${brandRulesInstruction}`;
   }
 
   // Prepare content parts

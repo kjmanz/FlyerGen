@@ -15,6 +15,18 @@ export interface Product {
 export type ImageSize = '1K' | '2K' | '4K';
 export type AspectRatio = '3:4' | '4:3'; // Mapping A4 Vertical/Horizontal
 export type QualityCheckStatus = 'pending' | 'pass' | 'warn' | 'fail' | 'error';
+export type BrandTone = 'friendly' | 'trust' | 'premium' | 'energetic';
+
+export interface BrandRules {
+  enabled: boolean;
+  brandName: string;
+  tone: BrandTone;
+  primaryColor: string;
+  secondaryColor: string;
+  requiredPhrases: string[];
+  forbiddenPhrases: string[];
+  strictLogoPolicy: boolean;
+}
 
 export interface ImageQualityCheck {
   status: QualityCheckStatus;
@@ -32,6 +44,7 @@ export interface FlyerSettings {
   flyerTitle?: string; // Optional flyer title
   logoPosition: 'full-bottom' | 'right-bottom'; // New: Logo position mode
   additionalInstructions: string;
+  brandRules?: BrandRules;
 }
 
 export interface SpecSearchResult {

@@ -1,7 +1,7 @@
 import React, { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type ImageQualityCheck } from './types';
+import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type BrandRules, type ImageQualityCheck } from './types';
 import { ImageUploader } from './components/ImageUploader';
 import type { EditRegion } from './components/ImageEditModal';
 import { MainTabs, MainTabType } from './components/MainTabs';
@@ -72,6 +72,51 @@ const DB_KEY_API_KEY = 'flyergen_api_key';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
 const UPSCALE_SCALE = 4;
 
+const createDefaultBrandRules = (): BrandRules => ({
+  enabled: false,
+  brandName: '',
+  tone: 'trust',
+  primaryColor: '#1d4ed8',
+  secondaryColor: '#f59e0b',
+  requiredPhrases: [],
+  forbiddenPhrases: [],
+  strictLogoPolicy: true
+});
+
+const normalizeBrandRules = (rules?: Partial<BrandRules> | null): BrandRules => {
+  const next = rules || {};
+  const normalizeList = (items: unknown) => (
+    Array.isArray(items)
+      ? items
+          .map((item) => (typeof item === 'string' ? item.trim() : ''))
+          .filter((item) => item.length > 0)
+      : []
+  );
+
+  return {
+    enabled: !!next.enabled,
+    brandName: typeof next.brandName === 'string' ? next.brandName : '',
+    tone: next.tone === 'friendly' || next.tone === 'premium' || next.tone === 'energetic' ? next.tone : 'trust',
+    primaryColor: typeof next.primaryColor === 'string' && next.primaryColor ? next.primaryColor : '#1d4ed8',
+    secondaryColor: typeof next.secondaryColor === 'string' && next.secondaryColor ? next.secondaryColor : '#f59e0b',
+    requiredPhrases: normalizeList(next.requiredPhrases),
+    forbiddenPhrases: normalizeList(next.forbiddenPhrases),
+    strictLogoPolicy: next.strictLogoPolicy !== undefined ? !!next.strictLogoPolicy : true
+  };
+};
+
+const createDefaultSettings = (): FlyerSettings => ({
+  orientation: 'vertical',
+  imageSize: '2K',
+  patternCount: 1,
+  backgroundMode: 'creative',
+  customBackground: '',
+  flyerTitle: '',
+  logoPosition: 'full-bottom',
+  additionalInstructions: '',
+  brandRules: createDefaultBrandRules()
+});
+
 type GenerationJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'canceled';
 
 type GenerationJobSnapshot = {
@@ -132,14 +177,7 @@ const App: React.FC = () => {
   const [selectedReferenceIndex, setSelectedReferenceIndex] = useState<number | null>(null);
   const [storeLogoImages, setStoreLogoImages] = useState<string[]>([]);
   const [selectedLogoIndices, setSelectedLogoIndices] = useState<Set<number>>(new Set());
-  const [settings, setSettings] = useState<FlyerSettings>({
-    orientation: 'vertical',
-    imageSize: '2K',
-    patternCount: 1,
-    backgroundMode: 'creative',
-    logoPosition: 'full-bottom',
-    additionalInstructions: ''
-  });
+  const [settings, setSettings] = useState<FlyerSettings>(createDefaultSettings);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationQueue, setGenerationQueue] = useState<GenerationJob[]>([]);
   const [activeGenerationJobId, setActiveGenerationJobId] = useState<string | null>(null);
@@ -2266,15 +2304,17 @@ ${header.length + uint8Array.length + 20}
     }
 
     // Ensure settings has all required fields with defaults
+    const defaultSettings = createDefaultSettings();
     setSettings({
-      orientation: data.settings?.orientation || 'vertical',
-      imageSize: data.settings?.imageSize || '2K',
-      patternCount: data.settings?.patternCount || 1,
-      backgroundMode: data.settings?.backgroundMode || 'creative',
-      customBackground: data.settings?.customBackground || '',
-      flyerTitle: data.settings?.flyerTitle || '',
-      logoPosition: data.settings?.logoPosition || 'full-bottom',
-      additionalInstructions: data.settings?.additionalInstructions || ''
+      orientation: data.settings?.orientation || defaultSettings.orientation,
+      imageSize: data.settings?.imageSize || defaultSettings.imageSize,
+      patternCount: data.settings?.patternCount || defaultSettings.patternCount,
+      backgroundMode: data.settings?.backgroundMode || defaultSettings.backgroundMode,
+      customBackground: data.settings?.customBackground || defaultSettings.customBackground,
+      flyerTitle: data.settings?.flyerTitle || defaultSettings.flyerTitle,
+      logoPosition: data.settings?.logoPosition || defaultSettings.logoPosition,
+      additionalInstructions: data.settings?.additionalInstructions || defaultSettings.additionalInstructions,
+      brandRules: normalizeBrandRules(data.settings?.brandRules)
     });
 
     // Load front side fields
@@ -2339,16 +2379,7 @@ ${header.length + uint8Array.length + 20}
       // Note: characterImages are NOT cleared - they are synced independently from cloud
       // Note: referenceImages are NOT cleared - they are synced independently from cloud
       // Note: storeLogoImages are NOT cleared - they are synced independently from cloud
-      setSettings({
-        orientation: 'vertical',
-        imageSize: '2K',
-        patternCount: 1,
-        backgroundMode: 'creative',
-        customBackground: '',
-        flyerTitle: '',
-        logoPosition: 'full-bottom',
-        additionalInstructions: ''
-      });
+      setSettings(createDefaultSettings());
       setCurrentPresetIds(prev => ({ ...prev, [mainTab]: null }));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -2729,6 +2760,21 @@ ${header.length + uint8Array.length + 20}
     [generationQueue]
   );
 
+  const activeBrandRules = useMemo(
+    () => normalizeBrandRules(settings.brandRules),
+    [settings.brandRules]
+  );
+
+  const updateBrandRules = useCallback((patch: Partial<BrandRules>) => {
+    setSettings((prev) => ({
+      ...prev,
+      brandRules: {
+        ...normalizeBrandRules(prev.brandRules),
+        ...patch
+      }
+    }));
+  }, []);
+
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
@@ -2864,6 +2910,105 @@ ${header.length + uint8Array.length + 20}
                   className="mt-2 w-full text-sm border border-slate-200 rounded-md py-2 px-2"
                 />
               )}
+            </div>
+
+            {/* Brand Rules */}
+            <div className="rounded-md border border-slate-200 bg-slate-50/60 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-slate-500">ブランドルール固定</label>
+                <button
+                  onClick={() => updateBrandRules({ enabled: !activeBrandRules.enabled })}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${activeBrandRules.enabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                  title="ブランドルールを有効化"
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeBrandRules.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={activeBrandRules.brandName}
+                  onChange={(e) => updateBrandRules({ brandName: e.target.value })}
+                  placeholder="ブランド名（例: ○○電器）"
+                  className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
+                  disabled={!activeBrandRules.enabled}
+                />
+
+                <select
+                  value={activeBrandRules.tone}
+                  onChange={(e) => updateBrandRules({ tone: e.target.value as BrandRules['tone'] })}
+                  className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
+                  disabled={!activeBrandRules.enabled}
+                >
+                  <option value="trust">信頼感</option>
+                  <option value="friendly">親しみやすさ</option>
+                  <option value="premium">高級感</option>
+                  <option value="energetic">元気・活気</option>
+                </select>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-[10px] text-slate-500">
+                    メイン色
+                    <input
+                      type="color"
+                      value={activeBrandRules.primaryColor}
+                      onChange={(e) => updateBrandRules({ primaryColor: e.target.value })}
+                      className="mt-1 h-8 w-full rounded border border-slate-200 bg-white"
+                      disabled={!activeBrandRules.enabled}
+                    />
+                  </label>
+                  <label className="text-[10px] text-slate-500">
+                    補助色
+                    <input
+                      type="color"
+                      value={activeBrandRules.secondaryColor}
+                      onChange={(e) => updateBrandRules({ secondaryColor: e.target.value })}
+                      className="mt-1 h-8 w-full rounded border border-slate-200 bg-white"
+                      disabled={!activeBrandRules.enabled}
+                    />
+                  </label>
+                </div>
+
+                <textarea
+                  rows={2}
+                  value={activeBrandRules.requiredPhrases.join('\n')}
+                  onChange={(e) => updateBrandRules({
+                    requiredPhrases: e.target.value
+                      .split(/\n|,|、/)
+                      .map((text) => text.trim())
+                      .filter((text) => text.length > 0)
+                  })}
+                  placeholder="必須フレーズ（改行で複数）"
+                  className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
+                  disabled={!activeBrandRules.enabled}
+                />
+
+                <textarea
+                  rows={2}
+                  value={activeBrandRules.forbiddenPhrases.join('\n')}
+                  onChange={(e) => updateBrandRules({
+                    forbiddenPhrases: e.target.value
+                      .split(/\n|,|、/)
+                      .map((text) => text.trim())
+                      .filter((text) => text.length > 0)
+                  })}
+                  placeholder="禁止フレーズ（改行で複数）"
+                  className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
+                  disabled={!activeBrandRules.enabled}
+                />
+
+                <label className="flex items-center gap-2 text-[10px] text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={activeBrandRules.strictLogoPolicy}
+                    onChange={(e) => updateBrandRules({ strictLogoPolicy: e.target.checked })}
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600"
+                    disabled={!activeBrandRules.enabled}
+                  />
+                  ロゴ改変を絶対禁止（強制）
+                </label>
+              </div>
             </div>
           </div>
 
