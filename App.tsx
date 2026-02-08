@@ -225,6 +225,9 @@ const App: React.FC = () => {
   // Campaign AI Generation State
   const [isGeneratingCampaign, setIsGeneratingCampaign] = useState(false);
 
+  // Opposite Side Reference Images (反対面参照用)
+  const [oppositeSideImage, setOppositeSideImage] = useState<string>('');
+  const [useOppositeSideReference, setUseOppositeSideReference] = useState(false);
 
   // Product/Service Introduction State (商品・サービス紹介)
   const [frontFlyerType, setFrontFlyerType] = useState<FrontFlyerType>('campaign');
