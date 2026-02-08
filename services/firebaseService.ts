@@ -133,6 +133,10 @@ export interface CloudImage {
     isEdited?: boolean;
     is4KRegenerated?: boolean;
     imageSize?: '1K' | '2K' | '4K';
+    qualityStatus?: 'pass' | 'warn' | 'fail' | 'error';
+    qualityIssues?: string[];
+    qualitySummary?: string;
+    qualityCheckedAt?: number;
     createdAt: number;
 }
 
@@ -173,7 +177,20 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
         ]);
 
         // Build metadata map
-        const metadataMap = new Map<string, { tags?: string[]; isFavorite?: boolean; isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean; imageSize?: '1K' | '2K' | '4K'; createdAt?: number }>();
+        const metadataMap = new Map<string, {
+            tags?: string[];
+            isFavorite?: boolean;
+            isUpscaled?: boolean;
+            upscaleScale?: number;
+            isEdited?: boolean;
+            is4KRegenerated?: boolean;
+            imageSize?: '1K' | '2K' | '4K';
+            qualityStatus?: 'pass' | 'warn' | 'fail' | 'error';
+            qualityIssues?: string[];
+            qualitySummary?: string;
+            qualityCheckedAt?: number;
+            createdAt?: number;
+        }>();
         if (metadataSnapshot) {
             metadataSnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -185,6 +202,10 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                     isEdited: data.isEdited,
                     is4KRegenerated: data.is4KRegenerated,
                     imageSize: data.imageSize,
+                    qualityStatus: data.qualityStatus,
+                    qualityIssues: data.qualityIssues,
+                    qualitySummary: data.qualitySummary,
+                    qualityCheckedAt: data.qualityCheckedAt,
                     createdAt: data.createdAt
                 });
             });
@@ -228,6 +249,10 @@ export const getCloudImages = async (): Promise<CloudImage[]> => {
                 isEdited: metadata?.isEdited,
                 is4KRegenerated: metadata?.is4KRegenerated,
                 imageSize: metadata?.imageSize,
+                qualityStatus: metadata?.qualityStatus,
+                qualityIssues: metadata?.qualityIssues,
+                qualitySummary: metadata?.qualitySummary,
+                qualityCheckedAt: metadata?.qualityCheckedAt,
                 createdAt: timestamp
             };
         });
@@ -281,6 +306,10 @@ export interface FlyerMetadata {
     isEdited?: boolean;
     is4KRegenerated?: boolean;
     imageSize?: '1K' | '2K' | '4K';
+    qualityStatus?: 'pass' | 'warn' | 'fail' | 'error';
+    qualityIssues?: string[];
+    qualitySummary?: string;
+    qualityCheckedAt?: number;
     createdAt: number;
 }
 
@@ -289,7 +318,17 @@ export const saveFlyerMetadata = async (
     id: string,
     tags: string[],
     createdAt: number,
-    options?: { isUpscaled?: boolean; upscaleScale?: number; isEdited?: boolean; is4KRegenerated?: boolean; imageSize?: '1K' | '2K' | '4K' }
+    options?: {
+        isUpscaled?: boolean;
+        upscaleScale?: number;
+        isEdited?: boolean;
+        is4KRegenerated?: boolean;
+        imageSize?: '1K' | '2K' | '4K';
+        qualityStatus?: 'pass' | 'warn' | 'fail' | 'error';
+        qualityIssues?: string[];
+        qualitySummary?: string;
+        qualityCheckedAt?: number;
+    }
 ): Promise<boolean> => {
     if (!db) return false;
     try {
@@ -302,6 +341,10 @@ export const saveFlyerMetadata = async (
             ...(options?.isEdited !== undefined && { isEdited: options.isEdited }),
             ...(options?.is4KRegenerated !== undefined && { is4KRegenerated: options.is4KRegenerated }),
             ...(options?.imageSize !== undefined && { imageSize: options.imageSize }),
+            ...(options?.qualityStatus !== undefined && { qualityStatus: options.qualityStatus }),
+            ...(options?.qualityIssues !== undefined && { qualityIssues: options.qualityIssues }),
+            ...(options?.qualitySummary !== undefined && { qualitySummary: options.qualitySummary }),
+            ...(options?.qualityCheckedAt !== undefined && { qualityCheckedAt: options.qualityCheckedAt }),
             updatedAt: Date.now()
         });
         return true;
@@ -374,6 +417,30 @@ export const updateFlyerUpscaleStatus = async (
         return true;
     } catch (e) {
         console.error('Update flyer upscale status error:', e);
+        return false;
+    }
+};
+
+// Update quality check result for a specific flyer
+export const updateFlyerQualityCheck = async (
+    id: string,
+    qualityStatus: 'pass' | 'warn' | 'fail' | 'error',
+    qualityIssues: string[],
+    qualitySummary: string,
+    qualityCheckedAt: number
+): Promise<boolean> => {
+    if (!db) return false;
+    try {
+        await setDoc(doc(db, 'flyer_metadata', id), {
+            qualityStatus,
+            qualityIssues,
+            qualitySummary,
+            qualityCheckedAt,
+            updatedAt: Date.now()
+        }, { merge: true });
+        return true;
+    } catch (e) {
+        console.error('Update flyer quality check error:', e);
         return false;
     }
 };

@@ -7,6 +7,13 @@ const getClient = (apiKey: string) => {
 };
 
 type GeminiAspectRatio = '3:4' | '4:3';
+export type FlyerQualityStatus = 'pass' | 'warn' | 'fail';
+
+export interface FlyerQualityCheckResult {
+  status: FlyerQualityStatus;
+  summary: string;
+  issues: string[];
+}
 
 const isValidAspectRatio = (value?: string | null): value is GeminiAspectRatio => (
   value === '3:4' || value === '4:3'
@@ -563,6 +570,101 @@ export const generateTagsFromImage = async (
   } catch (error) {
     console.error("Image tag generation failed:", error);
     return [];
+  }
+};
+
+const toQualityStatus = (value: unknown): FlyerQualityStatus => {
+  if (value === 'pass' || value === 'warn' || value === 'fail') {
+    return value;
+  }
+  return 'warn';
+};
+
+const toQualityIssues = (issues: unknown): string[] => {
+  if (!Array.isArray(issues)) return [];
+  return issues
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => item.length > 0)
+    .slice(0, 5);
+};
+
+// Check generated flyer quality (OCR readability / typo / price notation)
+export const checkFlyerQuality = async (
+  imageUrl: string,
+  apiKey: string
+): Promise<FlyerQualityCheckResult> => {
+  const ai = getClient(apiKey);
+
+  const prompt = `
+あなたは日本語チラシの品質検査担当です。
+添付画像をチェックし、以下の観点で判定してください。
+
+【チェック観点】
+1. 文字崩れ・読めない文字・欠け
+2. 明らかな誤字脱字・意味不明な文
+3. 価格表記の異常（円表記、税込表記、桁区切り）
+4. 文字の可読性不足（背景とのコントラスト不足）
+
+【出力ルール】
+- status は pass / warn / fail のいずれか
+- pass: 重大な問題なし
+- warn: 修正推奨の問題が1〜2件
+- fail: 重大な問題（文字が読めない、価格表記が破綻など）
+- issues は具体的な指摘を最大5件
+- summary は20文字以内の要約
+`;
+
+  try {
+    const imageDataUrl = await normalizeImageToDataUrl(imageUrl);
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        { text: prompt },
+        toInlineImageData(imageDataUrl)
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            status: { type: Type.STRING },
+            summary: { type: Type.STRING },
+            issues: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
+          },
+          required: ["status", "summary", "issues"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      return {
+        status: 'warn',
+        summary: '判定未取得',
+        issues: ['品質チェック結果を取得できませんでした']
+      };
+    }
+
+    const parsed = JSON.parse(text) as { status?: unknown; summary?: unknown; issues?: unknown };
+    const status = toQualityStatus(parsed.status);
+    const summary = typeof parsed.summary === 'string' && parsed.summary.trim().length > 0
+      ? parsed.summary.trim()
+      : status === 'pass'
+        ? '品質良好'
+        : '要確認';
+    const issues = toQualityIssues(parsed.issues);
+
+    return { status, summary, issues };
+  } catch (error) {
+    console.error("Flyer quality check failed:", error);
+    return {
+      status: 'warn',
+      summary: '判定失敗',
+      issues: ['品質チェック中にエラーが発生しました']
+    };
   }
 };
 

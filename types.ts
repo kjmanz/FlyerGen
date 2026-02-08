@@ -14,6 +14,14 @@ export interface Product {
 
 export type ImageSize = '1K' | '2K' | '4K';
 export type AspectRatio = '3:4' | '4:3'; // Mapping A4 Vertical/Horizontal
+export type QualityCheckStatus = 'pending' | 'pass' | 'warn' | 'fail' | 'error';
+
+export interface ImageQualityCheck {
+  status: QualityCheckStatus;
+  summary?: string;
+  issues: string[];
+  checkedAt: number;
+}
 
 export interface FlyerSettings {
   orientation: 'vertical' | 'horizontal'; // vertical -> 3:4, horizontal -> 4:3
@@ -47,6 +55,7 @@ export interface GeneratedImage {
   isEdited?: boolean; // Flag to indicate if image has been edited
   is4KRegenerated?: boolean; // Flag to indicate if image has been regenerated at 4K
   flyerType?: 'front' | 'back'; // 表面 or 裏面
+  qualityCheck?: ImageQualityCheck;
 }
 
 // 表面用キャンペーン情報
