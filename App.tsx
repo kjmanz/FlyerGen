@@ -72,6 +72,39 @@ const DB_KEY_API_KEY = 'flyergen_api_key';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
 const UPSCALE_SCALE = 4;
 
+type GenerationJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'canceled';
+
+type GenerationJobSnapshot = {
+  apiKey: string;
+  flyerSide: 'front' | 'back';
+  frontFlyerType: FrontFlyerType;
+  salesLetterMode: boolean;
+  settings: FlyerSettings;
+  products: Product[];
+  characterClothingMode: 'fixed' | 'match';
+  salesLetterInfo: SalesLetterInfo;
+  productServiceInfo: ProductServiceInfo;
+  campaignInfo: CampaignInfo;
+  selectedCharacterImages: string[];
+  selectedReferenceImages: string[];
+  selectedStoreLogoImages: string[];
+  selectedCustomIllustrations: string[];
+  selectedCustomerImages: string[];
+  selectedProductImages: string[];
+};
+
+type GenerationJob = {
+  id: string;
+  status: GenerationJobStatus;
+  createdAt: number;
+  updatedAt: number;
+  progress: number;
+  message: string;
+  side: 'front' | 'back';
+  snapshot: GenerationJobSnapshot;
+  error?: string;
+};
+
 const sameStringArray = (a: string[], b: string[]) => {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) {
@@ -79,6 +112,8 @@ const sameStringArray = (a: string[], b: string[]) => {
   }
   return true;
 };
+
+const deepClone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 // Initialize Firebase on app load
 const firebaseEnabled = initFirebase();
@@ -106,6 +141,9 @@ const App: React.FC = () => {
     additionalInstructions: ''
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationQueue, setGenerationQueue] = useState<GenerationJob[]>([]);
+  const [activeGenerationJobId, setActiveGenerationJobId] = useState<string | null>(null);
+  const cancelRequestedGenerationJobsRef = useRef<Set<string>>(new Set());
 
   // History State
   const [history, setHistory] = useState<GeneratedImage[]>([]);
@@ -1207,7 +1245,7 @@ const App: React.FC = () => {
   };
 
   // Thumbnail generation helper - optimized with createImageBitmap + requestIdleCallback
-  const createThumbnail = (base64: string, maxWidth = 300): Promise<string> => {
+  const createThumbnail = useCallback((base64: string, maxWidth = 300): Promise<string> => {
     return new Promise((resolve) => {
       // Use requestIdleCallback to avoid blocking the main thread
       const processImage = async () => {
@@ -1247,7 +1285,7 @@ const App: React.FC = () => {
         setTimeout(() => processImage(), 0);
       }
     });
-  };
+  }, []);
 
   const setQualityCheckForImage = useCallback((imageId: string, qualityCheck: ImageQualityCheck) => {
     setHistory((prev) => {
@@ -1264,8 +1302,9 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const runQualityChecksForItems = useCallback(async (items: GeneratedImage[]) => {
-    if (!apiKey || items.length === 0) return;
+  const runQualityChecksForItems = useCallback(async (items: GeneratedImage[], apiKeyOverride?: string) => {
+    const effectiveApiKey = apiKeyOverride || apiKey;
+    if (!effectiveApiKey || items.length === 0) return;
 
     const targets = items.filter((item) => !!item.data);
     if (targets.length === 0) return;
@@ -1284,7 +1323,7 @@ const App: React.FC = () => {
 
     await Promise.all(targets.map(async (item) => {
       try {
-        const result = await gemini.checkFlyerQuality(item.data, apiKey);
+        const result = await gemini.checkFlyerQuality(item.data, effectiveApiKey);
         const checkedAt = Date.now();
         const qualityCheck: ImageQualityCheck = {
           status: result.status,
@@ -1329,155 +1368,316 @@ const App: React.FC = () => {
     }));
   }, [apiKey, firebaseEnabled, setQualityCheckForImage]);
 
-  const handleGenerate = async () => {
-    if (!apiKey) {
-      setIsSettingsOpen(true);
-      alert("APIキーが設定されていません。設定画面からGemini APIキーを入力してください。");
-      return;
-    }
+  const patchGenerationJob = useCallback((jobId: string, patch: Partial<GenerationJob>) => {
+    setGenerationQueue((prev) => prev.map((job) => (
+      job.id === jobId
+        ? { ...job, ...patch, updatedAt: Date.now() }
+        : job
+    )));
+  }, []);
 
-    // Confirmation dialog to prevent accidental clicks
-    const sideLabel = flyerSide === 'front' ? '表面' : '裏面';
-    if (!window.confirm(`${sideLabel}チラシを作成しますか？`)) {
-      return;
-    }
+  const executeGenerationJob = useCallback(async (job: GenerationJob) => {
+    const jobId = job.id;
+    const isCancellationRequested = () => cancelRequestedGenerationJobsRef.current.has(jobId);
 
-    setIsGenerating(true);
+    patchGenerationJob(jobId, { status: 'running', progress: 5, message: '生成準備中', error: undefined });
 
     try {
       const gemini = await loadGeminiService();
+      const snapshot = job.snapshot;
 
-      // Filter images to only include selected ones
-      const selectedCharacterImages = characterImages.filter((_, idx) => selectedCharacterIndices.has(idx));
-      const selectedReferenceImages = selectedReferenceIndex !== null ? [referenceImages[selectedReferenceIndex]] : [];
-      const selectedStoreLogoImages = storeLogoImages.filter((_, idx) => selectedLogoIndices.has(idx));
-      const selectedCustomIllustrations = customIllustrations.filter((_, idx) => selectedCustomIllustrationIndices.has(idx));
-      const selectedCustomerImages = customerImages.filter((_, idx) => selectedCustomerImageIndices.has(idx));
-      const selectedProductImages = frontProductImages.filter((_, idx) => selectedFrontProductIndices.has(idx));
-      const referenceWithOpposite = useOppositeSideReference && oppositeSideImage
-        ? [...selectedReferenceImages, oppositeSideImage]
-        : selectedReferenceImages;
+      if (isCancellationRequested()) {
+        patchGenerationJob(jobId, { status: 'canceled', progress: 0, message: 'キャンセル済み' });
+        return;
+      }
+
+      patchGenerationJob(jobId, { progress: 20, message: 'AI生成中' });
 
       let results: string[];
       let tags: string[];
 
-      if (flyerSide === 'front') {
-        // 表面生成処理
-        if (frontFlyerType === 'product-service') {
-          if (salesLetterMode) {
-            // セールスレターモード
+      if (snapshot.flyerSide === 'front') {
+        if (snapshot.frontFlyerType === 'product-service') {
+          if (snapshot.salesLetterMode) {
             [results, tags] = await Promise.all([
               gemini.generateSalesLetterFlyer(
-                salesLetterInfo,
-                settings,
-                selectedProductImages,
-                selectedCharacterImages,
-                selectedCustomerImages,
-                selectedStoreLogoImages,
-                selectedCustomIllustrations,
-                referenceWithOpposite,
-                apiKey
+                snapshot.salesLetterInfo,
+                snapshot.settings,
+                snapshot.selectedProductImages,
+                snapshot.selectedCharacterImages,
+                snapshot.selectedCustomerImages,
+                snapshot.selectedStoreLogoImages,
+                snapshot.selectedCustomIllustrations,
+                snapshot.selectedReferenceImages,
+                snapshot.apiKey
               ),
-              Promise.resolve(['表面', 'セールスレター', salesLetterInfo.productName].filter(Boolean))
+              Promise.resolve(['表面', 'セールスレター', snapshot.salesLetterInfo.productName].filter(Boolean))
             ]);
           } else {
-            // 商品・サービス紹介モード（通常）
             [results, tags] = await Promise.all([
               gemini.generateProductServiceFlyer(
-                productServiceInfo,
-                settings,
-                selectedProductImages,
-                selectedCharacterImages,
-                selectedCustomerImages,
-                selectedStoreLogoImages,
-                selectedCustomIllustrations,
-                referenceWithOpposite,
-                apiKey
+                snapshot.productServiceInfo,
+                snapshot.settings,
+                snapshot.selectedProductImages,
+                snapshot.selectedCharacterImages,
+                snapshot.selectedCustomerImages,
+                snapshot.selectedStoreLogoImages,
+                snapshot.selectedCustomIllustrations,
+                snapshot.selectedReferenceImages,
+                snapshot.apiKey
               ),
-              Promise.resolve(['表面', '商品紹介', productServiceInfo.title].filter(Boolean))
+              Promise.resolve(['表面', '商品紹介', snapshot.productServiceInfo.title].filter(Boolean))
             ]);
           }
         } else {
-          // キャンペーン訴求モード
           [results, tags] = await Promise.all([
             gemini.generateFrontFlyerImage(
-              campaignInfo,
-              settings,
-              selectedProductImages,
-              selectedCharacterImages,
-              selectedCustomerImages,
-              selectedStoreLogoImages,
-              selectedCustomIllustrations,
-              referenceWithOpposite,
-              apiKey
+              snapshot.campaignInfo,
+              snapshot.settings,
+              snapshot.selectedProductImages,
+              snapshot.selectedCharacterImages,
+              snapshot.selectedCustomerImages,
+              snapshot.selectedStoreLogoImages,
+              snapshot.selectedCustomIllustrations,
+              snapshot.selectedReferenceImages,
+              snapshot.apiKey
             ),
-            Promise.resolve(['表面', campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
+            Promise.resolve(['表面', snapshot.campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
           ]);
         }
       } else {
-        // 裏面生成処理（既存ロジック）
         [results, tags] = await Promise.all([
-          gemini.generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, referenceWithOpposite, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
-          gemini.generateTagsFromProducts(products, apiKey)
+          gemini.generateFlyerImage(
+            snapshot.products,
+            snapshot.settings,
+            snapshot.selectedCharacterImages,
+            snapshot.characterClothingMode,
+            snapshot.selectedReferenceImages,
+            snapshot.selectedStoreLogoImages,
+            snapshot.selectedCustomIllustrations,
+            snapshot.apiKey
+          ),
+          gemini.generateTagsFromProducts(snapshot.products, snapshot.apiKey)
         ]);
         tags = ['裏面', ...tags];
       }
 
-      const newItems: GeneratedImage[] = [];
+      if (isCancellationRequested()) {
+        patchGenerationJob(jobId, { status: 'canceled', progress: 0, message: 'キャンセル済み' });
+        return;
+      }
 
-      for (const data of results) {
+      const newItems: GeneratedImage[] = [];
+      const totalResults = Math.max(results.length, 1);
+
+      for (let index = 0; index < results.length; index += 1) {
+        if (isCancellationRequested()) {
+          patchGenerationJob(jobId, { status: 'canceled', progress: 0, message: 'キャンセル済み' });
+          return;
+        }
+
+        const data = results[index];
         const id = uuidv4();
         const timestamp = Date.now();
-
-        // Generate thumbnail
         const thumbnailData = await createThumbnail(data);
 
-        // Upload to Firebase if enabled
         if (firebaseEnabled) {
           const filename = `flyer_${timestamp}_${id}.png`;
           const thumbFilename = `flyer_${timestamp}_${id}_thumb.jpg`;
-
-          // Upload both full image and thumbnail in parallel
           const [cloudUrl, thumbUrl] = await Promise.all([
             uploadImage(data, filename),
             uploadImage(thumbnailData, thumbFilename)
           ]);
 
           if (cloudUrl) {
-            // Save metadata (tags) to Firestore
-            await saveFlyerMetadata(filename, tags, timestamp, { imageSize: settings.imageSize });
-
+            await saveFlyerMetadata(filename, tags, timestamp, { imageSize: snapshot.settings.imageSize });
             newItems.push({
-              id: filename, // Use filename as ID to match Firestore
+              id: filename,
               data: cloudUrl,
               thumbnail: thumbUrl || thumbnailData,
               tags,
-              flyerType: flyerSide,
+              flyerType: snapshot.flyerSide,
               createdAt: timestamp,
-              imageSize: settings.imageSize
+              imageSize: snapshot.settings.imageSize
             });
           } else {
-            // Fallback to local if upload fails
-            newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp, imageSize: settings.imageSize });
+            newItems.push({
+              id,
+              data,
+              thumbnail: thumbnailData,
+              tags,
+              flyerType: snapshot.flyerSide,
+              createdAt: timestamp,
+              imageSize: snapshot.settings.imageSize
+            });
           }
         } else {
-          newItems.push({ id, data, thumbnail: thumbnailData, tags, flyerType: flyerSide, createdAt: timestamp, imageSize: settings.imageSize });
+          newItems.push({
+            id,
+            data,
+            thumbnail: thumbnailData,
+            tags,
+            flyerType: snapshot.flyerSide,
+            createdAt: timestamp,
+            imageSize: snapshot.settings.imageSize
+          });
         }
+
+        const progress = 35 + Math.round(((index + 1) / totalResults) * 60);
+        patchGenerationJob(jobId, { progress, message: `保存処理 ${index + 1}/${totalResults}` });
       }
 
-      const updatedHistory = [...newItems, ...history];
-      setHistory(updatedHistory);
+      if (isCancellationRequested()) {
+        patchGenerationJob(jobId, { status: 'canceled', progress: 0, message: 'キャンセル済み' });
+        return;
+      }
 
-      // Also save to local storage as backup
-      await set(DB_KEY_HISTORY, updatedHistory);
-      void runQualityChecksForItems(newItems);
+      if (newItems.length > 0) {
+        setHistory((prev) => {
+          const updatedHistory = [...newItems, ...prev];
+          void set(DB_KEY_HISTORY, updatedHistory);
+          return updatedHistory;
+        });
+        void runQualityChecksForItems(newItems, snapshot.apiKey);
+      }
 
-    } catch (e) {
-      alert("チラシの生成に失敗しました。時間をおいて再試行してください。");
-      console.error(e);
+      patchGenerationJob(jobId, {
+        status: 'completed',
+        progress: 100,
+        message: `${newItems.length}件生成完了`,
+        error: undefined
+      });
+    } catch (error: any) {
+      if (isCancellationRequested()) {
+        patchGenerationJob(jobId, { status: 'canceled', progress: 0, message: 'キャンセル済み' });
+        return;
+      }
+
+      console.error(`Generation job failed (${jobId}):`, error);
+      patchGenerationJob(jobId, {
+        status: 'failed',
+        progress: 0,
+        message: '生成失敗',
+        error: error?.message || '不明なエラー'
+      });
     } finally {
+      cancelRequestedGenerationJobsRef.current.delete(jobId);
+      setActiveGenerationJobId((current) => (current === jobId ? null : current));
       setIsGenerating(false);
     }
+  }, [createThumbnail, patchGenerationJob, runQualityChecksForItems]);
+
+  useEffect(() => {
+    if (activeGenerationJobId) return;
+
+    const nextJob = generationQueue.find((job) => job.status === 'pending');
+    if (!nextJob) {
+      setIsGenerating(false);
+      return;
+    }
+
+    setActiveGenerationJobId(nextJob.id);
+    setIsGenerating(true);
+    void executeGenerationJob(nextJob);
+  }, [activeGenerationJobId, executeGenerationJob, generationQueue]);
+
+  const handleCancelGenerationJob = useCallback((jobId: string) => {
+    cancelRequestedGenerationJobsRef.current.add(jobId);
+    setGenerationQueue((prev) => prev.map((job) => {
+      if (job.id !== jobId) return job;
+      if (job.status === 'completed' || job.status === 'failed' || job.status === 'canceled') return job;
+      return {
+        ...job,
+        status: 'canceled',
+        progress: 0,
+        message: job.status === 'running' ? 'キャンセル要求中' : 'キャンセル済み',
+        updatedAt: Date.now()
+      };
+    }));
+  }, []);
+
+  const handleRetryGenerationJob = useCallback((jobId: string) => {
+    cancelRequestedGenerationJobsRef.current.delete(jobId);
+    setGenerationQueue((prev) => prev.map((job) => (
+      job.id === jobId
+        ? {
+            ...job,
+            status: 'pending',
+            progress: 0,
+            message: '再実行待ち',
+            error: undefined,
+            updatedAt: Date.now()
+          }
+        : job
+    )));
+  }, []);
+
+  const handleRemoveGenerationJob = useCallback((jobId: string) => {
+    if (activeGenerationJobId === jobId) return;
+    setGenerationQueue((prev) => prev.filter((job) => job.id !== jobId));
+  }, [activeGenerationJobId]);
+
+  const handleClearFinishedGenerationJobs = useCallback(() => {
+    setGenerationQueue((prev) => prev.filter((job) => job.status === 'pending' || job.status === 'running'));
+  }, []);
+
+  const handleGenerate = () => {
+    if (!apiKey) {
+      setIsSettingsOpen(true);
+      alert("APIキーが設定されていません。設定画面からGemini APIキーを入力してください。");
+      return;
+    }
+
+    const sideLabel = flyerSide === 'front' ? '表面' : '裏面';
+    const confirmMessage = isGenerating
+      ? `${sideLabel}チラシ生成をキューに追加しますか？`
+      : `${sideLabel}チラシを作成しますか？`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    const selectedCharacterImages = characterImages.filter((_, idx) => selectedCharacterIndices.has(idx));
+    const selectedReferenceImages = selectedReferenceIndex !== null ? [referenceImages[selectedReferenceIndex]] : [];
+    const selectedStoreLogoImages = storeLogoImages.filter((_, idx) => selectedLogoIndices.has(idx));
+    const selectedCustomIllustrations = customIllustrations.filter((_, idx) => selectedCustomIllustrationIndices.has(idx));
+    const selectedCustomerImages = customerImages.filter((_, idx) => selectedCustomerImageIndices.has(idx));
+    const selectedProductImages = frontProductImages.filter((_, idx) => selectedFrontProductIndices.has(idx));
+    const referenceWithOpposite = useOppositeSideReference && oppositeSideImage
+      ? [...selectedReferenceImages, oppositeSideImage]
+      : selectedReferenceImages;
+
+    const snapshot: GenerationJobSnapshot = {
+      apiKey,
+      flyerSide,
+      frontFlyerType,
+      salesLetterMode,
+      settings: deepClone(settings),
+      products: deepClone(products),
+      characterClothingMode,
+      salesLetterInfo: deepClone(salesLetterInfo),
+      productServiceInfo: deepClone(productServiceInfo),
+      campaignInfo: deepClone(campaignInfo),
+      selectedCharacterImages: deepClone(selectedCharacterImages),
+      selectedReferenceImages: deepClone(referenceWithOpposite),
+      selectedStoreLogoImages: deepClone(selectedStoreLogoImages),
+      selectedCustomIllustrations: deepClone(selectedCustomIllustrations),
+      selectedCustomerImages: deepClone(selectedCustomerImages),
+      selectedProductImages: deepClone(selectedProductImages)
+    };
+
+    const now = Date.now();
+    const queueItem: GenerationJob = {
+      id: uuidv4(),
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+      progress: 0,
+      message: '待機中',
+      side: flyerSide,
+      snapshot
+    };
+
+    setGenerationQueue((prev) => [...prev, queueItem]);
   };
 
   // Handle campaign content AI generation
@@ -2497,6 +2697,38 @@ ${header.length + uint8Array.length + 20}
     return { label: '⚠ 判定失敗', className: 'bg-slate-500 text-white' };
   };
 
+  const getGenerationJobStatusConfig = (status: GenerationJobStatus) => {
+    if (status === 'pending') return { label: '待機中', className: 'bg-slate-100 text-slate-700' };
+    if (status === 'running') return { label: '実行中', className: 'bg-sky-100 text-sky-700' };
+    if (status === 'completed') return { label: '完了', className: 'bg-emerald-100 text-emerald-700' };
+    if (status === 'failed') return { label: '失敗', className: 'bg-rose-100 text-rose-700' };
+    return { label: 'キャンセル', className: 'bg-amber-100 text-amber-700' };
+  };
+
+  const generationQueueStats = useMemo(() => {
+    return generationQueue.reduce((acc, job) => {
+      acc.total += 1;
+      if (job.status === 'pending') acc.pending += 1;
+      if (job.status === 'running') acc.running += 1;
+      if (job.status === 'completed') acc.completed += 1;
+      if (job.status === 'failed') acc.failed += 1;
+      if (job.status === 'canceled') acc.canceled += 1;
+      return acc;
+    }, {
+      total: 0,
+      pending: 0,
+      running: 0,
+      completed: 0,
+      failed: 0,
+      canceled: 0
+    });
+  }, [generationQueue]);
+
+  const visibleGenerationJobs = useMemo(
+    () => [...generationQueue].reverse().slice(0, 6),
+    [generationQueue]
+  );
+
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
@@ -2521,13 +2753,12 @@ ${header.length + uint8Array.length + 20}
           <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
             <button
               onClick={handleGenerate}
-              disabled={isGenerating}
-              className={`text-xs sm:text-sm px-2 sm:px-3 lg:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all ${isGenerating ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
+              className={`text-xs sm:text-sm px-2 sm:px-3 lg:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all ${isGenerating ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
             >
               {isGenerating ? (
                 <>
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  <span className="hidden sm:inline">生成中...</span>
+                  <span>＋</span>
+                  <span className="hidden sm:inline">キュー追加</span>
                 </>
               ) : (
                 <>
@@ -2736,6 +2967,96 @@ ${header.length + uint8Array.length + 20}
         {/* Main Content Area */}
         <main ref={mainContentRef} className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 animate-fade-in">
           <div className="max-w-5xl mx-auto">
+            {generationQueueStats.total > 0 && (
+              <div className="bg-white border border-indigo-100 rounded-lg p-4 sm:p-5 mb-6 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🧵</span>
+                    <h2 className="text-sm sm:text-base font-semibold text-slate-900">生成ジョブキュー</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] sm:text-xs font-bold text-slate-600">
+                      {generationQueueStats.total}件
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-[10px] sm:text-xs">
+                    <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 font-bold">実行中 {generationQueueStats.running}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold">待機 {generationQueueStats.pending}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">完了 {generationQueueStats.completed}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold">失敗 {generationQueueStats.failed}</span>
+                  </div>
+                  <button
+                    onClick={handleClearFinishedGenerationJobs}
+                    className="text-xs font-bold px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+                  >
+                    完了ジョブを整理
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {visibleGenerationJobs.map((job) => {
+                    const status = getGenerationJobStatusConfig(job.status);
+                    const canCancel = job.status === 'pending' || job.status === 'running';
+                    const canRetry = job.status === 'failed' || job.status === 'canceled';
+                    const canRemove = job.status !== 'running' && activeGenerationJobId !== job.id;
+                    return (
+                      <div key={job.id} className="border border-slate-200 rounded-md p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-700">
+                              {job.side === 'front' ? '表面' : '裏面'} / {job.snapshot.settings.patternCount}案
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status.className}`}>
+                              {status.label}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {new Date(job.createdAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </div>
+                        </div>
+
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+                          <div
+                            className={`h-full transition-all ${job.status === 'failed' ? 'bg-rose-500' : job.status === 'canceled' ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                            style={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs text-slate-600">
+                            {job.error ? `${job.message}: ${job.error}` : job.message}
+                          </div>
+                          <div className="flex gap-1.5">
+                            {canCancel && (
+                              <button
+                                onClick={() => handleCancelGenerationJob(job.id)}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-all"
+                              >
+                                キャンセル
+                              </button>
+                            )}
+                            {canRetry && (
+                              <button
+                                onClick={() => handleRetryGenerationJob(job.id)}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-sky-100 text-sky-700 hover:bg-sky-200 transition-all"
+                              >
+                                再試行
+                              </button>
+                            )}
+                            {canRemove && (
+                              <button
+                                onClick={() => handleRemoveGenerationJob(job.id)}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+                              >
+                                削除
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Preset Management Section */}
             {showPresetList && (
@@ -3323,17 +3644,16 @@ ${header.length + uint8Array.length + 20}
             <div className="flex justify-center mb-20">
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating}
                 className={`
                btn-premium inline-flex items-center px-12 py-5 border border-transparent text-xl font-semibold rounded-[24px] shadow-2xl text-white 
-               ${isGenerating ? 'bg-slate-400 cursor-not-allowed opacity-50' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
+               ${isGenerating ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
                focus:outline-none transition-all duration-300
              `}
               >
                 {isGenerating ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-4 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span className="tracking-tight uppercase">生成中...</span>
+                    <span className="mr-3 text-2xl">＋</span>
+                    <span className="tracking-tight uppercase">キューに追加</span>
                   </>
                 ) : (
                   <>
