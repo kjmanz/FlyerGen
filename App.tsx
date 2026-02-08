@@ -1,21 +1,16 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
 import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo } from './types';
-import { ProductCard } from './components/ProductCard';
 import { ImageUploader } from './components/ImageUploader';
-import { ImageEditModal, EditRegion } from './components/ImageEditModal';
-import { ProductServiceForm } from './components/ProductServiceForm';
-import { SalesLetterForm } from './components/SalesLetterForm';
+import type { EditRegion } from './components/ImageEditModal';
 import { MainTabs, MainTabType } from './components/MainTabs';
 import { Sidebar } from './components/Sidebar';
 import { CompactAssetSection } from './components/CompactAssetSection';
 import { AssetSelectionGrid } from './components/AssetSelectionGrid';
-import { generateFlyerImage, generateTagsFromProducts, generateTagsFromImage, editImage, removeTextFromImage, generateCampaignContent, generateFrontFlyerImage, generateProductServiceFlyer, generateSalesLetterFlyer, regenerateImage4K } from './services/geminiService';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
-  isFirebaseConfigured,
   uploadImage,
   getCloudImages,
   saveCloudPreset,
@@ -40,15 +35,49 @@ import {
   getFrontProductImages,
   saveCampaignMainImages,
   getCampaignMainImages,
-  CloudImage,
-  CloudPreset
+  type CloudImage,
+  type CloudPreset
 } from './services/firebaseService';
+
+const ProductCard = React.lazy(() =>
+  import('./components/ProductCard').then((module) => ({ default: module.ProductCard }))
+);
+
+const ImageEditModal = React.lazy(() =>
+  import('./components/ImageEditModal').then((module) => ({ default: module.ImageEditModal }))
+);
+
+const ProductServiceForm = React.lazy(() =>
+  import('./components/ProductServiceForm').then((module) => ({ default: module.ProductServiceForm }))
+);
+
+const SalesLetterForm = React.lazy(() =>
+  import('./components/SalesLetterForm').then((module) => ({ default: module.SalesLetterForm }))
+);
+
+type GeminiServiceModule = typeof import('./services/geminiService');
+let geminiServicePromise: Promise<GeminiServiceModule> | null = null;
+
+const loadGeminiService = (): Promise<GeminiServiceModule> => {
+  if (!geminiServicePromise) {
+    geminiServicePromise = import('./services/geminiService');
+  }
+  return geminiServicePromise;
+};
 
 const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
 const UPSCALE_SCALE = 4;
+
+const sameStringArray = (a: string[], b: string[]) => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
 
 // Initialize Firebase on app load
 const firebaseEnabled = initFirebase();
@@ -79,6 +108,7 @@ const App: React.FC = () => {
 
   // History State
   const [history, setHistory] = useState<GeneratedImage[]>([]);
+  const mainContentRef = useRef<HTMLElement>(null);
   const historyGridRef = useRef<HTMLDivElement>(null);
   const [historyGridWidth, setHistoryGridWidth] = useState(0);
   const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 0));
@@ -127,9 +157,6 @@ const App: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isTaggingAll, setIsTaggingAll] = useState(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc'); // desc = newest first, asc = oldest first
-
-  // Image Preview Modal State
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Manual Upload State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -434,12 +461,22 @@ const App: React.FC = () => {
 
     if (firebaseEnabled) {
       // Debounce the sync to avoid too many writes
-      const syncTimeout = setTimeout(() => {
+      let cancelled = false;
+      const syncTimeout = setTimeout(async () => {
         console.log('Syncing reference images to cloud...');
-        saveReferenceImages(referenceImages, selectedReferenceIndex !== null ? [selectedReferenceIndex] : []);
+        const result = await saveReferenceImages(
+          referenceImages,
+          selectedReferenceIndex !== null ? [selectedReferenceIndex] : []
+        );
+        if (!cancelled && result.success && !sameStringArray(referenceImages, result.images)) {
+          setReferenceImages(result.images);
+        }
       }, 1000);
 
-      return () => clearTimeout(syncTimeout);
+      return () => {
+        cancelled = true;
+        clearTimeout(syncTimeout);
+      };
     }
   }, [referenceImages, selectedReferenceIndex, referenceImagesInitialized]);
 
@@ -456,12 +493,19 @@ const App: React.FC = () => {
 
     if (firebaseEnabled) {
       // Debounce the sync to avoid too many writes
-      const syncTimeout = setTimeout(() => {
+      let cancelled = false;
+      const syncTimeout = setTimeout(async () => {
         console.log('Syncing character images to cloud...');
-        saveCharacterImages(characterImages, Array.from(selectedCharacterIndices));
+        const result = await saveCharacterImages(characterImages, Array.from(selectedCharacterIndices));
+        if (!cancelled && result.success && !sameStringArray(characterImages, result.images)) {
+          setCharacterImages(result.images);
+        }
       }, 1000);
 
-      return () => clearTimeout(syncTimeout);
+      return () => {
+        cancelled = true;
+        clearTimeout(syncTimeout);
+      };
     }
   }, [characterImages, selectedCharacterIndices, characterImagesInitialized]);
 
@@ -478,12 +522,19 @@ const App: React.FC = () => {
 
     if (firebaseEnabled) {
       // Debounce the sync to avoid too many writes
-      const syncTimeout = setTimeout(() => {
+      let cancelled = false;
+      const syncTimeout = setTimeout(async () => {
         console.log('Syncing store logo images to cloud...');
-        saveStoreLogoImages(storeLogoImages, Array.from(selectedLogoIndices));
+        const result = await saveStoreLogoImages(storeLogoImages, Array.from(selectedLogoIndices));
+        if (!cancelled && result.success && !sameStringArray(storeLogoImages, result.images)) {
+          setStoreLogoImages(result.images);
+        }
       }, 1000);
 
-      return () => clearTimeout(syncTimeout);
+      return () => {
+        cancelled = true;
+        clearTimeout(syncTimeout);
+      };
     }
   }, [storeLogoImages, selectedLogoIndices, logoImagesInitialized]);
 
@@ -500,12 +551,19 @@ const App: React.FC = () => {
 
     if (firebaseEnabled) {
       // Debounce the sync to avoid too many writes
-      const syncTimeout = setTimeout(() => {
+      let cancelled = false;
+      const syncTimeout = setTimeout(async () => {
         console.log('Syncing custom illustrations to cloud...');
-        saveCustomIllustrations(customIllustrations, Array.from(selectedCustomIllustrationIndices));
+        const result = await saveCustomIllustrations(customIllustrations, Array.from(selectedCustomIllustrationIndices));
+        if (!cancelled && result.success && !sameStringArray(customIllustrations, result.images)) {
+          setCustomIllustrations(result.images);
+        }
       }, 1000);
 
-      return () => clearTimeout(syncTimeout);
+      return () => {
+        cancelled = true;
+        clearTimeout(syncTimeout);
+      };
     }
   }, [customIllustrations, selectedCustomIllustrationIndices, customIllustrationsInitialized]);
 
@@ -522,12 +580,19 @@ const App: React.FC = () => {
 
     if (firebaseEnabled) {
       // Debounce the sync to avoid too many writes
-      const syncTimeout = setTimeout(() => {
+      let cancelled = false;
+      const syncTimeout = setTimeout(async () => {
         console.log('Syncing customer images to cloud...');
-        saveCustomerImages(customerImages, Array.from(selectedCustomerImageIndices));
+        const result = await saveCustomerImages(customerImages, Array.from(selectedCustomerImageIndices));
+        if (!cancelled && result.success && !sameStringArray(customerImages, result.images)) {
+          setCustomerImages(result.images);
+        }
       }, 1000);
 
-      return () => clearTimeout(syncTimeout);
+      return () => {
+        cancelled = true;
+        clearTimeout(syncTimeout);
+      };
     }
   }, [customerImages, selectedCustomerImageIndices, customerImagesInitialized]);
 
@@ -544,12 +609,26 @@ const App: React.FC = () => {
 
     if (firebaseEnabled) {
       // Debounce the sync to avoid too many writes
-      const syncTimeout = setTimeout(() => {
+      let cancelled = false;
+      const syncTimeout = setTimeout(async () => {
         console.log('Syncing campaign main images to cloud...');
-        saveCampaignMainImages(campaignInfo.productImages, Array.from(selectedCampaignMainImageIndices));
+        const result = await saveCampaignMainImages(
+          campaignInfo.productImages,
+          Array.from(selectedCampaignMainImageIndices)
+        );
+        if (!cancelled && result.success && !sameStringArray(campaignInfo.productImages, result.images)) {
+          setCampaignInfo(prev => (
+            sameStringArray(prev.productImages, result.images)
+              ? prev
+              : { ...prev, productImages: result.images }
+          ));
+        }
       }, 1000);
 
-      return () => clearTimeout(syncTimeout);
+      return () => {
+        cancelled = true;
+        clearTimeout(syncTimeout);
+      };
     }
   }, [campaignInfo.productImages, selectedCampaignMainImageIndices, campaignMainImagesInitialized]);
 
@@ -625,12 +704,19 @@ const App: React.FC = () => {
 
     if (firebaseEnabled) {
       // Debounce the sync to avoid too many writes
-      const syncTimeout = setTimeout(() => {
+      let cancelled = false;
+      const syncTimeout = setTimeout(async () => {
         console.log('Syncing front product images to cloud...');
-        saveFrontProductImages(frontProductImages, Array.from(selectedFrontProductIndices));
+        const result = await saveFrontProductImages(frontProductImages, Array.from(selectedFrontProductIndices));
+        if (!cancelled && result.success && !sameStringArray(frontProductImages, result.images)) {
+          setFrontProductImages(result.images);
+        }
       }, 1000);
 
-      return () => clearTimeout(syncTimeout);
+      return () => {
+        cancelled = true;
+        clearTimeout(syncTimeout);
+      };
     }
   }, [frontProductImages, selectedFrontProductIndices, frontProductImagesInitialized]);
 
@@ -1003,20 +1089,26 @@ const App: React.FC = () => {
   };
 
   const updateHistoryGridMetrics = useCallback(() => {
-    if (!historyGridRef.current) return;
-    const rect = historyGridRef.current.getBoundingClientRect();
-    setHistoryGridWidth(rect.width);
-    setGridOffsetTop(rect.top + window.scrollY);
+    if (!historyGridRef.current || !mainContentRef.current) return;
+    const gridRect = historyGridRef.current.getBoundingClientRect();
+    const containerRect = mainContentRef.current.getBoundingClientRect();
+    setHistoryGridWidth(gridRect.width);
+    setGridOffsetTop(gridRect.top - containerRect.top + mainContentRef.current.scrollTop);
+    setViewportHeight(mainContentRef.current.clientHeight || window.innerHeight);
   }, []);
 
   useEffect(() => {
     updateHistoryGridMetrics();
-  }, [updateHistoryGridMetrics, history.length, showPresetList, flyerSide]);
+  }, [updateHistoryGridMetrics, history.length, showPresetList, flyerSide, mainTab]);
 
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
-      setViewportHeight(window.innerHeight);
+      if (mainContentRef.current) {
+        setViewportHeight(mainContentRef.current.clientHeight);
+      } else {
+        setViewportHeight(window.innerHeight);
+      }
       updateHistoryGridMetrics();
       setMeasuredRowHeight(null);
     };
@@ -1032,6 +1124,9 @@ const App: React.FC = () => {
       updateHistoryGridMetrics();
     });
     observer.observe(historyGridRef.current);
+    if (mainContentRef.current) {
+      observer.observe(mainContentRef.current);
+    }
     return () => observer.disconnect();
   }, [updateHistoryGridMetrics]);
 
@@ -1046,15 +1141,19 @@ const App: React.FC = () => {
     if (total === 0 || stride <= 0) {
       return { startRow: 0, endRow: -1 };
     }
-    const scrollTop = window.scrollY || 0;
+    const container = mainContentRef.current;
+    const scrollTop = container ? container.scrollTop : (window.scrollY || 0);
     const offsetTop = gridOffsetTopRef.current;
-    const viewport = viewportHeightRef.current || window.innerHeight || 0;
+    const viewport = viewportHeightRef.current || container?.clientHeight || window.innerHeight || 0;
     const startRow = Math.max(0, Math.floor((scrollTop - offsetTop - overscanRows * stride) / stride));
     const endRow = Math.min(total - 1, Math.floor((scrollTop + viewport - offsetTop + overscanRows * stride) / stride));
     return { startRow, endRow };
   }, []);
 
   useEffect(() => {
+    const container = mainContentRef.current;
+    if (!container) return;
+
     let ticking = false;
     const handleScroll = () => {
       if (ticking) return;
@@ -1067,20 +1166,9 @@ const App: React.FC = () => {
     };
 
     handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [computeVisibleRange]);
-
-  const handleSaveApiKey = async () => {
-    if (!tempApiKey.trim()) {
-      alert("APIキーを入力してください。");
-      return;
-    }
-    setApiKey(tempApiKey);
-    await set(DB_KEY_API_KEY, tempApiKey);
-    setIsSettingsOpen(false);
-    alert("APIキーを保存しました。");
-  };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [computeVisibleRange, history.length, showPresetList, flyerSide, mainTab]);
 
   // Logic
   const addProduct = () => {
@@ -1165,6 +1253,8 @@ const App: React.FC = () => {
     setIsGenerating(true);
 
     try {
+      const gemini = await loadGeminiService();
+
       // Filter images to only include selected ones
       const selectedCharacterImages = characterImages.filter((_, idx) => selectedCharacterIndices.has(idx));
       const selectedReferenceImages = selectedReferenceIndex !== null ? [referenceImages[selectedReferenceIndex]] : [];
@@ -1182,7 +1272,7 @@ const App: React.FC = () => {
           if (salesLetterMode) {
             // セールスレターモード
             [results, tags] = await Promise.all([
-              generateSalesLetterFlyer(
+              gemini.generateSalesLetterFlyer(
                 salesLetterInfo,
                 settings,
                 selectedProductImages,
@@ -1198,7 +1288,7 @@ const App: React.FC = () => {
           } else {
             // 商品・サービス紹介モード（通常）
             [results, tags] = await Promise.all([
-              generateProductServiceFlyer(
+              gemini.generateProductServiceFlyer(
                 productServiceInfo,
                 settings,
                 selectedProductImages,
@@ -1215,7 +1305,7 @@ const App: React.FC = () => {
         } else {
           // キャンペーン訴求モード
           [results, tags] = await Promise.all([
-            generateFrontFlyerImage(
+            gemini.generateFrontFlyerImage(
               campaignInfo,
               settings,
               selectedProductImages,
@@ -1232,8 +1322,8 @@ const App: React.FC = () => {
       } else {
         // 裏面生成処理（既存ロジック）
         [results, tags] = await Promise.all([
-          generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, selectedReferenceImages, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
-          generateTagsFromProducts(products, apiKey)
+          gemini.generateFlyerImage(products, settings, selectedCharacterImages, characterClothingMode, referenceWithOpposite, selectedStoreLogoImages, selectedCustomIllustrations, apiKey),
+          gemini.generateTagsFromProducts(products, apiKey)
         ]);
         tags = ['裏面', ...tags];
       }
@@ -1308,7 +1398,8 @@ const App: React.FC = () => {
 
     setIsGeneratingCampaign(true);
     try {
-      const result = await generateCampaignContent(campaignInfo.campaignDescription, apiKey);
+      const gemini = await loadGeminiService();
+      const result = await gemini.generateCampaignContent(campaignInfo.campaignDescription, apiKey);
       setCampaignInfo(prev => ({
         ...prev,
         headline: result.headline,
@@ -1513,10 +1604,8 @@ const App: React.FC = () => {
     setRegenerating4KImageId(item.id);
 
     try {
-      // Detect aspect ratio from original image size if possible
-      const aspectRatio = settings.orientation === 'vertical' ? '3:4' : '4:3';
-
-      const result = await regenerateImage4K(item.data, apiKey, aspectRatio);
+      const gemini = await loadGeminiService();
+      const result = await gemini.regenerateImage4K(item.data, apiKey);
 
       // Create new 4K image entry
       const newId = uuidv4();
@@ -1623,18 +1712,6 @@ const App: React.FC = () => {
         URL.revokeObjectURL(url);
       }, 100);
     }, 10);
-  };
-
-  const dataUrlToBlob = (dataUrl: string, fallbackMimeType: string) => {
-    const [header, base64] = dataUrl.split(',');
-    const mimeMatch = header?.match(/data:(.*?);base64/);
-    const mimeType = mimeMatch?.[1] || fallbackMimeType;
-    const binary = atob(base64 || '');
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return new Blob([bytes], { type: mimeType });
   };
 
   const formatDateForFilename = (timestamp: number) => {
@@ -2006,12 +2083,13 @@ ${header.length + uint8Array.length + 20}
     setIsTaggingAll(true);
 
     try {
+      const gemini = await loadGeminiService();
       let successCount = 0;
       const updatedHistory = [...history];
 
       for (const item of itemsToTag) {
         try {
-          const tags = await generateTagsFromImage(item.data, apiKey);
+          const tags = await gemini.generateTagsFromImage(item.data, apiKey);
           if (tags.length > 0) {
             // Update local state
             const index = updatedHistory.findIndex(h => h.id === item.id);
@@ -2070,8 +2148,9 @@ ${header.length + uint8Array.length + 20}
     setIsEditGenerating(true);
 
     try {
+      const gemini = await loadGeminiService();
       // Generate edited image
-      const editedImageData = await editImage(editingImage.data, regions, apiKey);
+      const editedImageData = await gemini.editImage(editingImage.data, regions, apiKey);
 
       // Create new history entry for edited image
       const id = uuidv4();
@@ -2149,8 +2228,9 @@ ${header.length + uint8Array.length + 20}
     setRemovingTextImageId(item.id);
 
     try {
+      const gemini = await loadGeminiService();
       // Remove text from image
-      const cleanedImageData = await removeTextFromImage(item.data, apiKey);
+      const cleanedImageData = await gemini.removeTextFromImage(item.data, apiKey);
 
       // Create new history entry for cleaned image
       const id = uuidv4();
@@ -2531,7 +2611,7 @@ ${header.length + uint8Array.length + 20}
         </Sidebar>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 animate-fade-in">
+        <main ref={mainContentRef} className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 animate-fade-in">
           <div className="max-w-5xl mx-auto">
 
             {/* Preset Management Section */}
@@ -2921,27 +3001,55 @@ ${header.length + uint8Array.length + 20}
                     </div>
 
                     {/* Conditional Form Display */}
-                    {salesLetterMode ? (
-                      <SalesLetterForm
-                        salesLetterInfo={salesLetterInfo}
-                        setSalesLetterInfo={setSalesLetterInfo}
-                        settings={settings}
-                        setSettings={setSettings}
-                        apiKey={apiKey}
-                        onSettingsOpen={() => setIsSettingsOpen(true)}
-                      />
-                    ) : (
-                      <ProductServiceForm
-                        productServiceInfo={productServiceInfo}
-                        setProductServiceInfo={setProductServiceInfo}
-                        settings={settings}
-                        setSettings={setSettings}
-                        apiKey={apiKey}
-                        onSettingsOpen={() => setIsSettingsOpen(true)}
-                      />
-                    )}
+                    <Suspense fallback={<div className="p-6 text-sm text-slate-500">フォームを読み込み中...</div>}>
+                      {salesLetterMode ? (
+                        <SalesLetterForm
+                          salesLetterInfo={salesLetterInfo}
+                          setSalesLetterInfo={setSalesLetterInfo}
+                          settings={settings}
+                          setSettings={setSettings}
+                          apiKey={apiKey}
+                          onSettingsOpen={() => setIsSettingsOpen(true)}
+                        />
+                      ) : (
+                        <ProductServiceForm
+                          productServiceInfo={productServiceInfo}
+                          setProductServiceInfo={setProductServiceInfo}
+                          settings={settings}
+                          setSettings={setSettings}
+                          apiKey={apiKey}
+                          onSettingsOpen={() => setIsSettingsOpen(true)}
+                        />
+                      )}
+                    </Suspense>
                   </>
                 )}
+
+                {/* Reference Back Side for Consistency */}
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
+                  <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
+                    <label className="flex items-center gap-3 cursor-pointer mb-3">
+                      <input
+                        type="checkbox"
+                        checked={useOppositeSideReference}
+                        onChange={(e) => setUseOppositeSideReference(e.target.checked)}
+                        className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-sm font-semibold text-slate-700">裏面を参照して統一感を出す</span>
+                    </label>
+                    {useOppositeSideReference && (
+                      <div className="mt-3">
+                        <ImageUploader
+                          label="参照する裏面画像"
+                          images={oppositeSideImage ? [oppositeSideImage] : []}
+                          onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
+                          maxImages={1}
+                        />
+                        <p className="text-[10px] text-amber-600 mt-2">アップロードした裏面の画像を参考にして、デザインの統一感を持たせます。</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </>
             )}
 
@@ -3028,18 +3136,46 @@ ${header.length + uint8Array.length + 20}
                     </button>
                   </div>
 
-                  <div className="space-y-6">
-                    {products.map((p, idx) => (
-                      <ProductCard
-                        key={p.id}
-                        index={idx}
-                        product={p}
-                        onChange={updateProduct}
-                        onRemove={() => removeProduct(p.id)}
-                        onDuplicate={() => duplicateProduct(p)}
-                        apiKey={apiKey}
+                  <Suspense fallback={<div className="p-4 text-sm text-slate-500">商品フォームを読み込み中...</div>}>
+                    <div className="space-y-6">
+                      {products.map((p, idx) => (
+                        <ProductCard
+                          key={p.id}
+                          index={idx}
+                          product={p}
+                          onChange={updateProduct}
+                          onRemove={() => removeProduct(p.id)}
+                          onDuplicate={() => duplicateProduct(p)}
+                          apiKey={apiKey}
+                        />
+                      ))}
+                    </div>
+                  </Suspense>
+                </div>
+
+                {/* Reference Front Side for Consistency */}
+                <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6">
+                  <div className="p-4 bg-amber-50/50 rounded-md border border-amber-100">
+                    <label className="flex items-center gap-3 cursor-pointer mb-3">
+                      <input
+                        type="checkbox"
+                        checked={useOppositeSideReference}
+                        onChange={(e) => setUseOppositeSideReference(e.target.checked)}
+                        className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                       />
-                    ))}
+                      <span className="text-sm font-semibold text-slate-700">表面を参照して統一感を出す</span>
+                    </label>
+                    {useOppositeSideReference && (
+                      <div className="mt-3">
+                        <ImageUploader
+                          label="参照する表面画像"
+                          images={oppositeSideImage ? [oppositeSideImage] : []}
+                          onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
+                          maxImages={1}
+                        />
+                        <p className="text-[10px] text-amber-600 mt-2">アップロードした表面の画像を参考にして、デザインの統一感を持たせます。</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -3596,12 +3732,14 @@ ${header.length + uint8Array.length + 20}
 
       {/* Image Edit Modal */}
       {editingImage && (
-        <ImageEditModal
-          imageUrl={editingImage.data}
-          onClose={() => setEditingImage(null)}
-          onGenerate={handleEditImage}
-          isGenerating={isEditGenerating}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/40 z-50" />}>
+          <ImageEditModal
+            imageUrl={editingImage.data}
+            onClose={() => setEditingImage(null)}
+            onGenerate={handleEditImage}
+            isGenerating={isEditGenerating}
+          />
+        </Suspense>
       )}
 
       {/* Manual Upload Modal */}
@@ -3665,34 +3803,8 @@ ${header.length + uint8Array.length + 20}
         </div>
       )}
 
-      {/* Image Preview Modal */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div className="relative max-w-7xl max-h-[90vh] animate-slide-up">
-            <button
-              onClick={() => setPreviewImage(null)}
-              className="absolute -top-12 right-0 bg-white/90 hover:bg-white text-slate-700 font-bold px-4 py-2 rounded-lg shadow-lg transition-all"
-            >
-              ✕ 閉じる
-            </button>
-            <img
-              src={previewImage}
-              alt="プレビュー"
-              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-              loading="lazy"
-              decoding="async"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default App;
-
-

@@ -6,6 +6,89 @@ const getClient = (apiKey: string) => {
   return new GoogleGenAI({ apiKey });
 };
 
+type GeminiAspectRatio = '3:4' | '4:3';
+
+const isValidAspectRatio = (value?: string | null): value is GeminiAspectRatio => (
+  value === '3:4' || value === '4:3'
+);
+
+const readBlobAsDataUrl = (blob: Blob): Promise<string> => (
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  })
+);
+
+const guessMimeTypeFromBase64 = (base64: string): string => {
+  if (base64.startsWith('/9j/')) return 'image/jpeg';
+  if (base64.startsWith('iVBORw0KGgo')) return 'image/png';
+  if (base64.startsWith('UklGR')) return 'image/webp';
+  if (base64.startsWith('R0lGOD')) return 'image/gif';
+  return 'image/png';
+};
+
+const normalizeImageToDataUrl = async (imageData: string): Promise<string> => {
+  if (imageData.startsWith('data:')) {
+    return imageData;
+  }
+  if (imageData.startsWith('http')) {
+    const response = await fetch(imageData);
+    if (!response.ok) {
+      throw new Error(`画像の取得に失敗しました (HTTP ${response.status})`);
+    }
+    const blob = await response.blob();
+    return readBlobAsDataUrl(blob);
+  }
+
+  const rawBase64 = imageData.includes(',') ? (imageData.split(',')[1] || '') : imageData;
+  const cleanBase64 = rawBase64.replace(/\s/g, '');
+  const mimeType = guessMimeTypeFromBase64(cleanBase64);
+  return `data:${mimeType};base64,${cleanBase64}`;
+};
+
+const toInlineImageData = (imageDataUrl: string) => {
+  const match = imageDataUrl.match(/^data:([^;]+);base64,/);
+  const mimeType = match?.[1] || 'image/png';
+  const cleanBase64 = imageDataUrl.split(',')[1] || imageDataUrl;
+  return {
+    inlineData: {
+      mimeType,
+      data: cleanBase64
+    }
+  };
+};
+
+const loadImageDimensions = (imageSrc: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      resolve({
+        width: image.naturalWidth || image.width,
+        height: image.naturalHeight || image.height
+      });
+    };
+    image.onerror = () => reject(new Error('画像サイズの取得に失敗しました'));
+    image.src = imageSrc;
+  });
+};
+
+const inferAspectRatioFromDataUrl = async (
+  imageDataUrl: string,
+  fallback: GeminiAspectRatio = '3:4'
+): Promise<GeminiAspectRatio> => {
+  try {
+    const { width, height } = await loadImageDimensions(imageDataUrl);
+    if (!width || !height || width === height) {
+      return fallback;
+    }
+    return width > height ? '4:3' : '3:4';
+  } catch (error) {
+    console.warn('Failed to infer aspect ratio; falling back:', error);
+    return fallback;
+  }
+};
+
 export const searchProductSpecs = async (productCode: string, apiKey: string): Promise<SpecSearchResult> => {
   const ai = getClient(apiKey);
 
@@ -445,30 +528,13 @@ export const generateTagsFromImage = async (
   `;
 
   try {
-    // Fetch image and convert to base64 if it's a URL
-    let imageData = imageUrl;
-    if (imageUrl.startsWith('http')) {
-      const resp = await fetch(imageUrl);
-      const blob = await resp.blob();
-      imageData = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
-
-    const cleanBase64 = imageData.split(',')[1] || imageData;
+    const imageDataUrl = await normalizeImageToDataUrl(imageUrl);
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [
         { text: prompt },
-        {
-          inlineData: {
-            mimeType: 'image/png',
-            data: cleanBase64
-          }
-        }
+        toInlineImageData(imageDataUrl)
       ],
       config: {
         responseMimeType: "application/json",
@@ -576,17 +642,8 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
 `;
 
   try {
-    // Fetch image and convert to base64 if it's a URL
-    let imageData = imageUrl;
-    if (imageUrl.startsWith('http')) {
-      const resp = await fetch(imageUrl);
-      const blob = await resp.blob();
-      imageData = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
+    const imageData = await normalizeImageToDataUrl(imageUrl);
+    const aspectRatio = await inferAspectRatioFromDataUrl(imageData, '3:4');
 
     // Call Worker API for edit (uses Batch API - 50% cost reduction)
     const workerUrl = API_URL.replace('/api/batch-generate', '/api/edit-image');
@@ -599,7 +656,7 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
         imageData,
         editPrompt,
         imageSize: '2K',
-        aspectRatio: '3:4'
+        aspectRatio
       })
     });
 
@@ -625,20 +682,13 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
 export const regenerateImage4K = async (
   imageUrl: string,
   apiKey: string,
-  aspectRatio: string = '3:4'
+  aspectRatio?: string
 ): Promise<string> => {
   try {
-    // Fetch image and convert to base64 if it's a URL
-    let imageData = imageUrl;
-    if (imageUrl.startsWith('http')) {
-      const resp = await fetch(imageUrl);
-      const blob = await resp.blob();
-      imageData = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
+    const imageData = await normalizeImageToDataUrl(imageUrl);
+    const resolvedAspectRatio = isValidAspectRatio(aspectRatio)
+      ? aspectRatio
+      : await inferAspectRatioFromDataUrl(imageData, '3:4');
 
     // Call Worker API for 4K regeneration
     const workerUrl = API_URL.replace('/api/batch-generate', '/api/regenerate-4k');
@@ -649,7 +699,7 @@ export const regenerateImage4K = async (
       body: JSON.stringify({
         apiKey,
         imageData,
-        aspectRatio
+        aspectRatio: resolvedAspectRatio
       })
     });
 
@@ -704,17 +754,8 @@ export const removeTextFromImage = async (
 `;
 
   try {
-    // Fetch image and convert to base64 if it's a URL
-    let imageData = imageUrl;
-    if (imageUrl.startsWith('http')) {
-      const resp = await fetch(imageUrl);
-      const blob = await resp.blob();
-      imageData = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
+    const imageData = await normalizeImageToDataUrl(imageUrl);
+    const aspectRatio = await inferAspectRatioFromDataUrl(imageData, '3:4');
 
     // Call Worker API for edit (uses Batch API - 50% cost reduction)
     const workerUrl = API_URL.replace('/api/batch-generate', '/api/edit-image');
@@ -727,7 +768,7 @@ export const removeTextFromImage = async (
         imageData,
         editPrompt: removeTextPrompt,
         imageSize: '2K',
-        aspectRatio: '3:4'
+        aspectRatio
       })
     });
 
@@ -1764,10 +1805,18 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
   };
 
   // Add images in order (product images first, then staff, customer, etc.)
-  for (const img of [...productImages, ...staffImages, ...customerImages, ...referenceImages, ...customIllustrations, ...storeLogoImages]) {
-    const processed = await processImage(img);
+  const imageOrder = [
+    ...productImages,
+    ...staffImages,
+    ...customerImages,
+    ...referenceImages,
+    ...customIllustrations,
+    ...storeLogoImages
+  ];
+  const processedImages = await Promise.all(imageOrder.map(processImage));
+  processedImages.forEach((processed) => {
     if (processed) parts.push(processed);
-  }
+  });
 
   // Determine aspect ratio
   const aspectRatio = settings.orientation === 'vertical' ? '3:4' : '4:3';

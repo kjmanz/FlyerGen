@@ -4,7 +4,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { getStorage, ref, uploadString, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
-import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 
 // Firebase configuration - loaded from environment variables for security
 // Set these in .env.local (not committed to git)
@@ -20,6 +20,72 @@ const firebaseConfig = {
 let app: ReturnType<typeof initializeApp> | null = null;
 let storage: ReturnType<typeof getStorage> | null = null;
 let db: ReturnType<typeof getFirestore> | null = null;
+
+type SettingsDocPayload = {
+    images?: string[];
+    selectedIndices?: number[];
+    updatedAt?: number;
+};
+
+let settingsDocCache: Map<string, SettingsDocPayload> | null = null;
+let settingsDocCacheLoadedAt = 0;
+let settingsDocFetchPromise: Promise<Map<string, SettingsDocPayload>> | null = null;
+const SETTINGS_CACHE_TTL_MS = 30 * 1000;
+
+export interface CloudAssetSyncResult {
+    success: boolean;
+    images: string[];
+    selectedIndices: number[];
+}
+
+const arraysEqual = (a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+};
+
+const updateSettingsDocCache = (docId: string, payload: SettingsDocPayload) => {
+    if (!settingsDocCache) {
+        settingsDocCache = new Map<string, SettingsDocPayload>();
+    }
+    settingsDocCache.set(docId, payload);
+    settingsDocCacheLoadedAt = Date.now();
+};
+
+const loadSettingsDocs = async (force = false): Promise<Map<string, SettingsDocPayload>> => {
+    if (!db) return new Map();
+
+    const isCacheValid =
+        !force &&
+        settingsDocCache &&
+        Date.now() - settingsDocCacheLoadedAt < SETTINGS_CACHE_TTL_MS;
+    if (isCacheValid && settingsDocCache) {
+        return settingsDocCache;
+    }
+
+    if (settingsDocFetchPromise) {
+        return settingsDocFetchPromise;
+    }
+
+    settingsDocFetchPromise = (async () => {
+        const snapshot = await getDocs(collection(db as ReturnType<typeof getFirestore>, 'settings'));
+        const nextCache = new Map<string, SettingsDocPayload>();
+        snapshot.forEach((docSnap) => {
+            nextCache.set(docSnap.id, docSnap.data() as SettingsDocPayload);
+        });
+        settingsDocCache = nextCache;
+        settingsDocCacheLoadedAt = Date.now();
+        return nextCache;
+    })();
+
+    try {
+        return await settingsDocFetchPromise;
+    } finally {
+        settingsDocFetchPromise = null;
+    }
+};
 
 // Initialize Firebase only if config is set
 export const initFirebase = (config?: typeof firebaseConfig) => {
@@ -38,6 +104,9 @@ export const initFirebase = (config?: typeof firebaseConfig) => {
         app = initializeApp(cfg);
         storage = getStorage(app);
         db = getFirestore(app);
+        settingsDocCache = null;
+        settingsDocCacheLoadedAt = 0;
+        settingsDocFetchPromise = null;
         console.log('Firebase initialized successfully');
         return true;
     } catch (e) {
@@ -177,6 +246,19 @@ export const deleteCloudImage = async (filename: string): Promise<boolean> => {
     try {
         const imageRef = ref(storage, `flyers/${filename}`);
         await deleteObject(imageRef);
+
+        // Delete thumbnail if present.
+        const thumbFilename = filename.replace(/\.(png|jpe?g|webp)$/i, '_thumb.jpg');
+        if (thumbFilename !== filename) {
+            try {
+                const thumbRef = ref(storage, `flyers/${thumbFilename}`);
+                await deleteObject(thumbRef);
+            } catch (thumbError) {
+                // Thumbnail may not exist (legacy records). Ignore quietly.
+                console.warn(`Thumbnail delete skipped for ${thumbFilename}:`, thumbError);
+            }
+        }
+
         // Also delete metadata from Firestore
         if (db) {
             await deleteDoc(doc(db, 'flyer_metadata', filename));
@@ -335,12 +417,7 @@ const uploadPresetImage = async (base64Data: string, presetId: string, prefix: s
 
 // Upload all images in an array to Storage
 const uploadImagesArray = async (images: string[], presetId: string, prefix: string): Promise<string[]> => {
-    const results: string[] = [];
-    for (let i = 0; i < images.length; i++) {
-        const url = await uploadPresetImage(images[i], presetId, prefix, i);
-        results.push(url);
-    }
-    return results;
+    return Promise.all(images.map((image, index) => uploadPresetImage(image, presetId, prefix, index)));
 };
 
 // Save preset to Firestore (with images uploaded to Storage)
@@ -431,6 +508,61 @@ export const deleteCloudPreset = async (presetId: string): Promise<boolean> => {
     }
 };
 
+const normalizeSelectedIndices = (selectedIndices: number[], max: number) => {
+    return selectedIndices.filter((index) => Number.isInteger(index) && index >= 0 && index < max);
+};
+
+const getSettingsImages = async (docId: string): Promise<{ images: string[]; selectedIndices: number[] }> => {
+    if (!db) {
+        return { images: [], selectedIndices: [] };
+    }
+    try {
+        const docs = await loadSettingsDocs();
+        const data = docs.get(docId);
+        const images = Array.isArray(data?.images) ? data?.images : [];
+        const rawSelected = Array.isArray(data?.selectedIndices) ? data?.selectedIndices : [];
+        const selectedIndices = normalizeSelectedIndices(rawSelected, images.length);
+        return { images, selectedIndices };
+    } catch (e) {
+        console.error(`Get settings ${docId} error:`, e);
+        return { images: [], selectedIndices: [] };
+    }
+};
+
+const saveSettingsImages = async (
+    docId: string,
+    images: string[],
+    selectedIndices: number[],
+    uploadFn: (base64Data: string, index: number) => Promise<string>,
+    label: string
+): Promise<CloudAssetSyncResult> => {
+    if (!db || !storage) {
+        console.log(`${label}: db or storage is null`);
+        return { success: false, images, selectedIndices };
+    }
+    try {
+        console.log(`Saving ${images.length} ${label} to cloud...`);
+        const imageUrls = await Promise.all(images.map((image, index) => uploadFn(image, index)));
+        const normalizedSelectedIndices = normalizeSelectedIndices(selectedIndices, imageUrls.length);
+        const payload = {
+            images: imageUrls,
+            selectedIndices: normalizedSelectedIndices,
+            updatedAt: Date.now()
+        };
+        await setDoc(doc(db, 'settings', docId), payload);
+        updateSettingsDocCache(docId, payload);
+
+        return {
+            success: true,
+            images: imageUrls,
+            selectedIndices: normalizedSelectedIndices
+        };
+    } catch (e) {
+        console.error(`Save settings ${docId} error:`, e);
+        return { success: false, images, selectedIndices };
+    }
+};
+
 // ===== REFERENCE IMAGES (Independent Cloud Sync) =====
 
 // Upload reference image to Firebase Storage
@@ -453,33 +585,11 @@ const uploadReferenceImage = async (base64Data: string, index: number): Promise<
 };
 
 // Save reference images to Firestore (independent of presets)
-export const saveReferenceImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
-    if (!db || !storage) {
-        console.log('saveReferenceImages: db or storage is null');
-        return false;
-    }
-    try {
-        console.log(`Saving ${images.length} reference images to cloud...`);
-
-        // Upload all images to Storage
-        const imageUrls = await Promise.all(
-            images.map((img, i) => uploadReferenceImage(img, i))
-        );
-
-        // Save URLs and selected indices to Firestore
-        const docRef = doc(db, 'settings', 'reference_images');
-        await setDoc(docRef, {
-            images: imageUrls,
-            selectedIndices: selectedIndices,
-            updatedAt: Date.now()
-        });
-
-        console.log('Reference images saved successfully');
-        return true;
-    } catch (e) {
-        console.error('Save reference images error:', e);
-        return false;
-    }
+export const saveReferenceImages = async (
+    images: string[],
+    selectedIndices: number[]
+): Promise<CloudAssetSyncResult> => {
+    return saveSettingsImages('reference_images', images, selectedIndices, uploadReferenceImage, 'reference images');
 };
 
 // Get reference images from Firestore
@@ -488,26 +598,8 @@ export const getReferenceImages = async (): Promise<{ images: string[], selected
         console.log('getReferenceImages: db is null');
         return { images: [], selectedIndices: [] };
     }
-    try {
-        console.log('Fetching reference images from cloud...');
-        const docSnap = await getDocs(collection(db, 'settings'));
-
-        let images: string[] = [];
-        let selectedIndices: number[] = [];
-        docSnap.forEach((d) => {
-            if (d.id === 'reference_images') {
-                const data = d.data();
-                images = data.images || [];
-                selectedIndices = data.selectedIndices || [];
-            }
-        });
-
-        console.log(`Fetched ${images.length} reference images from cloud`);
-        return { images, selectedIndices };
-    } catch (e) {
-        console.error('Get reference images error:', e);
-        return { images: [], selectedIndices: [] };
-    }
+    console.log('Fetching reference images from cloud...');
+    return getSettingsImages('reference_images');
 };
 
 // ===== CHARACTER IMAGES (Independent Cloud Sync) =====
@@ -532,33 +624,11 @@ const uploadCharacterImage = async (base64Data: string, index: number): Promise<
 };
 
 // Save character images to Firestore (independent of presets)
-export const saveCharacterImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
-    if (!db || !storage) {
-        console.log('saveCharacterImages: db or storage is null');
-        return false;
-    }
-    try {
-        console.log(`Saving ${images.length} character images to cloud...`);
-
-        // Upload all images to Storage
-        const imageUrls = await Promise.all(
-            images.map((img, i) => uploadCharacterImage(img, i))
-        );
-
-        // Save URLs and selected indices to Firestore
-        const docRef = doc(db, 'settings', 'character_images');
-        await setDoc(docRef, {
-            images: imageUrls,
-            selectedIndices: selectedIndices,
-            updatedAt: Date.now()
-        });
-
-        console.log('Character images saved successfully');
-        return true;
-    } catch (e) {
-        console.error('Save character images error:', e);
-        return false;
-    }
+export const saveCharacterImages = async (
+    images: string[],
+    selectedIndices: number[]
+): Promise<CloudAssetSyncResult> => {
+    return saveSettingsImages('character_images', images, selectedIndices, uploadCharacterImage, 'character images');
 };
 
 // Get character images from Firestore
@@ -567,26 +637,8 @@ export const getCharacterImages = async (): Promise<{ images: string[], selected
         console.log('getCharacterImages: db is null');
         return { images: [], selectedIndices: [] };
     }
-    try {
-        console.log('Fetching character images from cloud...');
-        const docSnap = await getDocs(collection(db, 'settings'));
-
-        let images: string[] = [];
-        let selectedIndices: number[] = [];
-        docSnap.forEach((d) => {
-            if (d.id === 'character_images') {
-                const data = d.data();
-                images = data.images || [];
-                selectedIndices = data.selectedIndices || [];
-            }
-        });
-
-        console.log(`Fetched ${images.length} character images from cloud`);
-        return { images, selectedIndices };
-    } catch (e) {
-        console.error('Get character images error:', e);
-        return { images: [], selectedIndices: [] };
-    }
+    console.log('Fetching character images from cloud...');
+    return getSettingsImages('character_images');
 };
 
 // ===== STORE LOGO IMAGES (Independent Cloud Sync) =====
@@ -611,33 +663,11 @@ const uploadStoreLogoImage = async (base64Data: string, index: number): Promise<
 };
 
 // Save store logo images to Firestore (independent of presets)
-export const saveStoreLogoImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
-    if (!db || !storage) {
-        console.log('saveStoreLogoImages: db or storage is null');
-        return false;
-    }
-    try {
-        console.log(`Saving ${images.length} store logo images to cloud...`);
-
-        // Upload all images to Storage
-        const imageUrls = await Promise.all(
-            images.map((img, i) => uploadStoreLogoImage(img, i))
-        );
-
-        // Save URLs and selected indices to Firestore
-        const docRef = doc(db, 'settings', 'store_logo_images');
-        await setDoc(docRef, {
-            images: imageUrls,
-            selectedIndices: selectedIndices,
-            updatedAt: Date.now()
-        });
-
-        console.log('Store logo images saved successfully');
-        return true;
-    } catch (e) {
-        console.error('Save store logo images error:', e);
-        return false;
-    }
+export const saveStoreLogoImages = async (
+    images: string[],
+    selectedIndices: number[]
+): Promise<CloudAssetSyncResult> => {
+    return saveSettingsImages('store_logo_images', images, selectedIndices, uploadStoreLogoImage, 'store logo images');
 };
 
 // Get store logo images from Firestore
@@ -646,26 +676,8 @@ export const getStoreLogoImages = async (): Promise<{ images: string[], selected
         console.log('getStoreLogoImages: db is null');
         return { images: [], selectedIndices: [] };
     }
-    try {
-        console.log('Fetching store logo images from cloud...');
-        const docSnap = await getDocs(collection(db, 'settings'));
-
-        let images: string[] = [];
-        let selectedIndices: number[] = [];
-        docSnap.forEach((d) => {
-            if (d.id === 'store_logo_images') {
-                const data = d.data();
-                images = data.images || [];
-                selectedIndices = data.selectedIndices || [];
-            }
-        });
-
-        console.log(`Fetched ${images.length} store logo images from cloud`);
-        return { images, selectedIndices };
-    } catch (e) {
-        console.error('Get store logo images error:', e);
-        return { images: [], selectedIndices: [] };
-    }
+    console.log('Fetching store logo images from cloud...');
+    return getSettingsImages('store_logo_images');
 };
 
 // ===== CUSTOMER IMAGES (Independent Cloud Sync) =====
@@ -690,33 +702,11 @@ const uploadCustomerImage = async (base64Data: string, index: number): Promise<s
 };
 
 // Save customer images to Firestore (independent of presets)
-export const saveCustomerImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
-    if (!db || !storage) {
-        console.log('saveCustomerImages: db or storage is null');
-        return false;
-    }
-    try {
-        console.log(`Saving ${images.length} customer images to cloud...`);
-
-        // Upload all images to Storage
-        const imageUrls = await Promise.all(
-            images.map((img, i) => uploadCustomerImage(img, i))
-        );
-
-        // Save URLs and selected indices to Firestore
-        const docRef = doc(db, 'settings', 'customer_images');
-        await setDoc(docRef, {
-            images: imageUrls,
-            selectedIndices: selectedIndices,
-            updatedAt: Date.now()
-        });
-
-        console.log('Customer images saved successfully');
-        return true;
-    } catch (e) {
-        console.error('Save customer images error:', e);
-        return false;
-    }
+export const saveCustomerImages = async (
+    images: string[],
+    selectedIndices: number[]
+): Promise<CloudAssetSyncResult> => {
+    return saveSettingsImages('customer_images', images, selectedIndices, uploadCustomerImage, 'customer images');
 };
 
 // Get customer images from Firestore
@@ -725,26 +715,8 @@ export const getCustomerImages = async (): Promise<{ images: string[], selectedI
         console.log('getCustomerImages: db is null');
         return { images: [], selectedIndices: [] };
     }
-    try {
-        console.log('Fetching customer images from cloud...');
-        const docSnap = await getDocs(collection(db, 'settings'));
-
-        let images: string[] = [];
-        let selectedIndices: number[] = [];
-        docSnap.forEach((d) => {
-            if (d.id === 'customer_images') {
-                const data = d.data();
-                images = data.images || [];
-                selectedIndices = data.selectedIndices || [];
-            }
-        });
-
-        console.log(`Fetched ${images.length} customer images from cloud`);
-        return { images, selectedIndices };
-    } catch (e) {
-        console.error('Get customer images error:', e);
-        return { images: [], selectedIndices: [] };
-    }
+    console.log('Fetching customer images from cloud...');
+    return getSettingsImages('customer_images');
 };
 
 // ===== CUSTOM ILLUSTRATIONS (Independent Cloud Sync) =====
@@ -769,33 +741,17 @@ const uploadCustomIllustration = async (base64Data: string, index: number): Prom
 };
 
 // Save custom illustrations to Firestore (independent of presets)
-export const saveCustomIllustrations = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
-    if (!db || !storage) {
-        console.log('saveCustomIllustrations: db or storage is null');
-        return false;
-    }
-    try {
-        console.log(`Saving ${images.length} custom illustrations to cloud...`);
-
-        // Upload all images to Storage
-        const imageUrls = await Promise.all(
-            images.map((img, i) => uploadCustomIllustration(img, i))
-        );
-
-        // Save URLs and selected indices to Firestore
-        const docRef = doc(db, 'settings', 'custom_illustrations');
-        await setDoc(docRef, {
-            images: imageUrls,
-            selectedIndices: selectedIndices,
-            updatedAt: Date.now()
-        });
-
-        console.log('Custom illustrations saved successfully');
-        return true;
-    } catch (e) {
-        console.error('Save custom illustrations error:', e);
-        return false;
-    }
+export const saveCustomIllustrations = async (
+    images: string[],
+    selectedIndices: number[]
+): Promise<CloudAssetSyncResult> => {
+    return saveSettingsImages(
+        'custom_illustrations',
+        images,
+        selectedIndices,
+        uploadCustomIllustration,
+        'custom illustrations'
+    );
 };
 
 // Get custom illustrations from Firestore
@@ -804,26 +760,8 @@ export const getCustomIllustrations = async (): Promise<{ images: string[], sele
         console.log('getCustomIllustrations: db is null');
         return { images: [], selectedIndices: [] };
     }
-    try {
-        console.log('Fetching custom illustrations from cloud...');
-        const docSnap = await getDocs(collection(db, 'settings'));
-
-        let images: string[] = [];
-        let selectedIndices: number[] = [];
-        docSnap.forEach((d) => {
-            if (d.id === 'custom_illustrations') {
-                const data = d.data();
-                images = data.images || [];
-                selectedIndices = data.selectedIndices || [];
-            }
-        });
-
-        console.log(`Fetched ${images.length} custom illustrations from cloud`);
-        return { images, selectedIndices };
-    } catch (e) {
-        console.error('Get custom illustrations error:', e);
-        return { images: [], selectedIndices: [] };
-    }
+    console.log('Fetching custom illustrations from cloud...');
+    return getSettingsImages('custom_illustrations');
 };
 
 // ===== FRONT PRODUCT IMAGES (Independent Cloud Sync) =====
@@ -848,33 +786,17 @@ const uploadFrontProductImage = async (base64Data: string, index: number): Promi
 };
 
 // Save front product images to Firestore (independent of presets)
-export const saveFrontProductImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
-    if (!db || !storage) {
-        console.log('saveFrontProductImages: db or storage is null');
-        return false;
-    }
-    try {
-        console.log(`Saving ${images.length} front product images to cloud...`);
-
-        // Upload all images to Storage
-        const imageUrls = await Promise.all(
-            images.map((img, i) => uploadFrontProductImage(img, i))
-        );
-
-        // Save URLs and selected indices to Firestore
-        const docRef = doc(db, 'settings', 'front_product_images');
-        await setDoc(docRef, {
-            images: imageUrls,
-            selectedIndices: selectedIndices,
-            updatedAt: Date.now()
-        });
-
-        console.log('Front product images saved successfully');
-        return true;
-    } catch (e) {
-        console.error('Save front product images error:', e);
-        return false;
-    }
+export const saveFrontProductImages = async (
+    images: string[],
+    selectedIndices: number[]
+): Promise<CloudAssetSyncResult> => {
+    return saveSettingsImages(
+        'front_product_images',
+        images,
+        selectedIndices,
+        uploadFrontProductImage,
+        'front product images'
+    );
 };
 
 // Get front product images from Firestore
@@ -883,26 +805,8 @@ export const getFrontProductImages = async (): Promise<{ images: string[], selec
         console.log('getFrontProductImages: db is null');
         return { images: [], selectedIndices: [] };
     }
-    try {
-        console.log('Fetching front product images from cloud...');
-        const docSnap = await getDocs(collection(db, 'settings'));
-
-        let images: string[] = [];
-        let selectedIndices: number[] = [];
-        docSnap.forEach((d) => {
-            if (d.id === 'front_product_images') {
-                const data = d.data();
-                images = data.images || [];
-                selectedIndices = data.selectedIndices || [];
-            }
-        });
-
-        console.log(`Fetched ${images.length} front product images from cloud`);
-        return { images, selectedIndices };
-    } catch (e) {
-        console.error('Get front product images error:', e);
-        return { images: [], selectedIndices: [] };
-    }
+    console.log('Fetching front product images from cloud...');
+    return getSettingsImages('front_product_images');
 };
 
 // ===== CAMPAIGN MAIN IMAGES (Independent Cloud Sync) =====
@@ -927,33 +831,17 @@ const uploadCampaignMainImage = async (base64Data: string, index: number): Promi
 };
 
 // Save campaign main images to Firestore (independent of presets)
-export const saveCampaignMainImages = async (images: string[], selectedIndices: number[]): Promise<boolean> => {
-    if (!db || !storage) {
-        console.log('saveCampaignMainImages: db or storage is null');
-        return false;
-    }
-    try {
-        console.log(`Saving ${images.length} campaign main images to cloud...`);
-
-        // Upload all images to Storage
-        const imageUrls = await Promise.all(
-            images.map((img, i) => uploadCampaignMainImage(img, i))
-        );
-
-        // Save URLs and selected indices to Firestore
-        const docRef = doc(db, 'settings', 'campaign_main_images');
-        await setDoc(docRef, {
-            images: imageUrls,
-            selectedIndices: selectedIndices,
-            updatedAt: Date.now()
-        });
-
-        console.log('Campaign main images saved successfully');
-        return true;
-    } catch (e) {
-        console.error('Save campaign main images error:', e);
-        return false;
-    }
+export const saveCampaignMainImages = async (
+    images: string[],
+    selectedIndices: number[]
+): Promise<CloudAssetSyncResult> => {
+    return saveSettingsImages(
+        'campaign_main_images',
+        images,
+        selectedIndices,
+        uploadCampaignMainImage,
+        'campaign main images'
+    );
 };
 
 // Get campaign main images from Firestore
@@ -962,24 +850,6 @@ export const getCampaignMainImages = async (): Promise<{ images: string[], selec
         console.log('getCampaignMainImages: db is null');
         return { images: [], selectedIndices: [] };
     }
-    try {
-        console.log('Fetching campaign main images from cloud...');
-        const docSnap = await getDocs(collection(db, 'settings'));
-
-        let images: string[] = [];
-        let selectedIndices: number[] = [];
-        docSnap.forEach((d) => {
-            if (d.id === 'campaign_main_images') {
-                const data = d.data();
-                images = data.images || [];
-                selectedIndices = data.selectedIndices || [];
-            }
-        });
-
-        console.log(`Fetched ${images.length} campaign main images from cloud`);
-        return { images, selectedIndices };
-    } catch (e) {
-        console.error('Get campaign main images error:', e);
-        return { images: [], selectedIndices: [] };
-    }
+    console.log('Fetching campaign main images from cloud...');
+    return getSettingsImages('campaign_main_images');
 };
