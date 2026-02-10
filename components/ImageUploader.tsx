@@ -15,6 +15,17 @@ interface ImageMeta {
   sizeBytes?: number;
 }
 
+interface TrashImageItem {
+  id: string;
+  image: string;
+  originalIndex: number;
+  deletedAt: number;
+}
+
+const UNDO_WINDOW_MS = 8000;
+const TRASH_RETENTION_MS = 24 * 60 * 60 * 1000;
+const MAX_TRASH_ITEMS = 30;
+
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
   images,
   onImagesChange,
@@ -29,6 +40,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   const thumbnailMapRef = useRef<Record<string, string>>({});
   const [metaMap, setMetaMap] = useState<Record<string, ImageMeta>>({});
   const metaMapRef = useRef<Record<string, ImageMeta>>({});
+  const [trashItems, setTrashItems] = useState<TrashImageItem[]>([]);
+  const [showTrash, setShowTrash] = useState(false);
+  const [pendingUndoItem, setPendingUndoItem] = useState<TrashImageItem | null>(null);
+  const undoTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     thumbnailMapRef.current = thumbnailMap;
@@ -37,6 +52,32 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   useEffect(() => {
     metaMapRef.current = metaMap;
   }, [metaMap]);
+
+  const clearUndoTimer = () => {
+    if (undoTimerRef.current !== null) {
+      window.clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearUndoTimer();
+    };
+  }, []);
+
+  useEffect(() => {
+    const pruneExpiredTrash = () => {
+      const now = Date.now();
+      setTrashItems(prev => prev.filter(item => now - item.deletedAt <= TRASH_RETENTION_MS));
+    };
+
+    pruneExpiredTrash();
+    const intervalId = window.setInterval(pruneExpiredTrash, 60 * 1000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   const formatBytes = (bytes: number) => {
     if (!Number.isFinite(bytes) || bytes <= 0) return '0B';
@@ -241,7 +282,56 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     }
   };
 
+  const openUndoWindow = (item: TrashImageItem) => {
+    clearUndoTimer();
+    setPendingUndoItem(item);
+    undoTimerRef.current = window.setTimeout(() => {
+      setPendingUndoItem(current => (current?.id === item.id ? null : current));
+    }, UNDO_WINDOW_MS);
+  };
+
+  const restoreFromTrash = (item: TrashImageItem) => {
+    if (!multiple) {
+      onImagesChange([item.image]);
+    } else {
+      if (typeof maxImages === 'number' && images.length >= maxImages) {
+        alert('復元するには空き枠が必要です。先に画像を1枚減らしてください。');
+        return;
+      }
+      const insertIndex = Math.min(Math.max(item.originalIndex, 0), images.length);
+      const nextImages = [...images];
+      nextImages.splice(insertIndex, 0, item.image);
+      onImagesChange(nextImages);
+    }
+
+    setTrashItems(prev => prev.filter(trash => trash.id !== item.id));
+    if (pendingUndoItem?.id === item.id) {
+      clearUndoTimer();
+      setPendingUndoItem(null);
+    }
+  };
+
   const removeImage = (index: number) => {
+    const targetImage = images[index];
+    if (!targetImage) return;
+
+    const shouldConfirmDelete = images.length <= 1;
+    if (
+      shouldConfirmDelete &&
+      !window.confirm('最後の1枚を削除しますか？\n削除後もゴミ箱から復元できます。')
+    ) {
+      return;
+    }
+
+    const deletedItem: TrashImageItem = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+      image: targetImage,
+      originalIndex: index,
+      deletedAt: Date.now()
+    };
+    setTrashItems(prev => [deletedItem, ...prev].slice(0, MAX_TRASH_ITEMS));
+    openUndoWindow(deletedItem);
+
     const newImages = images.filter((_, i) => i !== index);
     onImagesChange(newImages);
   };
@@ -338,6 +428,77 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           <span>最大解像度: {stats.maxWidth && stats.maxHeight ? `${stats.maxWidth}x${stats.maxHeight}` : '不明'}</span>
           {stats.warning && (
             <span className="text-amber-600 font-semibold">サイズが大きめです</span>
+          )}
+        </div>
+      )}
+
+      {(pendingUndoItem || trashItems.length > 0) && (
+        <div className="mt-2 space-y-2">
+          {pendingUndoItem && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold text-amber-900">画像を削除しました</span>
+              <button
+                type="button"
+                onClick={() => restoreFromTrash(pendingUndoItem)}
+                className="text-[10px] font-bold px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
+              >
+                元に戻す
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setShowTrash(prev => !prev)}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+            >
+              ゴミ箱 {trashItems.length}件
+            </button>
+            {trashItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTrashItems([]);
+                  setPendingUndoItem(null);
+                  clearUndoTimer();
+                }}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100"
+              >
+                ゴミ箱を空にする
+              </button>
+            )}
+          </div>
+
+          {showTrash && (
+            <div className="max-h-44 overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-2 space-y-1.5">
+              {trashItems.length === 0 ? (
+                <div className="text-[10px] text-slate-500">ゴミ箱は空です</div>
+              ) : (
+                trashItems.map((item) => (
+                  <div key={item.id} className="bg-white border border-slate-200 rounded p-1.5 flex items-center gap-2">
+                    <img src={item.image} alt="" className="w-9 h-9 rounded object-cover bg-slate-100" loading="lazy" decoding="async" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] text-slate-600">
+                        {new Date(item.deletedAt).toLocaleString('ja-JP', {
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => restoreFromTrash(item)}
+                      className="text-[10px] font-bold px-2 py-1 rounded bg-slate-700 text-white hover:bg-slate-800"
+                    >
+                      復元
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           )}
         </div>
       )}
