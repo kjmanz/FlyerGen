@@ -3066,7 +3066,17 @@ ${header.length + uint8Array.length + 20}
                 isCloudSync={firebaseEnabled}
               >
                 <ImageUploader label="参考" images={referenceImages} onImagesChange={handleReferenceImagesChange} />
-                <AssetSelectionGrid images={referenceImages} selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])} onToggleSelect={toggleReferenceImageSelection} onClearSelection={clearReferenceSelection} onReorder={reorderReferenceImages} onRemoveDuplicates={dedupeReferenceImages} accent="indigo" />
+                <AssetSelectionGrid
+                  images={referenceImages}
+                  selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])}
+                  onToggleSelect={toggleReferenceImageSelection}
+                  onClearSelection={clearReferenceSelection}
+                  onReorder={reorderReferenceImages}
+                  onRemoveDuplicates={dedupeReferenceImages}
+                  accent="indigo"
+                  previewOnClick
+                  previewHintLabel="画像クリックで拡大 / 右上の＋で選択"
+                />
               </CompactAssetSection>
 
               {/* Customer Images */}

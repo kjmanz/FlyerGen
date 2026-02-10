@@ -13,6 +13,8 @@ interface AssetSelectionGridProps {
   selectedCountLabel?: string;
   accent?: Accent;
   columns?: number;
+  previewOnClick?: boolean;
+  previewHintLabel?: string;
 }
 
 const ACCENT_STYLES: Record<Accent, { selected: string; badge: string }> = {
@@ -31,9 +33,12 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
   onRemoveDuplicates,
   selectedCountLabel,
   accent = 'indigo',
-  columns = 4
+  columns = 4,
+  previewOnClick = false,
+  previewHintLabel = '画像クリックで拡大 / 右上で選択'
 }) => {
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const selectedCount = selectedIndices.size;
 
   useEffect(() => {
@@ -41,6 +46,28 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
       setShowOnlySelected(false);
     }
   }, [selectedCount, showOnlySelected]);
+
+  useEffect(() => {
+    if (previewIndex === null) return;
+    if (!images[previewIndex]) {
+      setPreviewIndex(null);
+    }
+  }, [images, previewIndex]);
+
+  useEffect(() => {
+    if (previewIndex === null) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPreviewIndex(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [previewIndex]);
 
   const displayItems = useMemo(
     () =>
@@ -54,6 +81,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
   const canSelectAll = typeof onSelectAll === 'function';
   const canClearSelection = typeof onClearSelection === 'function';
   const canReorder = typeof onReorder === 'function';
+  const previewImage = previewIndex !== null ? images[previewIndex] : null;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     if (!canReorder) return;
@@ -127,6 +155,10 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
         </div>
       </div>
 
+      {previewOnClick && (
+        <div className="text-[10px] text-slate-500 mb-2">{previewHintLabel}</div>
+      )}
+
       <div className={`grid ${gridColsClass} gap-2`}>
         {displayItems.map(item => {
           const isSelected = selectedIndices.has(item.idx);
@@ -135,7 +167,13 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
           return (
             <div
               key={item.idx}
-              onClick={() => onToggleSelect(item.idx)}
+              onClick={() => {
+                if (previewOnClick) {
+                  setPreviewIndex(item.idx);
+                  return;
+                }
+                onToggleSelect(item.idx);
+              }}
               className={`relative group aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
                 isSelected ? accentStyles.selected : 'border-slate-200 hover:border-slate-300'
               }`}
@@ -151,12 +189,36 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
                 loading="lazy"
                 decoding="async"
               />
-              {isSelected && (
-                <div className={`absolute top-1 right-1 w-5 h-5 ${accentStyles.badge} rounded-full flex items-center justify-center`}>
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
+              {previewOnClick ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSelect(item.idx);
+                  }}
+                  className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? `${accentStyles.badge} text-white`
+                      : 'bg-white/90 border border-slate-200 text-slate-500 hover:text-slate-900'
+                  }`}
+                  title={isSelected ? '選択解除' : 'この画像を選択'}
+                >
+                  {isSelected ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span className="text-[11px] font-bold leading-none">+</span>
+                  )}
+                </button>
+              ) : (
+                isSelected && (
+                  <div className={`absolute top-1 right-1 w-5 h-5 ${accentStyles.badge} rounded-full flex items-center justify-center`}>
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )
               )}
               {canReorder && (
                 <div className="absolute bottom-1 left-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -194,6 +256,34 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
           );
         })}
       </div>
+
+      {previewOnClick && previewImage && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewIndex(null)}
+        >
+          <div
+            className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={previewImage}
+              alt={`preview-${previewIndex !== null ? previewIndex + 1 : ''}`}
+              className="max-w-full max-h-[85vh] object-contain rounded-md shadow-2xl"
+              loading="eager"
+              decoding="async"
+            />
+            <button
+              type="button"
+              onClick={() => setPreviewIndex(null)}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 text-white text-lg leading-none flex items-center justify-center"
+              aria-label="プレビューを閉じる"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
