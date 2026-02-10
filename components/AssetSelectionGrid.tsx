@@ -8,7 +8,6 @@ interface AssetSelectionGridProps {
   onToggleSelect: (index: number) => void;
   onSelectAll?: () => void;
   onClearSelection?: () => void;
-  onReorder?: (from: number, to: number) => void;
   onRemoveDuplicates?: () => void;
   selectedCountLabel?: string;
   accent?: Accent;
@@ -29,7 +28,6 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
   onToggleSelect,
   onSelectAll,
   onClearSelection,
-  onReorder,
   onRemoveDuplicates,
   selectedCountLabel,
   accent = 'indigo',
@@ -80,28 +78,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
   const accentStyles = ACCENT_STYLES[accent];
   const canSelectAll = typeof onSelectAll === 'function';
   const canClearSelection = typeof onClearSelection === 'function';
-  const canReorder = typeof onReorder === 'function';
   const previewImage = previewIndex !== null ? images[previewIndex] : null;
-
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    if (!canReorder) return;
-    e.dataTransfer.setData('text/plain', String(index));
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (!canReorder) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, toIndex: number) => {
-    if (!canReorder || !onReorder) return;
-    e.preventDefault();
-    const fromIndex = Number(e.dataTransfer.getData('text/plain'));
-    if (Number.isNaN(fromIndex) || fromIndex === toIndex) return;
-    onReorder(fromIndex, toIndex);
-  };
 
   if (images.length === 0) return null;
 
@@ -162,8 +139,6 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
       <div className={`grid ${gridColsClass} gap-2`}>
         {displayItems.map(item => {
           const isSelected = selectedIndices.has(item.idx);
-          const canMoveUp = item.idx > 0;
-          const canMoveDown = item.idx < images.length - 1;
           return (
             <div
               key={item.idx}
@@ -177,10 +152,6 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
               className={`relative group aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
                 isSelected ? accentStyles.selected : 'border-slate-200 hover:border-slate-300'
               }`}
-              draggable={canReorder}
-              onDragStart={(e) => handleDragStart(e, item.idx)}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, item.idx)}
             >
               <img
                 src={item.img}
@@ -219,38 +190,6 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
                     </svg>
                   </div>
                 )
-              )}
-              {canReorder && (
-                <div className="absolute bottom-1 left-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (canMoveUp && onReorder) onReorder(item.idx, item.idx - 1);
-                    }}
-                    className={`w-5 h-5 rounded bg-white/90 text-slate-500 text-[10px] flex items-center justify-center shadow ${
-                      canMoveUp ? 'hover:text-slate-900' : 'opacity-40 cursor-not-allowed'
-                    }`}
-                    title="上へ移動"
-                    disabled={!canMoveUp}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (canMoveDown && onReorder) onReorder(item.idx, item.idx + 1);
-                    }}
-                    className={`w-5 h-5 rounded bg-white/90 text-slate-500 text-[10px] flex items-center justify-center shadow ${
-                      canMoveDown ? 'hover:text-slate-900' : 'opacity-40 cursor-not-allowed'
-                    }`}
-                    title="下へ移動"
-                    disabled={!canMoveDown}
-                  >
-                    ↓
-                  </button>
-                </div>
               )}
             </div>
           );

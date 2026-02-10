@@ -944,43 +944,6 @@ const App: React.FC = () => {
     }
   };
 
-  const reorderArray = <T,>(items: T[], from: number, to: number) => {
-    if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return items;
-    const next = [...items];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    return next;
-  };
-
-  const remapSelection = (selected: Set<number>, from: number, to: number) => {
-    if (from === to) return selected;
-    const next = new Set<number>();
-    selected.forEach((index) => {
-      if (index === from) {
-        next.add(to);
-        return;
-      }
-      if (from < to && index > from && index <= to) {
-        next.add(index - 1);
-        return;
-      }
-      if (from > to && index >= to && index < from) {
-        next.add(index + 1);
-        return;
-      }
-      next.add(index);
-    });
-    return next;
-  };
-
-  const remapSingleSelection = (selected: number | null, from: number, to: number) => {
-    if (selected === null || from === to) return selected;
-    if (selected === from) return to;
-    if (from < to && selected > from && selected <= to) return selected - 1;
-    if (from > to && selected >= to && selected < from) return selected + 1;
-    return selected;
-  };
-
   const dedupeImages = (items: string[]) => {
     const seen = new Map<string, number>();
     const nextImages: string[] = [];
@@ -1013,14 +976,6 @@ const App: React.FC = () => {
     return typeof mapped === 'number' ? mapped : null;
   };
 
-  const reorderCharacterImages = (from: number, to: number) => {
-    setCharacterImages(prev => reorderArray(prev, from, to));
-    setSelectedCharacterIndices(prev => remapSelection(prev, from, to));
-    if (!characterImagesInitialized) {
-      setCharacterImagesInitialized(true);
-    }
-  };
-
   const dedupeCharacterImages = () => {
     if (!window.confirm('重複画像を削除しますか？')) return;
     setCharacterImages(prev => {
@@ -1047,14 +1002,6 @@ const App: React.FC = () => {
     }
   };
 
-  const reorderReferenceImages = (from: number, to: number) => {
-    setReferenceImages(prev => reorderArray(prev, from, to));
-    setSelectedReferenceIndex(prev => remapSingleSelection(prev, from, to));
-    if (!referenceImagesInitialized) {
-      setReferenceImagesInitialized(true);
-    }
-  };
-
   const dedupeReferenceImages = () => {
     if (!window.confirm('重複画像を削除しますか？')) return;
     setReferenceImages(prev => {
@@ -1071,14 +1018,6 @@ const App: React.FC = () => {
     setSelectedReferenceIndex(null);
     if (!referenceImagesInitialized) {
       setReferenceImagesInitialized(true);
-    }
-  };
-
-  const reorderLogoImages = (from: number, to: number) => {
-    setStoreLogoImages(prev => reorderArray(prev, from, to));
-    setSelectedLogoIndices(prev => remapSelection(prev, from, to));
-    if (!logoImagesInitialized) {
-      setLogoImagesInitialized(true);
     }
   };
 
@@ -1108,14 +1047,6 @@ const App: React.FC = () => {
     }
   };
 
-  const reorderCustomIllustrations = (from: number, to: number) => {
-    setCustomIllustrations(prev => reorderArray(prev, from, to));
-    setSelectedCustomIllustrationIndices(prev => remapSelection(prev, from, to));
-    if (!customIllustrationsInitialized) {
-      setCustomIllustrationsInitialized(true);
-    }
-  };
-
   const dedupeCustomIllustrations = () => {
     if (!window.confirm('重複画像を削除しますか？')) return;
     setCustomIllustrations(prev => {
@@ -1139,14 +1070,6 @@ const App: React.FC = () => {
     setSelectedCustomIllustrationIndices(new Set());
     if (!customIllustrationsInitialized) {
       setCustomIllustrationsInitialized(true);
-    }
-  };
-
-  const reorderCustomerImages = (from: number, to: number) => {
-    setCustomerImages(prev => reorderArray(prev, from, to));
-    setSelectedCustomerImageIndices(prev => remapSelection(prev, from, to));
-    if (!customerImagesInitialized) {
-      setCustomerImagesInitialized(true);
     }
   };
 
@@ -3032,7 +2955,7 @@ ${header.length + uint8Array.length + 20}
                 isCloudSync={firebaseEnabled}
               >
                 <ImageUploader label="キャラクター" images={characterImages} onImagesChange={handleCharacterImagesChange} />
-                <AssetSelectionGrid images={characterImages} selectedIndices={selectedCharacterIndices} onToggleSelect={toggleCharacterImageSelection} onSelectAll={selectAllCharacterImages} onClearSelection={clearCharacterSelection} onReorder={reorderCharacterImages} onRemoveDuplicates={dedupeCharacterImages} accent="indigo" />
+                <AssetSelectionGrid images={characterImages} selectedIndices={selectedCharacterIndices} onToggleSelect={toggleCharacterImageSelection} onSelectAll={selectAllCharacterImages} onClearSelection={clearCharacterSelection} onRemoveDuplicates={dedupeCharacterImages} accent="indigo" />
                 {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
                   <div className="mt-2 p-2 bg-slate-50 rounded-md">
                     <div className="flex gap-1">
@@ -3053,7 +2976,7 @@ ${header.length + uint8Array.length + 20}
                 isCloudSync={firebaseEnabled}
               >
                 <ImageUploader label="イラスト" images={customIllustrations} onImagesChange={handleCustomIllustrationsChange} />
-                <AssetSelectionGrid images={customIllustrations} selectedIndices={selectedCustomIllustrationIndices} onToggleSelect={toggleCustomIllustrationSelection} onSelectAll={selectAllCustomIllustrations} onClearSelection={clearCustomIllustrationSelection} onReorder={reorderCustomIllustrations} onRemoveDuplicates={dedupeCustomIllustrations} accent="indigo" />
+                <AssetSelectionGrid images={customIllustrations} selectedIndices={selectedCustomIllustrationIndices} onToggleSelect={toggleCustomIllustrationSelection} onSelectAll={selectAllCustomIllustrations} onClearSelection={clearCustomIllustrationSelection} onRemoveDuplicates={dedupeCustomIllustrations} accent="indigo" />
               </CompactAssetSection>
 
               {/* Reference Images */}
@@ -3071,7 +2994,6 @@ ${header.length + uint8Array.length + 20}
                   selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])}
                   onToggleSelect={toggleReferenceImageSelection}
                   onClearSelection={clearReferenceSelection}
-                  onReorder={reorderReferenceImages}
                   onRemoveDuplicates={dedupeReferenceImages}
                   accent="indigo"
                   previewOnClick
@@ -3091,7 +3013,7 @@ ${header.length + uint8Array.length + 20}
                 isCloudSync={firebaseEnabled}
               >
                 <ImageUploader label="お客様" images={customerImages} onImagesChange={handleCustomerImagesChange} />
-                <AssetSelectionGrid images={customerImages} selectedIndices={selectedCustomerImageIndices} onToggleSelect={toggleCustomerImageSelection} onSelectAll={selectAllCustomerImages} onClearSelection={clearCustomerSelection} onReorder={reorderCustomerImages} onRemoveDuplicates={dedupeCustomerImages} accent="rose" />
+                <AssetSelectionGrid images={customerImages} selectedIndices={selectedCustomerImageIndices} onToggleSelect={toggleCustomerImageSelection} onSelectAll={selectAllCustomerImages} onClearSelection={clearCustomerSelection} onRemoveDuplicates={dedupeCustomerImages} accent="rose" />
               </CompactAssetSection>
 
               {/* Store Logo */}
@@ -3104,7 +3026,7 @@ ${header.length + uint8Array.length + 20}
                 isCloudSync={firebaseEnabled}
               >
                 <ImageUploader label="ロゴ" images={storeLogoImages} onImagesChange={handleStoreLogoImagesChange} />
-                <AssetSelectionGrid images={storeLogoImages} selectedIndices={selectedLogoIndices} onToggleSelect={toggleLogoImageSelection} onSelectAll={selectAllLogoImages} onClearSelection={clearLogoSelection} onReorder={reorderLogoImages} onRemoveDuplicates={dedupeLogoImages} accent="indigo" />
+                <AssetSelectionGrid images={storeLogoImages} selectedIndices={selectedLogoIndices} onToggleSelect={toggleLogoImageSelection} onSelectAll={selectAllLogoImages} onClearSelection={clearLogoSelection} onRemoveDuplicates={dedupeLogoImages} accent="indigo" />
                 {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
                   <div className="mt-2 p-2 bg-slate-50 rounded-md">
                     <label className="block text-xs font-medium text-slate-400 mb-1">配置</label>
