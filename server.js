@@ -4,7 +4,7 @@ import cors from 'cors';
 const app = express();
 const PORT = 3001;
 
-const GEMINI_GENERATE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
+const GEMINI_GENERATE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent';
 const REPLICATE_PREDICTIONS_ENDPOINT = 'https://api.replicate.com/v1/predictions';
 
 app.use(cors());

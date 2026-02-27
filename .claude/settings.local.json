@@ -9,7 +9,9 @@
       "Bash(git commit:*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(timeout 10 npm run dev)"
+      "Bash(timeout 10 npm run dev)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
     ]
   }
 }
