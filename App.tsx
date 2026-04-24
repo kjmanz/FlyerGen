@@ -35,6 +35,10 @@ import {
   IcLightbulb,
   IcArrowUp,
   IcArrowDown,
+  IcSave,
+  IcKey,
+  IcRocket,
+  IcDownload,
 } from './components/inlineIcons';
 import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { SidebarContextCard } from './components/SidebarContextCard';
@@ -3018,7 +3022,9 @@ ${header.length + uint8Array.length + 20}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
 
                     <div className="flex items-center gap-3 mb-8 relative">
-                      <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-sm">📢</div>
+                      <div className="w-8 h-8 bg-rose-50 border border-rose-100 rounded-lg flex items-center justify-center text-rose-700">
+                        <IcMegaphone className="h-4 w-4" />
+                      </div>
                       <h2 className="text-xl font-semibold text-slate-900">キャンペーン情報（表面）</h2>
                     </div>
 
@@ -3981,7 +3987,9 @@ ${header.length + uint8Array.length + 20}
       {isSaveModalOpen && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
-            <div className="w-12 h-12 bg-indigo-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-indigo-100">💾</div>
+            <div className="w-12 h-12 bg-indigo-50 rounded-md flex items-center justify-center text-indigo-700 mb-6 shadow-inner border border-indigo-100">
+              <IcSave className="h-7 w-7" />
+            </div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">プリセット保存</h3>
             <p className="text-sm font-medium text-slate-400 mb-8">現在の設定を保存します。</p>
 
@@ -4030,7 +4038,9 @@ ${header.length + uint8Array.length + 20}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
-            <div className="w-12 h-12 bg-amber-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-amber-100">🔑</div>
+            <div className="w-12 h-12 bg-amber-50 rounded-md flex items-center justify-center text-amber-700 mb-6 shadow-inner border border-amber-100">
+              <IcKey className="h-7 w-7" />
+            </div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">API設定</h3>
             <p className="text-sm font-medium text-slate-400 mb-8">Gemini AIへの接続を設定します。</p>
 
@@ -4066,7 +4076,7 @@ ${header.length + uint8Array.length + 20}
               />
               <div className="mt-4 p-4 bg-violet-50/50 rounded-md border border-violet-100">
                 <p className="text-[11px] font-bold text-violet-700 leading-relaxed flex items-start gap-3">
-                  <span className="text-lg">🚀</span>
+                  <IcRocket className="h-5 w-5 flex-shrink-0 text-violet-600 mt-0.5" />
                   <span>
                     AIアップスケール機能には <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Replicate</a> のAPIキーが必要です。1回約0.1〜0.3円。
                   </span>
@@ -4112,7 +4122,9 @@ ${header.length + uint8Array.length + 20}
       {presetToLoad && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
-            <div className="w-12 h-12 bg-indigo-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-indigo-100">📥</div>
+            <div className="w-12 h-12 bg-indigo-50 rounded-md flex items-center justify-center text-indigo-700 mb-6 shadow-inner border border-indigo-100">
+              <IcDownload className="h-7 w-7" />
+            </div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">プリセット読み込み</h3>
             <p className="text-sm font-medium text-slate-400 mb-8 leading-relaxed">
               「<span className="text-indigo-600 font-semibold">{presetToLoad.name}</span>」を読み込みます。

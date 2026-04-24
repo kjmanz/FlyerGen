@@ -204,3 +204,30 @@ export const IcArrowDown: React.FC<{ className?: string }> = ({ className = 'h-4
     <path d="M12 5v14M19 12l-7 7-7-7" />
   </svg>
 );
+
+export const IcSave: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+    <path d="M17 21v-8H7v8M7 3v5h8" />
+  </svg>
+);
+
+export const IcKey: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <circle cx="7.5" cy="15.5" r="5.5" />
+    <path d="M21 2l-9.5 9.5M13 13l-2 2M15 9l2 2M17 7l2 2" />
+  </svg>
+);
+
+export const IcRocket: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09zM12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" />
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+  </svg>
+);
+
+export const IcDownload: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+  </svg>
+);
