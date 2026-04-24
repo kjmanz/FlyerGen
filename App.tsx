@@ -8,6 +8,22 @@ import type { EditRegion } from './components/ImageEditModal';
 import { MainTabs, MainTabType } from './components/MainTabs';
 import { Sidebar } from './components/Sidebar';
 import { CompactAssetSection } from './components/CompactAssetSection';
+import { AppHeader } from './components/AppHeader';
+import {
+  IcUser,
+  IcPalette,
+  IcImage,
+  IcUsers,
+  IcStore,
+  IcFolder,
+  IcStar,
+  IcMagnify,
+  IcFlask,
+  IcTag,
+  IcRefresh,
+  IcUpload,
+  IcPencil,
+} from './components/inlineIcons';
 import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { SidebarContextCard } from './components/SidebarContextCard';
 import { SidebarGenerationOptions } from './components/SidebarGenerationOptions';
@@ -2626,15 +2642,15 @@ ${header.length + uint8Array.length + 20}
   const getQualityBadgeConfig = (qualityCheck?: ImageQualityCheck) => {
     if (!qualityCheck || qualityCheck.status === 'pass') return null;
     if (qualityCheck.status === 'pending') {
-      return { label: '⏳ 品質', className: 'bg-sky-500 text-white' };
+      return { label: '品質チェック中', className: 'bg-sky-500 text-white' };
     }
     if (qualityCheck.status === 'warn') {
-      return { label: '⚠ 要確認', className: 'bg-amber-500 text-white' };
+      return { label: '要確認', className: 'bg-amber-500 text-white' };
     }
     if (qualityCheck.status === 'fail') {
-      return { label: '🚨 要修正', className: 'bg-rose-600 text-white' };
+      return { label: '要修正', className: 'bg-rose-600 text-white' };
     }
-    return { label: '⚠ 判定失敗', className: 'bg-slate-500 text-white' };
+    return { label: '判定失敗', className: 'bg-slate-500 text-white' };
   };
 
   const generationQueueStats = useMemo(() => {
@@ -2716,67 +2732,20 @@ ${header.length + uint8Array.length + 20}
 
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
-      {/* Header */}
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 lg:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 lg:gap-3">
-            {/* Hamburger Menu - Mobile only */}
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-              title="チラシ設定"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <img src="./logo.png" alt="Logo" className="w-8 h-8 lg:w-10 lg:h-10 rounded-md" />
-            <h1 className="text-base lg:text-xl font-semibold text-slate-900 tracking-tight hidden sm:block">
-              チラシ作成ソフト
-            </h1>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
-            <button
-              onClick={handleGenerate}
-              className={`text-xs sm:text-sm px-2 sm:px-3 lg:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all ${isGenerating ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
-            >
-              {isGenerating ? (
-                <>
-                  <span>＋</span>
-                  <span className="hidden sm:inline">キュー追加</span>
-                </>
-              ) : (
-                <>
-                  <span>✨</span>
-                  <span className="hidden sm:inline">{flyerSide === 'front' ? '表面作成' : '裏面作成'}</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => setShowPresetList(!showPresetList)}
-              className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-              title="プリセット読み込み"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
-            </button>
-            <button
-              onClick={() => setIsSaveModalOpen(true)}
-              className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-              title="プリセット保存"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
-            </button>
-            <button
-              onClick={() => { setTempApiKey(apiKey); setTempReplicateApiKey(replicateApiKey); setIsSettingsOpen(true); }}
-              className={`p-2 rounded-full flex items-center gap-1.5 transition-all ${apiKey ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'}`}
-              title={apiKey ? 'API 接続中' : 'APIキー未設定'}
-            >
-              <div className={`w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full ${apiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
-              <span className="hidden lg:inline text-xs font-bold">{apiKey ? '接続中' : '未設定'}</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        onOpenSidebar={() => setIsSidebarOpen(true)}
+        onGenerate={handleGenerate}
+        isGenerating={isGenerating}
+        flyerSide={flyerSide}
+        onTogglePresetList={() => setShowPresetList(!showPresetList)}
+        onOpenSaveModal={() => setIsSaveModalOpen(true)}
+        onOpenSettings={() => {
+          setTempApiKey(apiKey);
+          setTempReplicateApiKey(replicateApiKey);
+          setIsSettingsOpen(true);
+        }}
+        apiKey={apiKey}
+      />
 
       {/* 2-Pane Layout Container */}
       <div className="flex min-h-[calc(100vh-56px)] lg:min-h-[calc(100vh-64px)]">
@@ -2791,7 +2760,7 @@ ${header.length + uint8Array.length + 20}
               {/* Character Images */}
               <CompactAssetSection
                 title="キャラクター"
-                icon="👤"
+                icon={<IcUser className="h-4 w-4" />}
                 images={characterImages}
                 selectedCount={selectedCharacterIndices.size}
                 selectedIndices={Array.from(selectedCharacterIndices)}
@@ -2814,7 +2783,7 @@ ${header.length + uint8Array.length + 20}
               {/* Custom Illustrations */}
               <CompactAssetSection
                 title="イラスト"
-                icon="🎨"
+                icon={<IcPalette className="h-4 w-4" />}
                 images={customIllustrations}
                 selectedCount={selectedCustomIllustrationIndices.size}
                 selectedIndices={Array.from(selectedCustomIllustrationIndices)}
@@ -2829,7 +2798,7 @@ ${header.length + uint8Array.length + 20}
               {/* Reference Images */}
               <CompactAssetSection
                 title="参考デザイン"
-                icon="🖼️"
+                icon={<IcImage className="h-4 w-4" />}
                 images={referenceImages}
                 selectedCount={selectedReferenceIndex !== null ? 1 : 0}
                 selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
@@ -2853,7 +2822,7 @@ ${header.length + uint8Array.length + 20}
               {/* Customer Images */}
               <CompactAssetSection
                 title="お客様画像"
-                icon="👥"
+                icon={<IcUsers className="h-4 w-4" />}
                 iconBgColor="bg-rose-50"
                 iconBorderColor="border-rose-100"
                 images={customerImages}
@@ -2870,7 +2839,7 @@ ${header.length + uint8Array.length + 20}
               {/* Store Logo */}
               <CompactAssetSection
                 title="店舗ロゴ"
-                icon="🏪"
+                icon={<IcStore className="h-4 w-4" />}
                 images={storeLogoImages}
                 selectedCount={selectedLogoIndices.size}
                 selectedIndices={Array.from(selectedLogoIndices)}
@@ -3389,7 +3358,9 @@ ${header.length + uint8Array.length + 20}
                       </label>
                       <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
-                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white shadow-inner">
+                          <IcPencil className="h-4 w-4" />
+                        </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-900">自由記述</div>
                           <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
@@ -3531,7 +3502,9 @@ ${header.length + uint8Array.length + 20}
                   className="w-full flex items-center justify-between gap-3 text-left mb-4 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-3 hover:bg-slate-100/80 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-950 rounded-md flex items-center justify-center text-base sm:text-lg flex-shrink-0">📁</div>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-950 rounded-md flex items-center justify-center text-slate-100 flex-shrink-0">
+                      <IcFolder className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
                     <div className="min-w-0">
                       <h2 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-1 sm:ml-2">({history.length})</span></h2>
                       <p className="text-xs text-slate-400 font-medium mt-0.5">クリックで{isHistoryPanelExpanded ? '閉じる' : '一覧を表示'}</p>
@@ -3549,28 +3522,33 @@ ${header.length + uint8Array.length + 20}
                   <div className="hidden sm:flex gap-2 flex-wrap sm:justify-end">
                     {history.some(item => !item.tags || item.tags.length === 0) && (
                       <button
+                        type="button"
                         onClick={() => tagAllExistingHistory(false)}
                         disabled={isTaggingAll}
-                        className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
+                        className={`text-xs font-bold px-3 py-2 rounded-full transition-all inline-flex items-center gap-1.5 ${isTaggingAll
                           ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                           : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                           }`}
                       >
-                        {isTaggingAll ? '🏷️ タグ付け中...' : '🏷️ タグ付け'}
+                        <IcTag className="h-3.5 w-3.5 flex-shrink-0" />
+                        {isTaggingAll ? 'タグ付け中...' : 'タグ付け'}
                       </button>
                     )}
                     <button
+                      type="button"
                       onClick={() => tagAllExistingHistory(true)}
                       disabled={isTaggingAll}
-                      className={`text-xs font-bold px-3 py-2 rounded-full transition-all ${isTaggingAll
+                      className={`text-xs font-bold px-3 py-2 rounded-full transition-all inline-flex items-center gap-1.5 ${isTaggingAll
                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       title="すべての履歴のタグを再生成"
                     >
-                      🔄 全て再タグ付け
+                      <IcRefresh className="h-3.5 w-3.5 flex-shrink-0" />
+                      全て再タグ付け
                     </button>
                     <button
+                      type="button"
                       onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
                       className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
                       title="お気に入り優先で生成日時を並べ替え"
@@ -3578,25 +3556,30 @@ ${header.length + uint8Array.length + 20}
                       {sortOrder === 'desc' ? '新しい順' : '古い順'}
                     </button>
                     <button
+                      type="button"
                       onClick={() => { setUploadPreview(""); setUploadTags(""); setIsUploadModalOpen(true); }}
-                      className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-all"
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-all inline-flex items-center gap-1.5"
                     >
-                      📤 画像アップロード
+                      <IcUpload className="h-3.5 w-3.5 flex-shrink-0" />
+                      画像アップロード
                     </button>
                   </div>
                   {/* Mobile action buttons */}
                   <div className="flex sm:hidden gap-2">
                     <button
+                      type="button"
                       onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
                       className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600"
                     >
                       {sortOrder === 'desc' ? '↓新' : '↑古'}
                     </button>
                     <button
+                      type="button"
                       onClick={() => { setUploadPreview(""); setUploadTags(""); setIsUploadModalOpen(true); }}
-                      className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700"
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-emerald-100 text-emerald-700 inline-flex items-center justify-center"
+                      title="画像アップロード"
                     >
-                      📤
+                      <IcUpload className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -3659,25 +3642,28 @@ ${header.length + uint8Array.length + 20}
                             {/* Favorite Badge - Top Left */}
                             {item.isFavorite && (
                               <div className="absolute top-3 left-3 bg-amber-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                                ⭐ お気に入り
+                                <IcStar className="h-3.5 w-3.5 flex-shrink-0" filled />
+                                お気に入り
                               </div>
                             )}
 
                             {/* Status Badges - Top Right */}
                             <div className="absolute top-3 right-3 flex flex-col gap-2">
                               {item.isUpscaled && (
-                                <span className="bg-violet-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
-                                  🔍 {item.upscaleScale ?? UPSCALE_SCALE}x
+                                <span className="bg-violet-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg inline-flex items-center gap-1">
+                                  <IcMagnify className="h-3 w-3 flex-shrink-0" />
+                                  {item.upscaleScale ?? UPSCALE_SCALE}x
                                 </span>
                               )}
                               {item.is4KRegenerated && (
                                 <span className="bg-violet-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
-                                  🎯 4K
+                                  4K
                                 </span>
                               )}
                               {item.isEdited && (
-                                <span className="bg-amber-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
-                                  ✏️ 編集済
+                                <span className="bg-amber-500 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg inline-flex items-center gap-1">
+                                  <IcPencil className="h-3 w-3 flex-shrink-0" />
+                                  編集済
                                 </span>
                               )}
                               {(() => {
@@ -3694,6 +3680,7 @@ ${header.length + uint8Array.length + 20}
                             {/* Hover Overlay */}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-4">
                               <button
+                                type="button"
                                 onClick={() => {
                                   const w = window.open('', '_blank');
                                   if (w) {
@@ -3701,16 +3688,17 @@ ${header.length + uint8Array.length + 20}
                                     w.document.close();
                                   }
                                 }}
-                                className="bg-white text-slate-800 px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-100 transition-all shadow-xl"
+                                className="bg-white text-slate-800 px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-100 transition-all shadow-xl inline-flex items-center gap-2"
                               >
-                                🔍 画像を開く
+                                <IcMagnify className="h-4 w-4 flex-shrink-0" />
+                                画像を開く
                               </button>
                             </div>
                           </div>
 
                           {/* Info Section */}
                           <div className="p-3 sm:p-4 border-t border-slate-100">
-                            <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-500 mb-2 sm:mb-3">
+                            <div className="flex items-center justify-between text-xs text-slate-500 mb-2 sm:mb-3">
                               <span className="font-medium">
                                 {new Date(item.createdAt).toLocaleString('ja-JP', {
                                   month: 'short',
@@ -3721,20 +3709,23 @@ ${header.length + uint8Array.length + 20}
                               </span>
                               <div className="flex items-center gap-1 sm:gap-2">
                                 <button
+                                  type="button"
                                   onClick={() => toggleFavorite(item.id)}
-                                  className={`w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-base sm:text-lg transition-all hover:scale-110 ${item.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'}`}
+                                  className={`w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg transition-all hover:scale-110 ${item.isFavorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'}`}
                                   title={item.isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
                                 >
-                                  {item.isFavorite ? '⭐' : '☆'}
+                                  <IcStar className="h-5 w-5 sm:h-6 sm:w-6" filled={item.isFavorite} />
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => handleRecheckQuality(item)}
                                   className="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-all"
                                   title="品質チェックを再実行"
                                 >
-                                  🧪
+                                  <IcFlask className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => handleDeleteImage(item.id)}
                                   className="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
                                   title="削除"
@@ -4101,7 +4092,9 @@ ${header.length + uint8Array.length + 20}
       {isUploadModalOpen && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
-            <div className="w-12 h-12 bg-emerald-50 rounded-md flex items-center justify-center text-xl mb-6 shadow-inner border border-emerald-100">📤</div>
+            <div className="w-12 h-12 bg-emerald-50 rounded-md flex items-center justify-center text-emerald-700 mb-6 shadow-inner border border-emerald-100">
+              <IcUpload className="h-7 w-7" />
+            </div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">画像をアップロード</h3>
             <p className="text-sm font-medium text-slate-400 mb-6">手持ちの画像を履歴に追加します。</p>
 
@@ -4110,7 +4103,7 @@ ${header.length + uint8Array.length + 20}
               {!uploadPreview ? (
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer bg-slate-50/50 hover:bg-slate-100/50 transition-all">
                   <input type="file" accept="image/*" onChange={handleUploadFileSelect} className="hidden" />
-                  <span className="text-3xl mb-2">🖼️</span>
+                  <IcImage className="h-10 w-10 mb-2 text-slate-400" />
                   <span className="text-sm font-medium text-slate-400">クリックして画像を選択</span>
                 </label>
               ) : (

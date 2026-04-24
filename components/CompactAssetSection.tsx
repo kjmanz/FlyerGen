@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { IcCloud } from './inlineIcons';
 
 interface CompactAssetSectionProps {
   title: string;
-  icon: string;
+  icon: React.ReactNode;
   iconBgColor?: string;
   iconBorderColor?: string;
   images: string[];
@@ -49,13 +50,14 @@ export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
     <div className="bg-white rounded-lg shadow-sm border border-slate-100 overflow-hidden">
       {/* Header - Always visible */}
       <button
+        type="button"
         onClick={() => setExpanded(!isExpanded)}
         className="w-full p-3 hover:bg-slate-50 transition-colors text-left"
       >
         {/* Top row: Icon, Title, Arrow */}
         <div className="flex items-center gap-2 mb-2">
           {/* Icon */}
-          <div className={`w-7 h-7 ${iconBgColor} border ${iconBorderColor} rounded-lg flex items-center justify-center text-sm flex-shrink-0`}>
+          <div className={`w-7 h-7 ${iconBgColor} border ${iconBorderColor} rounded-lg flex items-center justify-center text-slate-600 flex-shrink-0`}>
             {icon}
           </div>
 
@@ -64,12 +66,14 @@ export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
 
           {/* Badges */}
           {selectedCount > 0 && (
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full flex-shrink-0">
+            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full flex-shrink-0">
               {selectedCount}
             </span>
           )}
           {isCloudSync && (
-            <span className="text-[10px] flex-shrink-0">☁️</span>
+            <span className="flex-shrink-0 text-sky-500" title="クラウド同期">
+              <IcCloud />
+            </span>
           )}
 
           {/* Expand/Collapse Arrow */}
@@ -97,7 +101,7 @@ export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
               </div>
             ))}
             {images.length > 4 && (
-              <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 flex-shrink-0">
+              <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 flex-shrink-0">
                 +{images.length - 4}
               </div>
             )}
