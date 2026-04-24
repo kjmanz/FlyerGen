@@ -10,6 +10,9 @@ interface CompactAssetSectionProps {
   selectedIndices?: number[];
   isCloudSync: boolean;
   children: React.ReactNode;
+  /** 親で展開状態を管理する場合（例: アセット間で1つだけ開く） */
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 }
 
 export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
@@ -22,8 +25,19 @@ export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
   selectedIndices = [],
   isCloudSync,
   children,
+  expanded: expandedProp,
+  onExpandedChange,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const isControlled = expandedProp !== undefined;
+  const isExpanded = isControlled ? expandedProp : internalExpanded;
+  const setExpanded = (next: boolean) => {
+    if (isControlled) {
+      onExpandedChange?.(next);
+    } else {
+      setInternalExpanded(next);
+    }
+  };
 
   const selectedSet = new Set(selectedIndices);
   const prioritizedImages = [
@@ -35,7 +49,7 @@ export const CompactAssetSection: React.FC<CompactAssetSectionProps> = ({
     <div className="bg-white rounded-lg shadow-sm border border-slate-100 overflow-hidden">
       {/* Header - Always visible */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => setExpanded(!isExpanded)}
         className="w-full p-3 hover:bg-slate-50 transition-colors text-left"
       >
         {/* Top row: Icon, Title, Arrow */}

@@ -66,6 +66,8 @@ const loadGeminiService = (): Promise<GeminiServiceModule> => {
   return geminiServicePromise;
 };
 
+type SidebarAssetSectionId = 'character' | 'illustration' | 'reference' | 'customer' | 'logo';
+
 const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
@@ -274,6 +276,15 @@ const App: React.FC = () => {
 
   // Sidebar State (サイドバー開閉 - モバイル用)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [sidebarOpenAssetId, setSidebarOpenAssetId] = useState<SidebarAssetSectionId | null>(null);
+  const [isHistoryPanelExpanded, setIsHistoryPanelExpanded] = useState(false);
+
+  const handleAssetSectionExpand = useCallback((id: SidebarAssetSectionId, expanded: boolean) => {
+    setSidebarOpenAssetId((prev) => {
+      if (!expanded) return prev === id ? null : prev;
+      return id;
+    });
+  }, []);
 
   // Campaign Info State (表面用キャンペーン情報)
   const [campaignInfo, setCampaignInfo] = useState<CampaignInfo>({
@@ -2698,6 +2709,44 @@ ${header.length + uint8Array.length + 20}
     }));
   }, []);
 
+  const sidebarContextSummary = useMemo(() => {
+    const presetName = activePresetId
+      ? presets.find((p) => p.id === activePresetId)?.name ?? null
+      : null;
+    if (mainTab === 'front') {
+      if (frontFlyerType === 'campaign') {
+        const subtitle =
+          campaignInfo.campaignName?.trim() ||
+          campaignInfo.headline?.trim() ||
+          'キャンペーン情報をメイン画面で入力';
+        return {
+          title: '表面 · キャンペーン',
+          subtitle,
+          presetName,
+        };
+      }
+      return {
+        title: '表面 · 商品・サービス',
+        subtitle: salesLetterMode ? 'セールスレターモード ON' : '標準モード',
+        presetName,
+      };
+    }
+    return {
+      title: '裏面',
+      subtitle: `掲載商品 ${products.length}件`,
+      presetName,
+    };
+  }, [
+    mainTab,
+    frontFlyerType,
+    campaignInfo.campaignName,
+    campaignInfo.headline,
+    salesLetterMode,
+    products.length,
+    activePresetId,
+    presets,
+  ]);
+
   return (
     <div className="min-h-screen pb-32 bg-slate-50/50">
       {/* Header */}
@@ -2708,7 +2757,7 @@ ${header.length + uint8Array.length + 20}
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-              title="設定・アセット"
+              title="チラシ設定"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -2766,12 +2815,132 @@ ${header.length + uint8Array.length + 20}
       <div className="flex min-h-[calc(100vh-56px)] lg:min-h-[calc(100vh-64px)]">
         {/* Sidebar */}
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}>
-          {/* Common Settings Section */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-lg">⚙️</span>
-              <h2 className="font-semibold text-slate-900">共通設定</h2>
+          {/* 1 · 文脈（メイン編集と同期した要約） */}
+          <div className="mb-5 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500/90 mb-1.5">1 · 文脈</div>
+            <p className="text-sm font-bold text-slate-900 leading-snug">{sidebarContextSummary.title}</p>
+            <p className="text-xs text-slate-600 mt-1.5 line-clamp-3 break-words">{sidebarContextSummary.subtitle}</p>
+            {sidebarContextSummary.presetName ? (
+              <p className="text-[10px] font-semibold text-indigo-700 mt-2 truncate" title={sidebarContextSummary.presetName}>
+                プリセット: {sidebarContextSummary.presetName}
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-400 mt-2">プリセット未選択（新規）</p>
+            )}
+          </div>
+
+          {/* 2 · アセット（同時に開けるのは1カテゴリのみ） */}
+          <div className="mb-5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">2 · アセット</div>
+            <div className="space-y-3">
+              {/* Character Images */}
+              <CompactAssetSection
+                title="キャラクター"
+                icon="👤"
+                images={characterImages}
+                selectedCount={selectedCharacterIndices.size}
+                selectedIndices={Array.from(selectedCharacterIndices)}
+                isCloudSync={firebaseEnabled}
+                expanded={sidebarOpenAssetId === 'character'}
+                onExpandedChange={(open) => handleAssetSectionExpand('character', open)}
+              >
+                <ImageUploader label="キャラクター" images={characterImages} onImagesChange={handleCharacterImagesChange} />
+                <AssetSelectionGrid images={characterImages} selectedIndices={selectedCharacterIndices} onToggleSelect={toggleCharacterImageSelection} onSelectAll={selectAllCharacterImages} onClearSelection={clearCharacterSelection} onRemoveDuplicates={dedupeCharacterImages} accent="indigo" />
+                {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
+                  <div className="mt-2 p-2 bg-slate-50 rounded-md">
+                    <div className="flex gap-1">
+                      <button onClick={() => setCharacterClothingMode('fixed')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'fixed' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>👔 そのまま</button>
+                      <button onClick={() => setCharacterClothingMode('match')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'match' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>🎨 合わせる</button>
+                    </div>
+                  </div>
+                )}
+              </CompactAssetSection>
+
+              {/* Custom Illustrations */}
+              <CompactAssetSection
+                title="イラスト"
+                icon="🎨"
+                images={customIllustrations}
+                selectedCount={selectedCustomIllustrationIndices.size}
+                selectedIndices={Array.from(selectedCustomIllustrationIndices)}
+                isCloudSync={firebaseEnabled}
+                expanded={sidebarOpenAssetId === 'illustration'}
+                onExpandedChange={(open) => handleAssetSectionExpand('illustration', open)}
+              >
+                <ImageUploader label="イラスト" images={customIllustrations} onImagesChange={handleCustomIllustrationsChange} />
+                <AssetSelectionGrid images={customIllustrations} selectedIndices={selectedCustomIllustrationIndices} onToggleSelect={toggleCustomIllustrationSelection} onSelectAll={selectAllCustomIllustrations} onClearSelection={clearCustomIllustrationSelection} onRemoveDuplicates={dedupeCustomIllustrations} accent="indigo" />
+              </CompactAssetSection>
+
+              {/* Reference Images */}
+              <CompactAssetSection
+                title="参考デザイン"
+                icon="🖼️"
+                images={referenceImages}
+                selectedCount={selectedReferenceIndex !== null ? 1 : 0}
+                selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
+                isCloudSync={firebaseEnabled}
+                expanded={sidebarOpenAssetId === 'reference'}
+                onExpandedChange={(open) => handleAssetSectionExpand('reference', open)}
+              >
+                <ImageUploader label="参考" images={referenceImages} onImagesChange={handleReferenceImagesChange} />
+                <AssetSelectionGrid
+                  images={referenceImages}
+                  selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])}
+                  onToggleSelect={toggleReferenceImageSelection}
+                  onClearSelection={clearReferenceSelection}
+                  onRemoveDuplicates={dedupeReferenceImages}
+                  accent="indigo"
+                  previewOnClick
+                  previewHintLabel="画像クリックで拡大 / 右上の＋で選択"
+                />
+              </CompactAssetSection>
+
+              {/* Customer Images */}
+              <CompactAssetSection
+                title="お客様画像"
+                icon="👥"
+                iconBgColor="bg-rose-50"
+                iconBorderColor="border-rose-100"
+                images={customerImages}
+                selectedCount={selectedCustomerImageIndices.size}
+                selectedIndices={Array.from(selectedCustomerImageIndices)}
+                isCloudSync={firebaseEnabled}
+                expanded={sidebarOpenAssetId === 'customer'}
+                onExpandedChange={(open) => handleAssetSectionExpand('customer', open)}
+              >
+                <ImageUploader label="お客様" images={customerImages} onImagesChange={handleCustomerImagesChange} />
+                <AssetSelectionGrid images={customerImages} selectedIndices={selectedCustomerImageIndices} onToggleSelect={toggleCustomerImageSelection} onSelectAll={selectAllCustomerImages} onClearSelection={clearCustomerSelection} onRemoveDuplicates={dedupeCustomerImages} accent="rose" />
+              </CompactAssetSection>
+
+              {/* Store Logo */}
+              <CompactAssetSection
+                title="店舗ロゴ"
+                icon="🏪"
+                images={storeLogoImages}
+                selectedCount={selectedLogoIndices.size}
+                selectedIndices={Array.from(selectedLogoIndices)}
+                isCloudSync={firebaseEnabled}
+                expanded={sidebarOpenAssetId === 'logo'}
+                onExpandedChange={(open) => handleAssetSectionExpand('logo', open)}
+              >
+                <ImageUploader label="ロゴ" images={storeLogoImages} onImagesChange={handleStoreLogoImagesChange} />
+                <AssetSelectionGrid images={storeLogoImages} selectedIndices={selectedLogoIndices} onToggleSelect={toggleLogoImageSelection} onSelectAll={selectAllLogoImages} onClearSelection={clearLogoSelection} onRemoveDuplicates={dedupeLogoImages} accent="indigo" />
+                {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
+                  <div className="mt-2 p-2 bg-slate-50 rounded-md">
+                    <label className="block text-xs font-medium text-slate-400 mb-1">配置</label>
+                    <div className="flex gap-1">
+                      <button onClick={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'full-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>横幅100%</button>
+                      <button onClick={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'right-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>右50%</button>
+                    </div>
+                  </div>
+                )}
+              </CompactAssetSection>
             </div>
+          </div>
+
+          {/* 3 · 生成オプション */}
+          <div className="mb-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">3 · 生成オプション</div>
 
             {/* Orientation */}
             <div className="mb-4">
@@ -2820,9 +2989,9 @@ ${header.length + uint8Array.length + 20}
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 mb-2">背景</label>
               <div className="flex gap-1">
-                <button onClick={() => setSettings({ ...settings, backgroundMode: 'creative' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'creative' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>おまかせ</button>
-                <button onClick={() => setSettings({ ...settings, backgroundMode: 'white' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'white' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>白</button>
-                <button onClick={() => setSettings({ ...settings, backgroundMode: 'custom' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'custom' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>カスタム</button>
+                <button type="button" onClick={() => setSettings({ ...settings, backgroundMode: 'creative' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'creative' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>おまかせ</button>
+                <button type="button" onClick={() => setSettings({ ...settings, backgroundMode: 'white' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'white' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>白</button>
+                <button type="button" onClick={() => setSettings({ ...settings, backgroundMode: 'custom' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'custom' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>カスタム</button>
               </div>
               {settings.backgroundMode === 'custom' && (
                 <textarea
@@ -2840,6 +3009,7 @@ ${header.length + uint8Array.length + 20}
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-semibold text-slate-500">ブランドルール固定</label>
                 <button
+                  type="button"
                   onClick={() => updateBrandRules({ enabled: !activeBrandRules.enabled })}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${activeBrandRules.enabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
                   title="ブランドルールを有効化"
@@ -2934,206 +3104,45 @@ ${header.length + uint8Array.length + 20}
               </div>
             </div>
           </div>
-
-          <hr className="border-slate-200 my-4" />
-
-          {/* Assets Section */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-lg">🎨</span>
-              <h2 className="font-semibold text-slate-900">アセット</h2>
-            </div>
-
-            <div className="space-y-3">
-              {/* Character Images */}
-              <CompactAssetSection
-                title="キャラクター"
-                icon="👤"
-                images={characterImages}
-                selectedCount={selectedCharacterIndices.size}
-                selectedIndices={Array.from(selectedCharacterIndices)}
-                isCloudSync={firebaseEnabled}
-              >
-                <ImageUploader label="キャラクター" images={characterImages} onImagesChange={handleCharacterImagesChange} />
-                <AssetSelectionGrid images={characterImages} selectedIndices={selectedCharacterIndices} onToggleSelect={toggleCharacterImageSelection} onSelectAll={selectAllCharacterImages} onClearSelection={clearCharacterSelection} onRemoveDuplicates={dedupeCharacterImages} accent="indigo" />
-                {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
-                  <div className="mt-2 p-2 bg-slate-50 rounded-md">
-                    <div className="flex gap-1">
-                      <button onClick={() => setCharacterClothingMode('fixed')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'fixed' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>👔 そのまま</button>
-                      <button onClick={() => setCharacterClothingMode('match')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'match' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>🎨 合わせる</button>
-                    </div>
-                  </div>
-                )}
-              </CompactAssetSection>
-
-              {/* Custom Illustrations */}
-              <CompactAssetSection
-                title="イラスト"
-                icon="🎨"
-                images={customIllustrations}
-                selectedCount={selectedCustomIllustrationIndices.size}
-                selectedIndices={Array.from(selectedCustomIllustrationIndices)}
-                isCloudSync={firebaseEnabled}
-              >
-                <ImageUploader label="イラスト" images={customIllustrations} onImagesChange={handleCustomIllustrationsChange} />
-                <AssetSelectionGrid images={customIllustrations} selectedIndices={selectedCustomIllustrationIndices} onToggleSelect={toggleCustomIllustrationSelection} onSelectAll={selectAllCustomIllustrations} onClearSelection={clearCustomIllustrationSelection} onRemoveDuplicates={dedupeCustomIllustrations} accent="indigo" />
-              </CompactAssetSection>
-
-              {/* Reference Images */}
-              <CompactAssetSection
-                title="参考デザイン"
-                icon="🖼️"
-                images={referenceImages}
-                selectedCount={selectedReferenceIndex !== null ? 1 : 0}
-                selectedIndices={selectedReferenceIndex !== null ? [selectedReferenceIndex] : []}
-                isCloudSync={firebaseEnabled}
-              >
-                <ImageUploader label="参考" images={referenceImages} onImagesChange={handleReferenceImagesChange} />
-                <AssetSelectionGrid
-                  images={referenceImages}
-                  selectedIndices={new Set(selectedReferenceIndex !== null ? [selectedReferenceIndex] : [])}
-                  onToggleSelect={toggleReferenceImageSelection}
-                  onClearSelection={clearReferenceSelection}
-                  onRemoveDuplicates={dedupeReferenceImages}
-                  accent="indigo"
-                  previewOnClick
-                  previewHintLabel="画像クリックで拡大 / 右上の＋で選択"
-                />
-              </CompactAssetSection>
-
-              {/* Customer Images */}
-              <CompactAssetSection
-                title="お客様画像"
-                icon="👥"
-                iconBgColor="bg-rose-50"
-                iconBorderColor="border-rose-100"
-                images={customerImages}
-                selectedCount={selectedCustomerImageIndices.size}
-                selectedIndices={Array.from(selectedCustomerImageIndices)}
-                isCloudSync={firebaseEnabled}
-              >
-                <ImageUploader label="お客様" images={customerImages} onImagesChange={handleCustomerImagesChange} />
-                <AssetSelectionGrid images={customerImages} selectedIndices={selectedCustomerImageIndices} onToggleSelect={toggleCustomerImageSelection} onSelectAll={selectAllCustomerImages} onClearSelection={clearCustomerSelection} onRemoveDuplicates={dedupeCustomerImages} accent="rose" />
-              </CompactAssetSection>
-
-              {/* Store Logo */}
-              <CompactAssetSection
-                title="店舗ロゴ"
-                icon="🏪"
-                images={storeLogoImages}
-                selectedCount={selectedLogoIndices.size}
-                selectedIndices={Array.from(selectedLogoIndices)}
-                isCloudSync={firebaseEnabled}
-              >
-                <ImageUploader label="ロゴ" images={storeLogoImages} onImagesChange={handleStoreLogoImagesChange} />
-                <AssetSelectionGrid images={storeLogoImages} selectedIndices={selectedLogoIndices} onToggleSelect={toggleLogoImageSelection} onSelectAll={selectAllLogoImages} onClearSelection={clearLogoSelection} onRemoveDuplicates={dedupeLogoImages} accent="indigo" />
-                {storeLogoImages.length > 0 && selectedLogoIndices.size > 0 && (
-                  <div className="mt-2 p-2 bg-slate-50 rounded-md">
-                    <label className="block text-xs font-medium text-slate-400 mb-1">配置</label>
-                    <div className="flex gap-1">
-                      <button onClick={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'full-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>横幅100%</button>
-                      <button onClick={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'right-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>右50%</button>
-                    </div>
-                  </div>
-                )}
-              </CompactAssetSection>
-            </div>
-          </div>
         </Sidebar>
 
         {/* Main Content Area */}
         <main ref={mainContentRef} className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 animate-fade-in">
           <div className="max-w-5xl mx-auto">
-            {generationQueueStats.total > 0 && (
-              <div className="bg-white border border-indigo-100 rounded-lg p-4 sm:p-5 mb-6 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🧵</span>
-                    <h2 className="text-sm sm:text-base font-semibold text-slate-900">生成ジョブキュー</h2>
-                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] sm:text-xs font-bold text-slate-600">
-                      {generationQueueStats.total}件
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 text-[10px] sm:text-xs">
-                    <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 font-bold">実行中 {generationQueueStats.running}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold">待機 {generationQueueStats.pending}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">完了 {generationQueueStats.completed}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold">失敗 {generationQueueStats.failed}</span>
-                  </div>
-                  <button
-                    onClick={handleClearFinishedGenerationJobs}
-                    className="text-xs font-bold px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
-                  >
-                    完了ジョブを整理
-                  </button>
-                </div>
+            {/* 表面／裏面と状態を先に（編集が主役） */}
+            <div className="mb-6">
+              <MainTabs
+                activeTab={mainTab}
+                onTabChange={(tab) => {
+                  setMainTab(tab);
+                  if (tab === 'front') setFlyerSide('front');
+                  if (tab === 'back') setFlyerSide('back');
+                }}
+              />
+            </div>
 
-                <div className="space-y-2.5">
-                  {visibleGenerationJobs.map((job) => {
-                    const status = getGenerationJobStatusConfig(job.status);
-                    const canCancel = job.status === 'pending' || job.status === 'running';
-                    const canRetry = job.status === 'failed' || job.status === 'canceled';
-                    const canRemove = job.status !== 'running' && activeGenerationJobId !== job.id;
-                    return (
-                      <div key={job.id} className="border border-slate-200 rounded-md p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-700">
-                              {job.side === 'front' ? '表面' : '裏面'} / {job.snapshot.settings.patternCount}案
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status.className}`}>
-                              {status.label}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            {new Date(job.createdAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </div>
-                        </div>
-
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
-                          <div
-                            className={`h-full transition-all ${job.status === 'failed' ? 'bg-rose-500' : job.status === 'canceled' ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                            style={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
-                          />
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-xs text-slate-600">
-                            {job.error ? `${job.message}: ${job.error}` : job.message}
-                          </div>
-                          <div className="flex gap-1.5">
-                            {canCancel && (
-                              <button
-                                onClick={() => handleCancelGenerationJob(job.id)}
-                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-all"
-                              >
-                                キャンセル
-                              </button>
-                            )}
-                            {canRetry && (
-                              <button
-                                onClick={() => handleRetryGenerationJob(job.id)}
-                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-sky-100 text-sky-700 hover:bg-sky-200 transition-all"
-                              >
-                                再試行
-                              </button>
-                            )}
-                            {canRemove && (
-                              <button
-                                onClick={() => handleRemoveGenerationJob(job.id)}
-                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
-                              >
-                                削除
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`w-3 h-3 rounded-full ${activePresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
+                <div>
+                  <p className="text-[10px] font-semibold tracking-[0.1em] text-slate-400">現在の状態</p>
+                  {activePresetId ? (
+                    <p className="font-semibold text-indigo-700">
+                      編集中: {presets.find(p => p.id === activePresetId)?.name || '未保存のプリセット'}
+                    </p>
+                  ) : (
+                    <p className="font-semibold text-slate-700">新規プロジェクト（未保存）</p>
+                  )}
                 </div>
               </div>
-            )}
+              <button
+                onClick={openSaveModal}
+                className="btn-premium flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 active:scale-95"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                保存
+              </button>
+            </div>
 
             {/* Preset Management Section */}
             {showPresetList && (
@@ -3194,43 +3203,6 @@ ${header.length + uint8Array.length + 20}
                 )}
               </div>
             )}
-
-            {/* Main Tabs */}
-            <div className="mb-8">
-              <MainTabs
-                activeTab={mainTab}
-                onTabChange={(tab) => {
-                  setMainTab(tab);
-                  // Sync flyerSide with tab for generation logic
-                  if (tab === 'front') setFlyerSide('front');
-                  if (tab === 'back') setFlyerSide('back');
-                }}
-              />
-            </div>
-
-            {/* Action Bar for Current State */}
-            <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-8 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`w-3 h-3 rounded-full ${activePresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
-                <div>
-                  <p className="text-[10px] font-semibold tracking-[0.1em] text-slate-400">現在の状態</p>
-                  {activePresetId ? (
-                    <p className="font-semibold text-indigo-700">
-                      編集中: {presets.find(p => p.id === activePresetId)?.name || '未保存のプリセット'}
-                    </p>
-                  ) : (
-                    <p className="font-semibold text-slate-700">新規プロジェクト（未保存）</p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={openSaveModal}
-                className="btn-premium flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 active:scale-95"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                保存
-              </button>
-            </div>
 
             {/* Front Side Tab */}
             {mainTab === 'front' && (
@@ -3718,7 +3690,7 @@ ${header.length + uint8Array.length + 20}
               />
             </div>
 
-            <div className="flex justify-center mb-20">
+            <div className="flex justify-center mb-10">
               <button
                 onClick={handleGenerate}
                 className={`
@@ -3741,16 +3713,126 @@ ${header.length + uint8Array.length + 20}
               </button>
             </div>
 
-            {/* History Results */}
+            {generationQueueStats.total > 0 && (
+              <div className="bg-white border border-indigo-100 rounded-lg p-4 sm:p-5 mb-10 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🧵</span>
+                    <h2 className="text-sm sm:text-base font-semibold text-slate-900">生成ジョブキュー</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] sm:text-xs font-bold text-slate-600">
+                      {generationQueueStats.total}件
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-[10px] sm:text-xs">
+                    <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 font-bold">実行中 {generationQueueStats.running}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold">待機 {generationQueueStats.pending}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">完了 {generationQueueStats.completed}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold">失敗 {generationQueueStats.failed}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearFinishedGenerationJobs}
+                    className="text-xs font-bold px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+                  >
+                    完了ジョブを整理
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {visibleGenerationJobs.map((job) => {
+                    const status = getGenerationJobStatusConfig(job.status);
+                    const canCancel = job.status === 'pending' || job.status === 'running';
+                    const canRetry = job.status === 'failed' || job.status === 'canceled';
+                    const canRemove = job.status !== 'running' && activeGenerationJobId !== job.id;
+                    return (
+                      <div key={job.id} className="border border-slate-200 rounded-md p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-700">
+                              {job.side === 'front' ? '表面' : '裏面'} / {job.snapshot.settings.patternCount}案
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status.className}`}>
+                              {status.label}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {new Date(job.createdAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </div>
+                        </div>
+
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+                          <div
+                            className={`h-full transition-all ${job.status === 'failed' ? 'bg-rose-500' : job.status === 'canceled' ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                            style={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs text-slate-600">
+                            {job.error ? `${job.message}: ${job.error}` : job.message}
+                          </div>
+                          <div className="flex gap-1.5">
+                            {canCancel && (
+                              <button
+                                type="button"
+                                onClick={() => handleCancelGenerationJob(job.id)}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-all"
+                              >
+                                キャンセル
+                              </button>
+                            )}
+                            {canRetry && (
+                              <button
+                                type="button"
+                                onClick={() => handleRetryGenerationJob(job.id)}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-sky-100 text-sky-700 hover:bg-sky-200 transition-all"
+                              >
+                                再試行
+                              </button>
+                            )}
+                            {canRemove && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGenerationJob(job.id)}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+                              >
+                                削除
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* History Results（折りたたみ・編集の下に配置） */}
             {history.length > 0 && (
               <div className="bg-white rounded-lg shadow-premium border border-white/50 p-4 sm:p-8 md:p-12 animate-slide-up">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-950 rounded-md flex items-center justify-center text-base sm:text-lg">📁</div>
-                    <h2 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-1 sm:ml-2">({history.length})</span></h2>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryPanelExpanded((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 text-left mb-4 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-3 hover:bg-slate-100/80 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-950 rounded-md flex items-center justify-center text-base sm:text-lg flex-shrink-0">📁</div>
+                    <div className="min-w-0">
+                      <h2 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-1 sm:ml-2">({history.length})</span></h2>
+                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">クリックで{isHistoryPanelExpanded ? '閉じる' : '一覧を表示'}</p>
+                    </div>
                   </div>
+                  <span className={`text-slate-400 flex-shrink-0 transition-transform ${isHistoryPanelExpanded ? 'rotate-180' : ''}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </span>
+                </button>
+
+                {isHistoryPanelExpanded && (
+                  <>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 mb-6">
                   {/* Tag Buttons - Hidden on mobile, shown on sm+ */}
-                  <div className="hidden sm:flex gap-2 flex-wrap">
+                  <div className="hidden sm:flex gap-2 flex-wrap sm:justify-end">
                     {history.some(item => !item.tags || item.tags.length === 0) && (
                       <button
                         onClick={() => tagAllExistingHistory(false)}
@@ -4119,6 +4201,8 @@ ${header.length + uint8Array.length + 20}
                   ))}
 
                 </div>
+                  </>
+                )}
               </div>
             )}
           </div>
