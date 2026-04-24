@@ -1,4 +1,5 @@
 import React from 'react';
+import { IcSettings } from './inlineIcons';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -33,10 +34,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, children }) =
                 {/* Header - PC版も表示 */}
                 <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-violet-600 p-4 flex items-center justify-between z-10">
                     <div className="flex items-center gap-2">
-                        <span className="text-lg">⚙️</span>
+                        <IcSettings className="h-5 w-5 text-white flex-shrink-0" />
                         <span className="font-bold text-white text-sm">チラシ設定</span>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
                         className="lg:hidden p-1.5 hover:bg-white/20 rounded-lg transition-colors"
                     >

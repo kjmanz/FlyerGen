@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ProductServiceInfo, ContentSections, ReviewSearchResult, FlyerSettings } from '../types';
 import { ImageUploader } from './ImageUploader';
 import { generateProductServiceContent, searchProductReviews } from '../services/geminiService';
-import { IcSparkles, IcMagnify, IcFileText, IcX, IcPencil, IcSquare, IcPackage } from './inlineIcons';
+import { IcSparkles, IcMagnify, IcFileText, IcX, IcPencil, IcSquare, IcPackage, IcArrowUp, IcPlus } from './inlineIcons';
 
 interface ProductServiceFormProps {
     productServiceInfo: ProductServiceInfo;
@@ -160,7 +160,10 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                           <IcFileText className="h-4 w-4 flex-shrink-0" />
                           レビュー検索結果
                         </h3>
-                        <button onClick={handleApplyReviewResults} className="px-4 py-2 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 transition-all">↑ 上記を反映</button>
+                        <button type="button" onClick={handleApplyReviewResults} className="px-4 py-2 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 transition-all inline-flex items-center gap-1.5">
+                            <IcArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
+                            上記を反映
+                        </button>
                     </div>
                     <div className="space-y-3 text-sm">
                         {reviewSearchResults.merits.length > 0 && (<div><div className="font-semibold text-emerald-700 mb-1">よく挙げられるメリット</div><ul className="list-disc list-inside text-slate-700">{reviewSearchResults.merits.map((m, i) => <li key={i}>{m}</li>)}</ul></div>)}
@@ -212,7 +215,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                             {productServiceInfo.features.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, features: productServiceInfo.features.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
-                    <button onClick={() => setProductServiceInfo({ ...productServiceInfo, features: [...productServiceInfo.features, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 特徴を追加</button>
+                    <button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, features: [...productServiceInfo.features, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2 inline-flex items-center gap-1.5"><IcPlus className="h-4 w-4 flex-shrink-0" />特徴を追加</button>
                 </div>
             )}
 
@@ -225,7 +228,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                             {productServiceInfo.benefits.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, benefits: productServiceInfo.benefits.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
-                    <button onClick={() => setProductServiceInfo({ ...productServiceInfo, benefits: [...productServiceInfo.benefits, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ メリットを追加</button>
+                    <button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, benefits: [...productServiceInfo.benefits, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2 inline-flex items-center gap-1.5"><IcPlus className="h-4 w-4 flex-shrink-0" />メリットを追加</button>
                 </div>
             )}
 
@@ -238,7 +241,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                             {productServiceInfo.targetAudience.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, targetAudience: productServiceInfo.targetAudience.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
-                    <button onClick={() => setProductServiceInfo({ ...productServiceInfo, targetAudience: [...productServiceInfo.targetAudience, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 追加</button>
+                    <button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, targetAudience: [...productServiceInfo.targetAudience, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2 inline-flex items-center gap-1.5"><IcPlus className="h-4 w-4 flex-shrink-0" />追加</button>
                 </div>
             )}
 
@@ -307,7 +310,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                             {productServiceInfo.customerReviews.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, customerReviews: productServiceInfo.customerReviews.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
-                    <button onClick={() => setProductServiceInfo({ ...productServiceInfo, customerReviews: [...productServiceInfo.customerReviews, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 追加</button>
+                    <button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, customerReviews: [...productServiceInfo.customerReviews, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2 inline-flex items-center gap-1.5"><IcPlus className="h-4 w-4 flex-shrink-0" />追加</button>
                 </div>
             )}
 

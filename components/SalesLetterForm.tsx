@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SalesLetterInfo, SalesFramework, FlyerSettings } from '../types';
 import { ImageUploader } from './ImageUploader';
 import { searchSalesFieldData, searchAllSalesFields } from '../services/geminiService';
-import { IcFileText, IcMagnify, IcSparkles, IcX, IcPencil, IcSquare, IcChartBars, IcHeart } from './inlineIcons';
+import { IcFileText, IcMagnify, IcSparkles, IcX, IcPencil, IcSquare, IcChartBars, IcHeart, IcPlus } from './inlineIcons';
 
 interface SalesLetterFormProps {
     salesLetterInfo: SalesLetterInfo;
@@ -241,7 +241,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                         )}
                     </div>
                 ))}
-                <button onClick={() => setSalesLetterInfo({ ...salesLetterInfo, problems: [...salesLetterInfo.problems, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 追加</button>
+                <button type="button" onClick={() => setSalesLetterInfo({ ...salesLetterInfo, problems: [...salesLetterInfo.problems, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2 inline-flex items-center gap-1.5"><IcPlus className="h-4 w-4 flex-shrink-0" />追加</button>
             </div>
 
             {/* PASONA: Affinity */}
@@ -303,7 +303,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                         )}
                     </div>
                 ))}
-                <button onClick={() => setSalesLetterInfo({ ...salesLetterInfo, benefits: [...salesLetterInfo.benefits, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 追加</button>
+                <button type="button" onClick={() => setSalesLetterInfo({ ...salesLetterInfo, benefits: [...salesLetterInfo.benefits, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2 inline-flex items-center gap-1.5"><IcPlus className="h-4 w-4 flex-shrink-0" />追加</button>
             </div>
 
             {/* PASONA: Offer */}
@@ -385,7 +385,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                             )}
                         </div>
                     ))}
-                    <button onClick={() => setSalesLetterInfo({ ...salesLetterInfo, socialProof: { ...salesLetterInfo.socialProof, customerVoices: [...salesLetterInfo.socialProof.customerVoices, ''] } })} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 mt-1">＋ 追加</button>
+                    <button type="button" onClick={() => setSalesLetterInfo({ ...salesLetterInfo, socialProof: { ...salesLetterInfo.socialProof, customerVoices: [...salesLetterInfo.socialProof.customerVoices, ''] } })} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 mt-1 inline-flex items-center gap-1.5"><IcPlus className="h-3.5 w-3.5 flex-shrink-0" />追加</button>
                 </div>
             </div>
 

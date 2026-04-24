@@ -179,3 +179,28 @@ export const IcMegaphone: React.FC<{ className?: string }> = ({ className = 'h-4
     <path d="M3 11l18-5v12L3 13v-2zM11.6 16.8a3 3 0 11-5.8-1.6" />
   </svg>
 );
+
+export const IcSettings: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+  </svg>
+);
+
+export const IcLightbulb: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.74V17a1 1 0 001 1h6a1 1 0 001-1v-2.26A7 7 0 0012 2z" />
+  </svg>
+);
+
+export const IcArrowUp: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <path d="M12 19V5M5 12l7-7 7 7" />
+  </svg>
+);
+
+export const IcArrowDown: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" {...stroke}>
+    <path d="M12 5v14M19 12l-7 7-7-7" />
+  </svg>
+);

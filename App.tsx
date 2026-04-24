@@ -31,6 +31,10 @@ import {
   IcPackage,
   IcMegaphone,
   IcPlus,
+  IcSettings,
+  IcLightbulb,
+  IcArrowUp,
+  IcArrowDown,
 } from './components/inlineIcons';
 import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { SidebarContextCard } from './components/SidebarContextCard';
@@ -2923,14 +2927,18 @@ ${header.length + uint8Array.length + 20}
               <div className="bg-white border border-indigo-100 rounded-lg p-5 sm:p-8 mb-6 sm:mb-10 animate-slide-up shadow-indigo-500/5">
                 <div className="flex justify-between items-center mb-6">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">📂</span>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      <IcFolder className="h-5 w-5" />
+                    </span>
                     <h2 className="text-xl font-semibold text-slate-900">保存済みプリセット</h2>
                   </div>
                   <button
+                    type="button"
                     onClick={handleNewProject}
-                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-full transition-all"
+                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-full transition-all inline-flex items-center gap-1.5"
                   >
-                    ＋ 新規作成
+                    <IcPlus className="h-4 w-4 flex-shrink-0" />
+                    新規作成
                   </button>
                 </div>
                 {presetsForSide.length === 0 ? (
@@ -3136,10 +3144,12 @@ ${header.length + uint8Array.length + 20}
                         </div>
                       ))}
                       <button
+                        type="button"
                         onClick={() => setCampaignInfo({ ...campaignInfo, benefits: [...campaignInfo.benefits, ''] })}
-                        className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2"
+                        className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2 inline-flex items-center gap-1.5"
                       >
-                        ＋ 特典を追加
+                        <IcPlus className="h-4 w-4 flex-shrink-0" />
+                        特典を追加
                       </button>
                     </div>
 
@@ -3339,8 +3349,10 @@ ${header.length + uint8Array.length + 20}
                 <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-10 overflow-hidden relative">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
 
-                  <div className="flex items-center gap-3 mb-8 relative">
-                    <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">⚙️</div>
+                    <div className="flex items-center gap-3 mb-8 relative">
+                    <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-indigo-700">
+                      <IcSettings className="h-4 w-4" />
+                    </div>
                     <h2 className="text-xl font-semibold text-slate-900">裏面固有設定</h2>
                   </div>
 
@@ -3417,10 +3429,12 @@ ${header.length + uint8Array.length + 20}
                       <h2 className="text-xl font-semibold text-slate-900">掲載商品</h2>
                     </div>
                     <button
+                      type="button"
                       onClick={addProduct}
-                      className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-5 py-2.5 border border-transparent text-sm font-bold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all shadow-sm active:scale-95"
                     >
-                      ＋ 商品追加
+                      <IcPlus className="h-4 w-4 flex-shrink-0" />
+                      商品追加
                     </button>
                   </div>
 
@@ -3579,10 +3593,20 @@ ${header.length + uint8Array.length + 20}
                     <button
                       type="button"
                       onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
-                      className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all inline-flex items-center gap-1.5"
                       title="お気に入り優先で生成日時を並べ替え"
                     >
-                      {sortOrder === 'desc' ? '新しい順' : '古い順'}
+                      {sortOrder === 'desc' ? (
+                        <>
+                          <IcArrowDown className="h-3.5 w-3.5 flex-shrink-0" />
+                          新しい順
+                        </>
+                      ) : (
+                        <>
+                          <IcArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
+                          古い順
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -3598,9 +3622,19 @@ ${header.length + uint8Array.length + 20}
                     <button
                       type="button"
                       onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
-                      className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600"
+                      className="text-xs font-bold px-3 py-2 rounded-full bg-slate-100 text-slate-600 inline-flex items-center gap-1"
                     >
-                      {sortOrder === 'desc' ? '↓新' : '↑古'}
+                      {sortOrder === 'desc' ? (
+                        <>
+                          <IcArrowDown className="h-3.5 w-3.5 flex-shrink-0" />
+                          新
+                        </>
+                      ) : (
+                        <>
+                          <IcArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
+                          古
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -4012,7 +4046,7 @@ ${header.length + uint8Array.length + 20}
               />
               <div className="mt-4 p-4 bg-indigo-50/50 rounded-md border border-indigo-100">
                 <p className="text-[11px] font-bold text-indigo-700 leading-relaxed flex items-start gap-3">
-                  <span className="text-lg">💡</span>
+                  <IcLightbulb className="h-5 w-5 flex-shrink-0 text-indigo-600 mt-0.5" />
                   <span>
                     無料のAPIキーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Google AI Studio</a> で取得できます。キーはローカルに保存されます。
                   </span>
