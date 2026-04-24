@@ -34,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, children }) =
                 <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-violet-600 p-4 flex items-center justify-between z-10">
                     <div className="flex items-center gap-2">
                         <span className="text-lg">⚙️</span>
-                        <span className="font-bold text-white text-sm">設定・アセット</span>
+                        <span className="font-bold text-white text-sm">チラシ設定</span>
                     </div>
                     <button
                         onClick={onClose}
