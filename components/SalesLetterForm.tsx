@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SalesLetterInfo, SalesFramework, FlyerSettings } from '../types';
 import { ImageUploader } from './ImageUploader';
 import { searchSalesFieldData, searchAllSalesFields } from '../services/geminiService';
+import { IcFileText, IcMagnify, IcSparkles, IcX, IcPencil, IcSquare, IcChartBars, IcHeart } from './inlineIcons';
 
 interface SalesLetterFormProps {
     salesLetterInfo: SalesLetterInfo;
@@ -127,7 +128,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
         >
             {searchingField === fieldType ? (
                 <><svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></>
-            ) : (<>🔍 AI検索</>)}
+            ) : (<><IcMagnify className="h-3 w-3 flex-shrink-0" />AI検索</>)}
         </button>
     );
 
@@ -136,7 +137,9 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
             <div className="absolute top-0 right-0 w-64 h-64 bg-amber-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
 
             <div className="flex items-center gap-3 mb-8 relative">
-                <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center text-sm">📝</div>
+                <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center text-amber-800">
+                    <IcFileText className="h-4 w-4" />
+                </div>
                 <h2 className="text-xl font-semibold text-slate-900">セールスレターモード</h2>
             </div>
 
@@ -146,13 +149,17 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                     <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${salesLetterInfo.framework === 'aida' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="salesFramework" className="sr-only" checked={salesLetterInfo.framework === 'aida'} onChange={() => setSalesLetterInfo({ ...salesLetterInfo, framework: 'aida' })} />
-                        <div className="text-2xl mb-2">📊</div>
+                        <div className="w-10 h-10 mb-2 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700">
+                            <IcChartBars className="h-5 w-5" />
+                        </div>
                         <div className="text-sm font-bold text-slate-900">AIDA</div>
                         <div className="text-[10px] text-slate-500 mt-1 text-center">Attention→Interest→<br />Desire→Action</div>
                     </label>
                     <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${salesLetterInfo.framework === 'pasona' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="salesFramework" className="sr-only" checked={salesLetterInfo.framework === 'pasona'} onChange={() => setSalesLetterInfo({ ...salesLetterInfo, framework: 'pasona' })} />
-                        <div className="text-2xl mb-2">🤝</div>
+                        <div className="w-10 h-10 mb-2 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-pink-600">
+                            <IcHeart className="h-5 w-5" />
+                        </div>
                         <div className="text-sm font-bold text-slate-900">新PASONA</div>
                         <div className="text-[10px] text-slate-500 mt-1 text-center">Problem→Affinity→<br />Solution→Offer→N→A</div>
                     </label>
@@ -184,7 +191,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                                 検索中...
                             </>
                         ) : (
-                            <>✨ AI一括検索</>
+                            <><IcSparkles className="h-4 w-4 flex-shrink-0" />AI一括検索</>
                         )}
                     </button>
                 </div>
@@ -230,7 +237,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                             className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300"
                         />
                         {salesLetterInfo.problems.length > 1 && (
-                            <button onClick={() => setSalesLetterInfo({ ...salesLetterInfo, problems: salesLetterInfo.problems.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md">✕</button>
+                            <button type="button" onClick={() => setSalesLetterInfo({ ...salesLetterInfo, problems: salesLetterInfo.problems.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>
                         )}
                     </div>
                 ))}
@@ -292,7 +299,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                             className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300"
                         />
                         {salesLetterInfo.benefits.length > 1 && (
-                            <button onClick={() => setSalesLetterInfo({ ...salesLetterInfo, benefits: salesLetterInfo.benefits.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md">✕</button>
+                            <button type="button" onClick={() => setSalesLetterInfo({ ...salesLetterInfo, benefits: salesLetterInfo.benefits.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>
                         )}
                     </div>
                 ))}
@@ -374,7 +381,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                                 className="flex-1 rounded-md border-slate-200 border py-2 px-3 shadow-sm focus:border-indigo-600 focus:ring-0 text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300"
                             />
                             {salesLetterInfo.socialProof.customerVoices.length > 1 && (
-                                <button onClick={() => setSalesLetterInfo({ ...salesLetterInfo, socialProof: { ...salesLetterInfo.socialProof, customerVoices: salesLetterInfo.socialProof.customerVoices.filter((_, i) => i !== idx) } })} className="px-2 py-1 text-rose-500 hover:bg-rose-50 rounded-md text-sm">✕</button>
+                                <button type="button" onClick={() => setSalesLetterInfo({ ...salesLetterInfo, socialProof: { ...salesLetterInfo.socialProof, customerVoices: salesLetterInfo.socialProof.customerVoices.filter((_, i) => i !== idx) } })} className="px-2 py-1 text-rose-500 hover:bg-rose-50 rounded-md text-sm inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>
                             )}
                         </div>
                     ))}
@@ -402,17 +409,23 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                 <div className="flex gap-3">
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="salesBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
-                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-white shadow-inner">
+                            <IcSparkles className="h-4 w-4" />
+                        </div>
                         <div><div className="text-xs font-semibold text-slate-900">おまかせ</div></div>
                     </label>
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="salesBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
-                        <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
+                        <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-slate-400 shadow-sm border border-slate-200">
+                            <IcSquare className="h-4 w-4" />
+                        </div>
                         <div><div className="text-xs font-semibold text-slate-900">白配色</div></div>
                     </label>
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="salesBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
-                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white shadow-inner">
+                            <IcPencil className="h-4 w-4" />
+                        </div>
                         <div><div className="text-xs font-semibold text-slate-900">自由記述</div></div>
                     </label>
                 </div>

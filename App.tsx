@@ -23,6 +23,14 @@ import {
   IcRefresh,
   IcUpload,
   IcPencil,
+  IcSparkles,
+  IcSquare,
+  IcSmartphone,
+  IcFileText,
+  IcX,
+  IcPackage,
+  IcMegaphone,
+  IcPlus,
 } from './components/inlineIcons';
 import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { SidebarContextCard } from './components/SidebarContextCard';
@@ -2979,13 +2987,17 @@ ${header.length + uint8Array.length + 20}
                   <div className="grid grid-cols-2 gap-4">
                     <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'campaign' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                       <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'campaign'} onChange={() => setFrontFlyerType('campaign')} />
-                      <div className="w-12 h-12 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-2xl mb-3">🎉</div>
+                      <div className="w-12 h-12 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 mb-3">
+                        <IcMegaphone className="h-7 w-7" />
+                      </div>
                       <div className="text-sm font-bold text-slate-900">キャンペーン訴求</div>
                       <div className="text-[10px] text-slate-500 mt-1">セール・フェア告知</div>
                     </label>
                     <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'product-service' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                       <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'product-service'} onChange={() => setFrontFlyerType('product-service')} />
-                      <div className="w-12 h-12 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-2xl mb-3">📦</div>
+                      <div className="w-12 h-12 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 mb-3">
+                        <IcPackage className="h-7 w-7" />
+                      </div>
                       <div className="text-sm font-bold text-slate-900">商品・サービス紹介</div>
                       <div className="text-[10px] text-slate-500 mt-1">機能・メリット訴求</div>
                     </label>
@@ -3024,7 +3036,10 @@ ${header.length + uint8Array.length + 20}
                               生成中
                             </>
                           ) : (
-                            <>✨ AI生成</>
+                            <>
+                              <IcSparkles className="h-4 w-4 flex-shrink-0" />
+                              AI生成
+                            </>
                           )}
                         </button>
                       </div>
@@ -3107,13 +3122,15 @@ ${header.length + uint8Array.length + 20}
                           />
                           {campaignInfo.benefits.length > 1 && (
                             <button
+                              type="button"
                               onClick={() => {
                                 const newBenefits = campaignInfo.benefits.filter((_, i) => i !== idx);
                                 setCampaignInfo({ ...campaignInfo, benefits: newBenefits });
                               }}
-                              className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md transition-all"
+                              className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md transition-all inline-flex items-center justify-center"
+                              aria-label="削除"
                             >
-                              ✕
+                              <IcX className="h-4 w-4" />
                             </button>
                           )}
                         </div>
@@ -3192,7 +3209,9 @@ ${header.length + uint8Array.length + 20}
                     <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center text-sm">📝</div>
+                          <div className="w-8 h-8 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-center text-amber-800">
+                            <IcFileText className="h-4 w-4" />
+                          </div>
                           <div>
                             <div className="text-sm font-bold text-slate-900">セールスレターモード</div>
                             <div className="text-[10px] text-slate-500">AIDA / 新PASONAフレームワークで訴求力UP</div>
@@ -3210,7 +3229,9 @@ ${header.length + uint8Array.length + 20}
                     {/* Front Product Images Section */}
                     <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-6 mb-6 overflow-hidden relative">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-sm">📦</div>
+                        <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-emerald-700">
+                          <IcPackage className="h-4 w-4" />
+                        </div>
                         <div>
                           <div className="text-sm font-bold text-slate-900">商品画像</div>
                           <div className="text-[10px] text-slate-500">チラシに掲載する商品画像をアップロード</div>
@@ -3342,7 +3363,9 @@ ${header.length + uint8Array.length + 20}
                     <div className="flex gap-3">
                       <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
-                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-white shadow-inner">
+                          <IcSparkles className="h-4 w-4" />
+                        </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-900">おまかせ</div>
                           <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
@@ -3350,7 +3373,9 @@ ${header.length + uint8Array.length + 20}
                       </label>
                       <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="backgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
-                        <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
+                        <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-slate-400 shadow-sm border border-slate-200">
+                          <IcSquare className="h-4 w-4" />
+                        </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-900">白配色</div>
                           <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
@@ -3386,7 +3411,9 @@ ${header.length + uint8Array.length + 20}
                 <div className="mb-12">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📱</div>
+                      <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-indigo-700">
+                        <IcSmartphone className="h-4 w-4" />
+                      </div>
                       <h2 className="text-xl font-semibold text-slate-900">掲載商品</h2>
                     </div>
                     <button
@@ -3446,7 +3473,9 @@ ${header.length + uint8Array.length + 20}
             {/* Additional Instructions */}
             <div className="bg-white rounded-lg shadow-premium border border-slate-100 p-8 mb-16">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-sm">📝</div>
+                <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-indigo-700">
+                  <IcFileText className="h-4 w-4" />
+                </div>
                 <h3 className="text-lg font-semibold text-slate-900">追加指示</h3>
               </div>
               <textarea
@@ -3469,12 +3498,12 @@ ${header.length + uint8Array.length + 20}
               >
                 {isGenerating ? (
                   <>
-                    <span className="mr-3 text-2xl">＋</span>
+                    <IcPlus className="mr-3 h-8 w-8 flex-shrink-0" />
                     <span className="tracking-tight uppercase">キューに追加</span>
                   </>
                 ) : (
                   <>
-                    <span className="mr-3 text-2xl">✨</span>
+                    <IcSparkles className="mr-3 h-8 w-8 flex-shrink-0" />
                     <span className="tracking-tight uppercase">{flyerSide === 'front' ? '表面チラシ生成' : '裏面チラシ生成'}</span>
                   </>
                 )}
@@ -4115,7 +4144,9 @@ ${header.length + uint8Array.length + 20}
                     loading="lazy"
                     decoding="async"
                   />
-                  <button onClick={() => setUploadPreview("")} className="absolute top-2 right-2 bg-white/80 hover:bg-rose-50 text-slate-400 hover:text-rose-500 p-1.5 rounded-md shadow-sm">✕</button>
+                  <button type="button" onClick={() => setUploadPreview("")} className="absolute top-2 right-2 bg-white/80 hover:bg-rose-50 text-slate-400 hover:text-rose-500 p-1.5 rounded-md shadow-sm inline-flex items-center justify-center" aria-label="プレビューを消去">
+                    <IcX className="h-4 w-4" />
+                  </button>
                 </div>
               )}
             </div>

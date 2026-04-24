@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { IcPencil, IcSparkles, IcMapPin, IcSquare } from './inlineIcons';
 
 // Edit region types
 type EditMode = 'point' | 'area';
@@ -168,29 +169,35 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
                 {/* Compact Header with Toolbar */}
                 <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-lg">✏️</div>
+                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+                            <IcPencil className="h-4 w-4" />
+                        </div>
                         <h2 className="text-lg font-bold text-slate-900">画像編集</h2>
                     </div>
 
                     {/* Mode Selection - Centered */}
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                         <button
+                            type="button"
                             onClick={() => setMode('point')}
                             className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${mode === 'point'
                                 ? 'bg-white text-indigo-600 shadow-sm'
                                 : 'text-slate-500 hover:text-slate-700'
                                 }`}
                         >
-                            📍 ポイント
+                            <IcMapPin className="h-4 w-4 flex-shrink-0" />
+                            ポイント
                         </button>
                         <button
+                            type="button"
                             onClick={() => setMode('area')}
                             className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${mode === 'area'
                                 ? 'bg-white text-indigo-600 shadow-sm'
                                 : 'text-slate-500 hover:text-slate-700'
                                 }`}
                         >
-                            ⬜ 範囲選択
+                            <IcSquare className="h-4 w-4 flex-shrink-0" />
+                            範囲選択
                         </button>
                     </div>
 
@@ -198,7 +205,7 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
                         <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
                             {regions.length}箇所を選択中
                         </span>
-                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+                        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100" aria-label="閉じる">&times;</button>
                     </div>
                 </div>
 
@@ -305,13 +312,19 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
                                 regions.map((region, idx) => (
                                     <div key={region.id} className="bg-slate-50 rounded-lg p-3 space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm font-bold text-slate-700">
+                                            <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
                                                 {idx + 1}. {getPositionDescription(region)}
-                                                {region.type === 'point' ? ' 📍' : ' ⬜'}
+                                                {region.type === 'point' ? (
+                                                    <IcMapPin className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+                                                ) : (
+                                                    <IcSquare className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+                                                )}
                                             </span>
                                             <button
+                                                type="button"
                                                 onClick={() => removeRegion(region.id)}
-                                                className="text-rose-400 hover:text-rose-600 text-lg"
+                                                className="text-rose-400 hover:text-rose-600 text-lg leading-none p-0.5 rounded"
+                                                aria-label="削除"
                                             >
                                                 &times;
                                             </button>
@@ -333,6 +346,7 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
                 {/* Footer */}
                 <div className="p-6 border-t border-slate-100 flex items-center justify-between">
                     <button
+                        type="button"
                         onClick={() => setRegions([])}
                         className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700"
                         disabled={regions.length === 0}
@@ -341,20 +355,27 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
                     </button>
                     <div className="flex gap-3">
                         <button
+                            type="button"
                             onClick={onClose}
                             className="px-6 py-3 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
                         >
                             キャンセル
                         </button>
                         <button
+                            type="button"
                             onClick={handleGenerate}
                             disabled={isGenerating || regions.length === 0}
-                            className={`px-6 py-3 text-sm font-bold text-white rounded-lg transition-all ${isGenerating || regions.length === 0
+                            className={`px-6 py-3 text-sm font-bold text-white rounded-lg transition-all inline-flex items-center justify-center gap-2 ${isGenerating || regions.length === 0
                                 ? 'bg-slate-300 cursor-not-allowed'
                                 : 'bg-indigo-600 hover:bg-indigo-700'
                                 }`}
                         >
-                            {isGenerating ? '生成中...' : '✨ 編集画像を作成'}
+                            {isGenerating ? '生成中...' : (
+                                <>
+                                    <IcSparkles className="h-4 w-4 flex-shrink-0" />
+                                    編集画像を作成
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

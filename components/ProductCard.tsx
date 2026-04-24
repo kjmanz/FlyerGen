@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Product } from '../types';
 import { ImageUploader } from './ImageUploader';
 import { searchProductSpecs } from '../services/geminiService';
+import { IcMagnify } from './inlineIcons';
 
 interface ProductCardProps {
   product: Product;
@@ -132,9 +133,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
                     type="button"
                     onClick={handleSearch}
                     disabled={isSearching || !product.productCode}
-                    className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300"
+                    className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300 inline-flex items-center justify-center gap-1"
                   >
-                    {isSearching ? '検索中...' : '🔍 検索'}
+                    {isSearching ? '検索中...' : (<><IcMagnify className="h-3.5 w-3.5 flex-shrink-0" />検索</>)}
                   </button>
                 </div>
               </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ProductServiceInfo, ContentSections, ReviewSearchResult, FlyerSettings } from '../types';
 import { ImageUploader } from './ImageUploader';
 import { generateProductServiceContent, searchProductReviews } from '../services/geminiService';
+import { IcSparkles, IcMagnify, IcFileText, IcX, IcPencil, IcSquare, IcPackage } from './inlineIcons';
 
 interface ProductServiceFormProps {
     productServiceInfo: ProductServiceInfo;
@@ -116,7 +117,9 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
 
             <div className="flex items-center gap-3 mb-8 relative">
-                <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-sm">📦</div>
+                <div className="w-8 h-8 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-center text-emerald-700">
+                    <IcPackage className="h-4 w-4" />
+                </div>
                 <h2 className="text-xl font-semibold text-slate-900">商品・サービス紹介（表面）</h2>
             </div>
 
@@ -136,14 +139,14 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                         disabled={isGeneratingProductContent || !productServiceInfo.title.trim()}
                         className="px-5 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                        {isGeneratingProductContent ? (<><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>生成中</>) : (<>✨ AI生成</>)}
+                        {isGeneratingProductContent ? (<><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>生成中</>) : (<><IcSparkles className="h-4 w-4 flex-shrink-0" />AI生成</>)}
                     </button>
                     <button
                         onClick={handleSearchReviews}
                         disabled={isSearchingReviews || !productServiceInfo.title.trim()}
                         className="px-5 py-2.5 bg-emerald-600 text-white rounded-md text-sm font-bold shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                        {isSearchingReviews ? (<><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>検索中</>) : (<>🔍 レビュー検索</>)}
+                        {isSearchingReviews ? (<><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>検索中</>) : (<><IcMagnify className="h-4 w-4 flex-shrink-0" />レビュー検索</>)}
                     </button>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」でコンテンツ自動生成、「レビュー検索」でお客様の声を収集</p>
@@ -153,7 +156,10 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
             {reviewSearchResults && (
                 <div className="mb-8 p-5 bg-emerald-50/80 rounded-lg border border-emerald-100">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-bold text-emerald-800">📝 レビュー検索結果</h3>
+                        <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2">
+                          <IcFileText className="h-4 w-4 flex-shrink-0" />
+                          レビュー検索結果
+                        </h3>
                         <button onClick={handleApplyReviewResults} className="px-4 py-2 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 transition-all">↑ 上記を反映</button>
                     </div>
                     <div className="space-y-3 text-sm">
@@ -203,7 +209,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                     {productServiceInfo.features.map((feature, idx) => (
                         <div key={idx} className="flex gap-2 mb-2">
                             <input type="text" placeholder={`特徴 ${idx + 1}...`} value={feature} onChange={(e) => { const newFeatures = [...productServiceInfo.features]; newFeatures[idx] = e.target.value; setProductServiceInfo({ ...productServiceInfo, features: newFeatures }); }} className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300" />
-                            {productServiceInfo.features.length > 1 && (<button onClick={() => setProductServiceInfo({ ...productServiceInfo, features: productServiceInfo.features.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md">✕</button>)}
+                            {productServiceInfo.features.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, features: productServiceInfo.features.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
                     <button onClick={() => setProductServiceInfo({ ...productServiceInfo, features: [...productServiceInfo.features, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 特徴を追加</button>
@@ -216,7 +222,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                     {productServiceInfo.benefits.map((benefit, idx) => (
                         <div key={idx} className="flex gap-2 mb-2">
                             <input type="text" placeholder={`メリット ${idx + 1}...`} value={benefit} onChange={(e) => { const newBenefits = [...productServiceInfo.benefits]; newBenefits[idx] = e.target.value; setProductServiceInfo({ ...productServiceInfo, benefits: newBenefits }); }} className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300" />
-                            {productServiceInfo.benefits.length > 1 && (<button onClick={() => setProductServiceInfo({ ...productServiceInfo, benefits: productServiceInfo.benefits.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md">✕</button>)}
+                            {productServiceInfo.benefits.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, benefits: productServiceInfo.benefits.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
                     <button onClick={() => setProductServiceInfo({ ...productServiceInfo, benefits: [...productServiceInfo.benefits, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ メリットを追加</button>
@@ -229,7 +235,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                     {productServiceInfo.targetAudience.map((target, idx) => (
                         <div key={idx} className="flex gap-2 mb-2">
                             <input type="text" placeholder={`おすすめの方 ${idx + 1}...`} value={target} onChange={(e) => { const newTargets = [...productServiceInfo.targetAudience]; newTargets[idx] = e.target.value; setProductServiceInfo({ ...productServiceInfo, targetAudience: newTargets }); }} className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300" />
-                            {productServiceInfo.targetAudience.length > 1 && (<button onClick={() => setProductServiceInfo({ ...productServiceInfo, targetAudience: productServiceInfo.targetAudience.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md">✕</button>)}
+                            {productServiceInfo.targetAudience.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, targetAudience: productServiceInfo.targetAudience.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
                     <button onClick={() => setProductServiceInfo({ ...productServiceInfo, targetAudience: [...productServiceInfo.targetAudience, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 追加</button>
@@ -298,7 +304,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                     {productServiceInfo.customerReviews.map((review, idx) => (
                         <div key={idx} className="flex gap-2 mb-2">
                             <input type="text" placeholder={`お客様の声 ${idx + 1}...`} value={review} onChange={(e) => { const newReviews = [...productServiceInfo.customerReviews]; newReviews[idx] = e.target.value; setProductServiceInfo({ ...productServiceInfo, customerReviews: newReviews }); }} className="flex-1 rounded-md border-slate-200 border-2 py-2.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300" />
-                            {productServiceInfo.customerReviews.length > 1 && (<button onClick={() => setProductServiceInfo({ ...productServiceInfo, customerReviews: productServiceInfo.customerReviews.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md">✕</button>)}
+                            {productServiceInfo.customerReviews.length > 1 && (<button type="button" onClick={() => setProductServiceInfo({ ...productServiceInfo, customerReviews: productServiceInfo.customerReviews.filter((_, i) => i !== idx) })} className="px-3 py-2 text-rose-500 hover:bg-rose-50 rounded-md inline-flex items-center justify-center" aria-label="削除"><IcX className="h-4 w-4" /></button>)}
                         </div>
                     ))}
                     <button onClick={() => setProductServiceInfo({ ...productServiceInfo, customerReviews: [...productServiceInfo.customerReviews, ''] })} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mt-2">＋ 追加</button>
@@ -323,17 +329,23 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                 <div className="flex gap-3">
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'creative' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="productBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'creative'} onChange={() => setSettings({ ...settings, backgroundMode: 'creative' })} />
-                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-sm shadow-inner">✨</div>
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-white shadow-inner">
+                          <IcSparkles className="h-4 w-4" />
+                        </div>
                         <div><div className="text-xs font-semibold text-slate-900">おまかせ</div><div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div></div>
                     </label>
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="productBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
-                        <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-sm shadow-sm border border-slate-200">⬜</div>
+                        <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-slate-400 shadow-sm border border-slate-200">
+                          <IcSquare className="h-4 w-4" />
+                        </div>
                         <div><div className="text-xs font-semibold text-slate-900">白配色</div><div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div></div>
                     </label>
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="productBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
-                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-sm shadow-inner">✏️</div>
+                        <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white shadow-inner">
+                          <IcPencil className="h-4 w-4" />
+                        </div>
                         <div><div className="text-xs font-semibold text-slate-900">自由記述</div><div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div></div>
                     </label>
                 </div>
