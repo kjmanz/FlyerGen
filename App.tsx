@@ -1,13 +1,18 @@
 import React, { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type BrandRules, type BrandTone, type ImageQualityCheck } from './types';
+import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type BrandRules, type ImageQualityCheck } from './types';
+import type { GenerationJob, GenerationJobSnapshot } from './generationQueue';
 import { ImageUploader } from './components/ImageUploader';
 import type { EditRegion } from './components/ImageEditModal';
 import { MainTabs, MainTabType } from './components/MainTabs';
 import { Sidebar } from './components/Sidebar';
 import { CompactAssetSection } from './components/CompactAssetSection';
 import { AssetSelectionGrid } from './components/AssetSelectionGrid';
+import { SidebarContextCard } from './components/SidebarContextCard';
+import { SidebarGenerationOptions } from './components/SidebarGenerationOptions';
+import { GenerationQueuePanel } from './components/GenerationQueuePanel';
+import { uiTierLabel } from './components/uiTokens';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -68,13 +73,6 @@ const loadGeminiService = (): Promise<GeminiServiceModule> => {
 
 type SidebarAssetSectionId = 'character' | 'illustration' | 'reference' | 'customer' | 'logo';
 
-const BRAND_TONE_LABELS: Record<BrandTone, string> = {
-  trust: '信頼感',
-  friendly: '親しみやすさ',
-  premium: '高級感',
-  energetic: '元気・活気',
-};
-
 const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
@@ -125,39 +123,6 @@ const createDefaultSettings = (): FlyerSettings => ({
   additionalInstructions: '',
   brandRules: createDefaultBrandRules()
 });
-
-type GenerationJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'canceled';
-
-type GenerationJobSnapshot = {
-  apiKey: string;
-  flyerSide: 'front' | 'back';
-  frontFlyerType: FrontFlyerType;
-  salesLetterMode: boolean;
-  settings: FlyerSettings;
-  products: Product[];
-  characterClothingMode: 'fixed' | 'match';
-  salesLetterInfo: SalesLetterInfo;
-  productServiceInfo: ProductServiceInfo;
-  campaignInfo: CampaignInfo;
-  selectedCharacterImages: string[];
-  selectedReferenceImages: string[];
-  selectedStoreLogoImages: string[];
-  selectedCustomIllustrations: string[];
-  selectedCustomerImages: string[];
-  selectedProductImages: string[];
-};
-
-type GenerationJob = {
-  id: string;
-  status: GenerationJobStatus;
-  createdAt: number;
-  updatedAt: number;
-  progress: number;
-  message: string;
-  side: 'front' | 'back';
-  snapshot: GenerationJobSnapshot;
-  error?: string;
-};
 
 const sameStringArray = (a: string[], b: string[]) => {
   if (a.length !== b.length) return false;
@@ -2672,14 +2637,6 @@ ${header.length + uint8Array.length + 20}
     return { label: '⚠ 判定失敗', className: 'bg-slate-500 text-white' };
   };
 
-  const getGenerationJobStatusConfig = (status: GenerationJobStatus) => {
-    if (status === 'pending') return { label: '待機中', className: 'bg-slate-100 text-slate-700' };
-    if (status === 'running') return { label: '実行中', className: 'bg-sky-100 text-sky-700' };
-    if (status === 'completed') return { label: '完了', className: 'bg-emerald-100 text-emerald-700' };
-    if (status === 'failed') return { label: '失敗', className: 'bg-rose-100 text-rose-700' };
-    return { label: 'キャンセル', className: 'bg-amber-100 text-amber-700' };
-  };
-
   const generationQueueStats = useMemo(() => {
     return generationQueue.reduce((acc, job) => {
       acc.total += 1;
@@ -2825,23 +2782,11 @@ ${header.length + uint8Array.length + 20}
       <div className="flex min-h-[calc(100vh-56px)] lg:min-h-[calc(100vh-64px)]">
         {/* Sidebar */}
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)}>
-          {/* 1 · 文脈（メイン編集と同期した要約） */}
-          <div className="mb-5 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500/90 mb-1.5">1 · 文脈</div>
-            <p className="text-sm font-bold text-slate-900 leading-snug">{sidebarContextSummary.title}</p>
-            <p className="text-xs text-slate-600 mt-1.5 line-clamp-3 break-words">{sidebarContextSummary.subtitle}</p>
-            {sidebarContextSummary.presetName ? (
-              <p className="text-[10px] font-semibold text-indigo-700 mt-2 truncate" title={sidebarContextSummary.presetName}>
-                プリセット: {sidebarContextSummary.presetName}
-              </p>
-            ) : (
-              <p className="text-[10px] text-slate-400 mt-2">プリセット未選択（新規）</p>
-            )}
-          </div>
+          <SidebarContextCard summary={sidebarContextSummary} />
 
           {/* 2 · アセット（同時に開けるのは1カテゴリのみ） */}
           <div className="mb-5">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">2 · アセット</div>
+            <div className={`${uiTierLabel} mb-3`}>2 · アセット</div>
             <div className="space-y-3">
               {/* Character Images */}
               <CompactAssetSection
@@ -2859,8 +2804,8 @@ ${header.length + uint8Array.length + 20}
                 {characterImages.length > 0 && selectedCharacterIndices.size > 0 && (
                   <div className="mt-2 p-2 bg-slate-50 rounded-md">
                     <div className="flex gap-1">
-                      <button onClick={() => setCharacterClothingMode('fixed')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'fixed' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>👔 そのまま</button>
-                      <button onClick={() => setCharacterClothingMode('match')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'match' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>🎨 合わせる</button>
+                      <button type="button" onClick={() => setCharacterClothingMode('fixed')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'fixed' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>そのまま</button>
+                      <button type="button" onClick={() => setCharacterClothingMode('match')} className={`flex-1 py-1 text-xs rounded ${characterClothingMode === 'match' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>デザインに合わせる</button>
                     </div>
                   </div>
                 )}
@@ -2948,189 +2893,14 @@ ${header.length + uint8Array.length + 20}
             </div>
           </div>
 
-          {/* 3 · 生成オプション */}
-          <div className="mb-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">3 · 生成オプション</div>
-
-            {/* Orientation */}
-            <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-400 mb-2">チラシ形式</label>
-              <div className="flex gap-2">
-                <label className={`flex-1 flex flex-col items-center p-2 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'vertical' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200'}`}>
-                  <input type="radio" name="orientation-sidebar" className="sr-only" checked={settings.orientation === 'vertical'} onChange={() => setSettings({ ...settings, orientation: 'vertical' })} />
-                  <div className="w-4 h-6 border-2 border-slate-400 rounded bg-white mb-1"></div>
-                  <span className="text-xs font-medium text-slate-700">縦</span>
-                </label>
-                <label className={`flex-1 flex flex-col items-center p-2 border-2 rounded-md cursor-pointer transition-all ${settings.orientation === 'horizontal' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200'}`}>
-                  <input type="radio" name="orientation-sidebar" className="sr-only" checked={settings.orientation === 'horizontal'} onChange={() => setSettings({ ...settings, orientation: 'horizontal' })} />
-                  <div className="w-6 h-4 border-2 border-slate-400 rounded bg-white mb-1"></div>
-                  <span className="text-xs font-medium text-slate-700">横</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Resolution & Pattern */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">解像度</label>
-                <select
-                  value={settings.imageSize}
-                  onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as any })}
-                  className="w-full text-sm border border-slate-200 rounded-md py-2 px-2 bg-white font-medium"
-                >
-                  <option value="1K">1K</option>
-                  <option value="2K">2K</option>
-                  <option value="4K">4K</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">パターン</label>
-                <select
-                  value={settings.patternCount}
-                  onChange={(e) => setSettings({ ...settings, patternCount: parseInt(e.target.value) })}
-                  className="w-full text-sm border border-slate-200 rounded-md py-2 px-2 bg-white font-medium"
-                >
-                  {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Background Mode */}
-            <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-400 mb-2">背景</label>
-              <div className="flex gap-1">
-                <button type="button" onClick={() => setSettings({ ...settings, backgroundMode: 'creative' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'creative' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>おまかせ</button>
-                <button type="button" onClick={() => setSettings({ ...settings, backgroundMode: 'white' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'white' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>白</button>
-                <button type="button" onClick={() => setSettings({ ...settings, backgroundMode: 'custom' })} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${settings.backgroundMode === 'custom' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>カスタム</button>
-              </div>
-              {settings.backgroundMode === 'custom' && (
-                <textarea
-                  rows={2}
-                  placeholder="背景の指定..."
-                  value={settings.customBackground || ''}
-                  onChange={(e) => setSettings({ ...settings, customBackground: e.target.value })}
-                  className="mt-2 w-full text-sm border border-slate-200 rounded-md py-2 px-2"
-                />
-              )}
-            </div>
-
-            {/* Brand Rules — 常時はサマリのみ、詳細は折りたたみ */}
-            <div className="rounded-md border border-slate-200 bg-slate-50/60 p-3">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <label className="text-xs font-semibold text-slate-500">ブランドルール</label>
-                <button
-                  type="button"
-                  onClick={() => updateBrandRules({ enabled: !activeBrandRules.enabled })}
-                  className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${activeBrandRules.enabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                  title="ブランドルールを有効化"
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeBrandRules.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-600 leading-snug mb-2">
-                {activeBrandRules.enabled
-                  ? `${activeBrandRules.brandName?.trim() || 'ブランド名未設定'} · ${BRAND_TONE_LABELS[activeBrandRules.tone]}`
-                  : 'オフ（生成時のブランド縛りなし）'}
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsBrandRulesDetailOpen((v) => !v)}
-                className="flex w-full items-center justify-between gap-2 rounded-md py-1.5 text-left text-xs font-bold text-indigo-600 hover:bg-indigo-50/60 px-1 -mx-1"
-              >
-                <span>{isBrandRulesDetailOpen ? '詳細を閉じる' : '色・フレーズ・ロゴ方針を編集'}</span>
-                <span className={`text-slate-400 transition-transform ${isBrandRulesDetailOpen ? 'rotate-180' : ''}`}>
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </span>
-              </button>
-
-              {isBrandRulesDetailOpen && (
-                <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
-                  <input
-                    type="text"
-                    value={activeBrandRules.brandName}
-                    onChange={(e) => updateBrandRules({ brandName: e.target.value })}
-                    placeholder="ブランド名（例: ○○電器）"
-                    className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
-                    disabled={!activeBrandRules.enabled}
-                  />
-
-                  <select
-                    value={activeBrandRules.tone}
-                    onChange={(e) => updateBrandRules({ tone: e.target.value as BrandRules['tone'] })}
-                    className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
-                    disabled={!activeBrandRules.enabled}
-                  >
-                    <option value="trust">信頼感</option>
-                    <option value="friendly">親しみやすさ</option>
-                    <option value="premium">高級感</option>
-                    <option value="energetic">元気・活気</option>
-                  </select>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="text-xs text-slate-500">
-                      メイン色
-                      <input
-                        type="color"
-                        value={activeBrandRules.primaryColor}
-                        onChange={(e) => updateBrandRules({ primaryColor: e.target.value })}
-                        className="mt-1 h-8 w-full rounded border border-slate-200 bg-white"
-                        disabled={!activeBrandRules.enabled}
-                      />
-                    </label>
-                    <label className="text-xs text-slate-500">
-                      補助色
-                      <input
-                        type="color"
-                        value={activeBrandRules.secondaryColor}
-                        onChange={(e) => updateBrandRules({ secondaryColor: e.target.value })}
-                        className="mt-1 h-8 w-full rounded border border-slate-200 bg-white"
-                        disabled={!activeBrandRules.enabled}
-                      />
-                    </label>
-                  </div>
-
-                  <textarea
-                    rows={2}
-                    value={activeBrandRules.requiredPhrases.join('\n')}
-                    onChange={(e) => updateBrandRules({
-                      requiredPhrases: e.target.value
-                        .split(/\n|,|、/)
-                        .map((text) => text.trim())
-                        .filter((text) => text.length > 0)
-                    })}
-                    placeholder="必須フレーズ（改行で複数）"
-                    className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
-                    disabled={!activeBrandRules.enabled}
-                  />
-
-                  <textarea
-                    rows={2}
-                    value={activeBrandRules.forbiddenPhrases.join('\n')}
-                    onChange={(e) => updateBrandRules({
-                      forbiddenPhrases: e.target.value
-                        .split(/\n|,|、/)
-                        .map((text) => text.trim())
-                        .filter((text) => text.length > 0)
-                    })}
-                    placeholder="禁止フレーズ（改行で複数）"
-                    className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2 bg-white"
-                    disabled={!activeBrandRules.enabled}
-                  />
-
-                  <label className="flex items-center gap-2 text-xs text-slate-600">
-                    <input
-                      type="checkbox"
-                      checked={activeBrandRules.strictLogoPolicy}
-                      onChange={(e) => updateBrandRules({ strictLogoPolicy: e.target.checked })}
-                      className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600"
-                      disabled={!activeBrandRules.enabled}
-                    />
-                    ロゴ改変を絶対禁止（強制）
-                  </label>
-                </div>
-              )}
-            </div>
-          </div>
+          <SidebarGenerationOptions
+            settings={settings}
+            setSettings={setSettings}
+            activeBrandRules={activeBrandRules}
+            updateBrandRules={updateBrandRules}
+            isBrandRulesDetailOpen={isBrandRulesDetailOpen}
+            setIsBrandRulesDetailOpen={setIsBrandRulesDetailOpen}
+          />
         </Sidebar>
 
         {/* Main Content Area */}
@@ -3740,122 +3510,17 @@ ${header.length + uint8Array.length + 20}
               </button>
             </div>
 
-            {generationQueueStats.total > 0 && (
-              <div className="mb-10 overflow-hidden rounded-lg border border-indigo-100 bg-white shadow-sm">
-                <div className="flex flex-wrap items-stretch gap-2 border-b border-indigo-50/80 p-3 sm:p-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsGenerationQueueExpanded((v) => !v)}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-1 text-left transition-colors hover:bg-slate-50"
-                  >
-                    <span className="text-lg flex-shrink-0">🧵</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">生成キュー</span>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 sm:text-xs">
-                          {generationQueueStats.total}件
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[10px] text-slate-500">
-                        実行中 {generationQueueStats.running} · 待機 {generationQueueStats.pending}
-                        <span className="hidden sm:inline">
-                          {' '}· 完了 {generationQueueStats.completed}
-                          {generationQueueStats.failed > 0 ? ` · 失敗 ${generationQueueStats.failed}` : ''}
-                        </span>
-                        {' · '}
-                        {isGenerationQueueExpanded ? 'タップで閉じる' : 'タップでジョブ一覧'}
-                      </p>
-                    </div>
-                    <span className={`flex-shrink-0 self-center text-slate-400 transition-transform ${isGenerationQueueExpanded ? 'rotate-180' : ''}`}>
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearFinishedGenerationJobs}
-                    className="self-center rounded-md bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-all"
-                  >
-                    完了を整理
-                  </button>
-                </div>
-
-                {isGenerationQueueExpanded && (
-                <div className="space-y-2.5 p-4 sm:p-5 pt-3 sm:pt-4">
-                  <div className="flex flex-wrap gap-1.5 pb-1 text-[10px] sm:text-xs">
-                    <span className="rounded-full bg-sky-50 px-2 py-0.5 font-bold text-sky-700">実行中 {generationQueueStats.running}</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-bold text-slate-700">待機 {generationQueueStats.pending}</span>
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700">完了 {generationQueueStats.completed}</span>
-                    <span className="rounded-full bg-rose-50 px-2 py-0.5 font-bold text-rose-700">失敗 {generationQueueStats.failed}</span>
-                  </div>
-                  {visibleGenerationJobs.map((job) => {
-                    const status = getGenerationJobStatusConfig(job.status);
-                    const canCancel = job.status === 'pending' || job.status === 'running';
-                    const canRetry = job.status === 'failed' || job.status === 'canceled';
-                    const canRemove = job.status !== 'running' && activeGenerationJobId !== job.id;
-                    return (
-                      <div key={job.id} className="border border-slate-200 rounded-md p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-700">
-                              {job.side === 'front' ? '表面' : '裏面'} / {job.snapshot.settings.patternCount}案
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${status.className}`}>
-                              {status.label}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            {new Date(job.createdAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </div>
-                        </div>
-
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
-                          <div
-                            className={`h-full transition-all ${job.status === 'failed' ? 'bg-rose-500' : job.status === 'canceled' ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                            style={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
-                          />
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-xs text-slate-600">
-                            {job.error ? `${job.message}: ${job.error}` : job.message}
-                          </div>
-                          <div className="flex gap-1.5">
-                            {canCancel && (
-                              <button
-                                type="button"
-                                onClick={() => handleCancelGenerationJob(job.id)}
-                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-all"
-                              >
-                                キャンセル
-                              </button>
-                            )}
-                            {canRetry && (
-                              <button
-                                type="button"
-                                onClick={() => handleRetryGenerationJob(job.id)}
-                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-sky-100 text-sky-700 hover:bg-sky-200 transition-all"
-                              >
-                                再試行
-                              </button>
-                            )}
-                            {canRemove && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveGenerationJob(job.id)}
-                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
-                              >
-                                削除
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                )}
-              </div>
-            )}
+            <GenerationQueuePanel
+              stats={generationQueueStats}
+              jobs={visibleGenerationJobs}
+              isExpanded={isGenerationQueueExpanded}
+              onToggleExpanded={() => setIsGenerationQueueExpanded((v) => !v)}
+              onClearFinished={handleClearFinishedGenerationJobs}
+              activeGenerationJobId={activeGenerationJobId}
+              onCancelJob={handleCancelGenerationJob}
+              onRetryJob={handleRetryGenerationJob}
+              onRemoveJob={handleRemoveGenerationJob}
+            />
 
             {/* History Results（折りたたみ・編集の下に配置） */}
             {history.length > 0 && (
@@ -3869,7 +3534,7 @@ ${header.length + uint8Array.length + 20}
                     <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-950 rounded-md flex items-center justify-center text-base sm:text-lg flex-shrink-0">📁</div>
                     <div className="min-w-0">
                       <h2 className="text-lg sm:text-2xl font-semibold text-slate-900 tracking-tight">生成履歴 <span className="text-indigo-600 ml-1 sm:ml-2">({history.length})</span></h2>
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">クリックで{isHistoryPanelExpanded ? '閉じる' : '一覧を表示'}</p>
+                      <p className="text-xs text-slate-400 font-medium mt-0.5">クリックで{isHistoryPanelExpanded ? '閉じる' : '一覧を表示'}</p>
                     </div>
                   </div>
                   <span className={`text-slate-400 flex-shrink-0 transition-transform ${isHistoryPanelExpanded ? 'rotate-180' : ''}`}>
