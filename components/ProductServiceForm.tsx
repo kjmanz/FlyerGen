@@ -149,7 +149,7 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                         {isSearchingReviews ? (<><svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>検索中</>) : (<><IcMagnify className="h-4 w-4 flex-shrink-0" />レビュー検索</>)}
                     </button>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」でコンテンツ自動生成、「レビュー検索」でお客様の声を収集</p>
+                <p className="text-xs text-slate-400 mt-2 ml-1">入力後「AI生成」でコンテンツ自動生成、「レビュー検索」でお客様の声を収集</p>
             </div>
 
             {/* Review Search Results */}
@@ -335,21 +335,21 @@ export const ProductServiceForm: React.FC<ProductServiceFormProps> = ({
                         <div className="w-8 h-8 rounded-md bg-gradient-to-br from-amber-400 via-rose-400 to-indigo-500 flex items-center justify-center text-white shadow-inner">
                           <IcSparkles className="h-4 w-4" />
                         </div>
-                        <div><div className="text-xs font-semibold text-slate-900">おまかせ</div><div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div></div>
+                        <div><div className="text-xs font-semibold text-slate-900">おまかせ</div><div className="text-xs font-bold text-slate-500 mt-0.5">AIおすすめ</div></div>
                     </label>
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="productBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'white'} onChange={() => setSettings({ ...settings, backgroundMode: 'white' })} />
                         <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-slate-400 shadow-sm border border-slate-200">
                           <IcSquare className="h-4 w-4" />
                         </div>
-                        <div><div className="text-xs font-semibold text-slate-900">白配色</div><div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div></div>
+                        <div><div className="text-xs font-semibold text-slate-900">白配色</div><div className="text-xs font-bold text-slate-500 mt-0.5">シンプル</div></div>
                     </label>
                     <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="productBackgroundMode" className="sr-only" checked={settings.backgroundMode === 'custom'} onChange={() => setSettings({ ...settings, backgroundMode: 'custom' })} />
                         <div className="w-8 h-8 rounded-md bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white shadow-inner">
                           <IcPencil className="h-4 w-4" />
                         </div>
-                        <div><div className="text-xs font-semibold text-slate-900">自由記述</div><div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div></div>
+                        <div><div className="text-xs font-semibold text-slate-900">自由記述</div><div className="text-xs font-bold text-slate-500 mt-0.5">カスタム</div></div>
                     </label>
                 </div>
                 {settings.backgroundMode === 'custom' && (

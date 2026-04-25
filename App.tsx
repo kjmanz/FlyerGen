@@ -44,6 +44,8 @@ import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { SidebarContextCard } from './components/SidebarContextCard';
 import { SidebarGenerationOptions } from './components/SidebarGenerationOptions';
 import { GenerationQueuePanel } from './components/GenerationQueuePanel';
+import { FlyerSetupChecklist } from './components/FlyerSetupChecklist';
+import { StickyGenerateBar } from './components/StickyGenerateBar';
 import { uiTierLabel } from './components/uiTokens';
 import { upscaleImage } from './services/upscaleService';
 import {
@@ -191,7 +193,7 @@ const App: React.FC = () => {
 
   // History State
   const [history, setHistory] = useState<GeneratedImage[]>([]);
-  const mainContentRef = useRef<HTMLElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
   const historyGridRef = useRef<HTMLDivElement>(null);
   const [historyGridWidth, setHistoryGridWidth] = useState(0);
   const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 0));
@@ -2747,7 +2749,7 @@ ${header.length + uint8Array.length + 20}
   ]);
 
   return (
-    <div className="min-h-screen pb-32 bg-slate-50/50">
+    <div className="min-h-screen bg-slate-50/50 pb-4">
       <AppHeader
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onGenerate={handleGenerate}
@@ -2869,8 +2871,8 @@ ${header.length + uint8Array.length + 20}
                   <div className="mt-2 p-2 bg-slate-50 rounded-md">
                     <label className="block text-xs font-medium text-slate-400 mb-1">配置</label>
                     <div className="flex gap-1">
-                      <button onClick={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'full-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>横幅100%</button>
-                      <button onClick={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'right-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>右50%</button>
+                      <button type="button" onClick={() => setSettings({ ...settings, logoPosition: 'full-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'full-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>横幅100%</button>
+                      <button type="button" onClick={() => setSettings({ ...settings, logoPosition: 'right-bottom' })} className={`flex-1 py-1 text-xs rounded ${settings.logoPosition === 'right-bottom' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border'}`}>右50%</button>
                     </div>
                   </div>
                 )}
@@ -2889,8 +2891,12 @@ ${header.length + uint8Array.length + 20}
         </Sidebar>
 
         {/* Main Content Area */}
-        <main ref={mainContentRef} className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 animate-fade-in">
-          <div className="max-w-5xl mx-auto">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            ref={mainContentRef}
+            className="flex-1 overflow-y-auto px-4 py-6 animate-fade-in sm:px-6 lg:px-8 lg:py-10"
+          >
+            <div className="mx-auto max-w-5xl pb-4">
             {/* 表面／裏面と状態を先に（編集が主役） */}
             <div className="mb-6">
               <MainTabs
@@ -2903,11 +2909,34 @@ ${header.length + uint8Array.length + 20}
               />
             </div>
 
+            <FlyerSetupChecklist
+              apiKey={apiKey}
+              onOpenSettings={() => {
+                setTempApiKey(apiKey);
+                setTempReplicateApiKey(replicateApiKey);
+                setIsSettingsOpen(true);
+              }}
+              mainTab={mainTab}
+              frontFlyerType={frontFlyerType}
+              salesLetterMode={salesLetterMode}
+              campaignDescription={campaignInfo.campaignDescription}
+              campaignHeadline={campaignInfo.headline}
+              campaignName={campaignInfo.campaignName}
+              campaignContent={campaignInfo.content}
+              productServiceTitle={productServiceInfo.title}
+              productsCount={products.length}
+              hasRecommendedAssets={
+                characterImages.length > 0 ||
+                referenceImages.length > 0 ||
+                customIllustrations.length > 0
+              }
+            />
+
             <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className={`w-3 h-3 rounded-full ${activePresetId ? 'bg-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-300'}`}></div>
                 <div>
-                  <p className="text-[10px] font-semibold tracking-[0.1em] text-slate-400">現在の状態</p>
+                  <p className="text-xs font-semibold tracking-[0.1em] text-slate-400">現在の状態</p>
                   {activePresetId ? (
                     <p className="font-semibold text-indigo-700">
                       編集中: {presets.find(p => p.id === activePresetId)?.name || '未保存のプリセット'}
@@ -2918,6 +2947,7 @@ ${header.length + uint8Array.length + 20}
                 </div>
               </div>
               <button
+                type="button"
                 onClick={openSaveModal}
                 className="btn-premium flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-bold shadow-indigo-600/20 active:scale-95"
               >
@@ -2954,35 +2984,36 @@ ${header.length + uint8Array.length + 20}
                     {presetsForSide.map(preset => (
                       <div
                         key={preset.id}
-                        onClick={() => handleLoadPreset(preset)}
-                        className={`group bg-white p-5 rounded-md border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${activePresetId === preset.id ? 'border-indigo-500 shadow-indigo-500/10 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md'}`}
+                        className={`group relative w-full rounded-md border bg-white transition-all hover:scale-[1.02] active:scale-[0.98] ${activePresetId === preset.id ? 'border-indigo-500 shadow-indigo-500/10 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md'}`}
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">{preset.name}</h3>
-                            <p className="text-[10px] font-bold tracking-wider text-slate-400 mt-2 flex items-center gap-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                              更新: {new Date(preset.updatedAt).toLocaleDateString('ja-JP')}
-                            </p>
-                            <div className="flex gap-2 mt-3">
-                              {preset.side === 'back' ? (
-                                <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
-                              ) : (
-                                <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-500 rounded-md">{preset.frontFlyerType === 'product-service' ? '商品/サービス' : 'キャンペーン'}</span>
-                              )}
-                              <span className="px-2 py-0.5 bg-indigo-50 text-[10px] font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
-                            </div>
+                        <button
+                          type="button"
+                          onClick={() => handleLoadPreset(preset)}
+                          className="w-full p-5 pr-14 text-left"
+                        >
+                          <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">{preset.name}</h3>
+                          <p className="text-xs font-bold tracking-wider text-slate-400 mt-2 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            更新: {new Date(preset.updatedAt).toLocaleDateString('ja-JP')}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {preset.side === 'back' ? (
+                              <span className="px-2 py-0.5 bg-slate-100 text-xs font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-slate-100 text-xs font-bold text-slate-500 rounded-md">{preset.frontFlyerType === 'product-service' ? '商品/サービス' : 'キャンペーン'}</span>
+                            )}
+                            <span className="px-2 py-0.5 bg-indigo-50 text-xs font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
                           </div>
-                          <div className="pl-2">
-                            <button
-                              onClick={(e) => handleDeletePreset(preset.id, e)}
-                              className="bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-500 p-2 rounded-md transition-all group-hover:opacity-100 sm:opacity-0"
-                              title="Delete"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                          </div>
-                        </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeletePreset(preset.id, e)}
+                          className="absolute right-3 top-3 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-500 p-2 rounded-md transition-all group-hover:opacity-100 sm:opacity-0 focus:opacity-100"
+                          title="プリセットを削除"
+                          aria-label={`プリセット「${preset.name}」を削除`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -3003,7 +3034,7 @@ ${header.length + uint8Array.length + 20}
                         <IcMegaphone className="h-7 w-7" />
                       </div>
                       <div className="text-sm font-bold text-slate-900">キャンペーン訴求</div>
-                      <div className="text-[10px] text-slate-500 mt-1">セール・フェア告知</div>
+                      <div className="text-xs text-slate-500 mt-1">セール・フェア告知</div>
                     </label>
                     <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${frontFlyerType === 'product-service' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                       <input type="radio" name="frontFlyerType" className="sr-only" checked={frontFlyerType === 'product-service'} onChange={() => setFrontFlyerType('product-service')} />
@@ -3011,7 +3042,7 @@ ${header.length + uint8Array.length + 20}
                         <IcPackage className="h-7 w-7" />
                       </div>
                       <div className="text-sm font-bold text-slate-900">商品・サービス紹介</div>
-                      <div className="text-[10px] text-slate-500 mt-1">機能・メリット訴求</div>
+                      <div className="text-xs text-slate-500 mt-1">機能・メリット訴求</div>
                     </label>
                   </div>
                 </div>
@@ -3057,7 +3088,7 @@ ${header.length + uint8Array.length + 20}
                           )}
                         </button>
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-2 ml-1">入力後「AI生成」を押すと、ヘッドラインとキャンペーン名が自動生成されます</p>
+                      <p className="text-xs text-slate-400 mt-2 ml-1">入力後「AI生成」を押すと、ヘッドラインとキャンペーン名が自動生成されます</p>
                     </div>
 
                     {/* Headline */}
@@ -3230,7 +3261,7 @@ ${header.length + uint8Array.length + 20}
                           </div>
                           <div>
                             <div className="text-sm font-bold text-slate-900">セールスレターモード</div>
-                            <div className="text-[10px] text-slate-500">AIDA / 新PASONAフレームワークで訴求力UP</div>
+                            <div className="text-xs text-slate-500">AIDA / 新PASONAフレームワークで訴求力UP</div>
                           </div>
                         </div>
                         <button
@@ -3250,7 +3281,7 @@ ${header.length + uint8Array.length + 20}
                         </div>
                         <div>
                           <div className="text-sm font-bold text-slate-900">商品画像</div>
-                          <div className="text-[10px] text-slate-500">チラシに掲載する商品画像をアップロード</div>
+                          <div className="text-xs text-slate-500">チラシに掲載する商品画像をアップロード</div>
                         </div>
                       </div>
 
@@ -3341,7 +3372,7 @@ ${header.length + uint8Array.length + 20}
                           onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
                           maxImages={1}
                         />
-                        <p className="text-[10px] text-amber-600 mt-2">アップロードした裏面の画像を参考にして、デザインの統一感を持たせます。</p>
+                        <p className="text-xs text-amber-600 mt-2">アップロードした裏面の画像を参考にして、デザインの統一感を持たせます。</p>
                       </div>
                     )}
                   </div>
@@ -3372,7 +3403,7 @@ ${header.length + uint8Array.length + 20}
                       onChange={(e) => setSettings({ ...settings, flyerTitle: e.target.value })}
                       className="block w-full rounded-md border-slate-200 border-2 py-3.5 px-4 shadow-sm focus:border-indigo-600 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300 transition-all hover:border-slate-300"
                     />
-                    <p className="text-[10px] text-slate-400 mt-2 ml-1">入力するとチラシ上部に大きく表示されます。未入力の場合はAIにおまかせ。</p>
+                    <p className="text-xs text-slate-400 mt-2 ml-1">入力するとチラシ上部に大きく表示されます。未入力の場合はAIにおまかせ。</p>
                   </div>
 
                   {/* Background Mode */}
@@ -3386,7 +3417,7 @@ ${header.length + uint8Array.length + 20}
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-900">おまかせ</div>
-                          <div className="text-[9px] font-bold text-slate-500 mt-0.5">AIおすすめ</div>
+                          <div className="text-xs font-bold text-slate-500 mt-0.5">AIおすすめ</div>
                         </div>
                       </label>
                       <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'white' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
@@ -3396,7 +3427,7 @@ ${header.length + uint8Array.length + 20}
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-900">白配色</div>
-                          <div className="text-[9px] font-bold text-slate-500 mt-0.5">シンプル</div>
+                          <div className="text-xs font-bold text-slate-500 mt-0.5">シンプル</div>
                         </div>
                       </label>
                       <label className={`flex-1 flex flex-col gap-2 p-3 border-2 rounded-md cursor-pointer transition-all ${settings.backgroundMode === 'custom' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
@@ -3406,7 +3437,7 @@ ${header.length + uint8Array.length + 20}
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-slate-900">自由記述</div>
-                          <div className="text-[9px] font-bold text-slate-500 mt-0.5">カスタム</div>
+                          <div className="text-xs font-bold text-slate-500 mt-0.5">カスタム</div>
                         </div>
                       </label>
                     </div>
@@ -3481,7 +3512,7 @@ ${header.length + uint8Array.length + 20}
                           onImagesChange={(images) => setOppositeSideImage(images[0] || '')}
                           maxImages={1}
                         />
-                        <p className="text-[10px] text-amber-600 mt-2">アップロードした表面の画像を参考にして、デザインの統一感を持たせます。</p>
+                        <p className="text-xs text-amber-600 mt-2">アップロードした表面の画像を参考にして、デザインの統一感を持たせます。</p>
                       </div>
                     )}
                   </div>
@@ -3509,10 +3540,17 @@ ${header.length + uint8Array.length + 20}
 
             <div className="flex justify-center mb-10">
               <button
+                type="button"
                 onClick={handleGenerate}
+                disabled={!apiKey.trim()}
+                aria-label={
+                  isGenerating
+                    ? '生成ジョブをキューに追加'
+                    : `${flyerSide === 'front' ? '表面' : '裏面'}チラシを生成`
+                }
                 className={`
                btn-premium inline-flex items-center px-12 py-5 border border-transparent text-xl font-semibold rounded-[24px] shadow-2xl text-white 
-               ${isGenerating ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
+               ${!apiKey.trim() ? 'cursor-not-allowed bg-slate-300 shadow-none' : isGenerating ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
                focus:outline-none transition-all duration-300
              `}
               >
@@ -3807,7 +3845,7 @@ ${header.length + uint8Array.length + 20}
                             </div>
 
                             {item.qualityCheck && item.qualityCheck.status !== 'pass' && (
-                              <div className={`mb-2 sm:mb-3 rounded-lg px-2.5 py-2 text-[10px] sm:text-xs ${
+                              <div className={`mb-2 sm:mb-3 rounded-lg px-2.5 py-2 text-xs sm:text-xs ${
                                 item.qualityCheck.status === 'pending'
                                   ? 'bg-sky-50 text-sky-700 border border-sky-200'
                                   : item.qualityCheck.status === 'warn'
@@ -3929,9 +3967,9 @@ ${header.length + uint8Array.length + 20}
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                   </svg>
                                 ) : item.is4KRegenerated ? (
-                                  <span className="text-[10px] sm:text-xs font-bold">4K✓</span>
+                                  <span className="text-xs sm:text-xs font-bold">4K✓</span>
                                 ) : (
-                                  <span className="text-[10px] sm:text-xs font-bold">4K</span>
+                                  <span className="text-xs sm:text-xs font-bold">4K</span>
                                 )}
                               </button>
 
@@ -3979,7 +4017,14 @@ ${header.length + uint8Array.length + 20}
                 )}
               </div>
             )}
+            </div>
           </div>
+          <StickyGenerateBar
+            onGenerate={handleGenerate}
+            isGenerating={isGenerating}
+            flyerSide={flyerSide}
+            disabled={!apiKey.trim()}
+          />
         </main>
       </div>
 
@@ -4055,7 +4100,7 @@ ${header.length + uint8Array.length + 20}
                 autoFocus
               />
               <div className="mt-4 p-4 bg-indigo-50/50 rounded-md border border-indigo-100">
-                <p className="text-[11px] font-bold text-indigo-700 leading-relaxed flex items-start gap-3">
+                <p className="text-xs font-bold text-indigo-700 leading-relaxed flex items-start gap-3">
                   <IcLightbulb className="h-5 w-5 flex-shrink-0 text-indigo-600 mt-0.5" />
                   <span>
                     無料のAPIキーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Google AI Studio</a> で取得できます。キーはローカルに保存されます。
@@ -4075,7 +4120,7 @@ ${header.length + uint8Array.length + 20}
                 className="w-full border-2 border-slate-100 rounded-md shadow-sm py-4 px-5 focus:ring-0 focus:border-violet-600 bg-slate-50/50 text-slate-900 font-bold placeholder:text-slate-300 transition-all"
               />
               <div className="mt-4 p-4 bg-violet-50/50 rounded-md border border-violet-100">
-                <p className="text-[11px] font-bold text-violet-700 leading-relaxed flex items-start gap-3">
+                <p className="text-xs font-bold text-violet-700 leading-relaxed flex items-start gap-3">
                   <IcRocket className="h-5 w-5 flex-shrink-0 text-violet-600 mt-0.5" />
                   <span>
                     AIアップスケール機能には <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Replicate</a> のAPIキーが必要です。1回約0.1〜0.3円。

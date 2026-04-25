@@ -43,17 +43,32 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             type="button"
             onClick={onGenerate}
-            className={`text-xs sm:text-sm px-2 sm:px-3 lg:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all ${isGenerating ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
+            disabled={!apiKey.trim()}
+            aria-label={
+              !apiKey.trim()
+                ? 'APIキーを設定してから生成できます'
+                : isGenerating
+                  ? '生成ジョブをキューに追加'
+                  : `${flyerSide === 'front' ? '表面' : '裏面'}チラシを生成`
+            }
+            title={
+              !apiKey.trim()
+                ? 'APIキー未設定'
+                : isGenerating
+                  ? 'キューに追加'
+                  : `${flyerSide === 'front' ? '表面' : '裏面'}チラシを生成`
+            }
+            className={`text-xs sm:text-sm px-2 sm:px-3 lg:px-4 py-1.5 rounded-full font-bold flex items-center gap-1 sm:gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-50 ${isGenerating ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'}`}
           >
             {isGenerating ? (
               <>
                 <IcPlus className="h-4 w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">キュー追加</span>
+                <span className="hidden sm:inline">キューに追加</span>
               </>
             ) : (
               <>
                 <IcSparkles className="h-4 w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">{flyerSide === 'front' ? '表面作成' : '裏面作成'}</span>
+                <span className="hidden sm:inline">{flyerSide === 'front' ? '表面チラシ生成' : '裏面チラシ生成'}</span>
               </>
             )}
           </button>

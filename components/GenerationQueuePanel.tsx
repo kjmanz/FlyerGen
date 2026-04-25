@@ -79,7 +79,7 @@ export const GenerationQueuePanel: React.FC<GenerationQueuePanelProps> = ({
                 {stats.failed > 0 ? ` · 失敗 ${stats.failed}` : ''}
               </span>
               {' · '}
-              {isExpanded ? 'タップで閉じる' : 'タップでジョブ一覧'}
+              {isExpanded ? 'クリックで閉じる' : 'クリックでジョブ一覧'}
             </p>
           </div>
           <span

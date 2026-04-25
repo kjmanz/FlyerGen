@@ -408,7 +408,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           <span className="text-xs mt-1">追加</span>
-          <span className="text-[9px] mt-0.5 text-gray-400">D&D可</span>
+          <span className="text-xs mt-0.5 text-gray-400">D&D可</span>
         </button>
       </div>
 
@@ -422,7 +422,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       />
 
       {stats && (
-        <div className="mt-2 text-[10px] text-slate-500 flex flex-wrap gap-2 items-center">
+        <div className="mt-2 text-xs text-slate-500 flex flex-wrap gap-2 items-center">
           <span>合計 {images.length}枚</span>
           <span>容量: {stats.hasSizeData ? formatBytes(stats.totalBytes) : '不明'}</span>
           <span>最大解像度: {stats.maxWidth && stats.maxHeight ? `${stats.maxWidth}x${stats.maxHeight}` : '不明'}</span>
@@ -436,11 +436,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
         <div className="mt-2 space-y-2">
           {pendingUndoItem && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold text-amber-900">画像を削除しました</span>
+              <span className="text-xs font-semibold text-amber-900">画像を削除しました</span>
               <button
                 type="button"
                 onClick={() => restoreFromTrash(pendingUndoItem)}
-                className="text-[10px] font-bold px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
+                className="text-xs font-bold px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
               >
                 元に戻す
               </button>
@@ -451,7 +451,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             <button
               type="button"
               onClick={() => setShowTrash(prev => !prev)}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+              className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
             >
               ゴミ箱 {trashItems.length}件
             </button>
@@ -463,7 +463,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                   setPendingUndoItem(null);
                   clearUndoTimer();
                 }}
-                className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100"
+                className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100"
               >
                 ゴミ箱を空にする
               </button>
@@ -473,13 +473,13 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           {showTrash && (
             <div className="max-h-44 overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-2 space-y-1.5">
               {trashItems.length === 0 ? (
-                <div className="text-[10px] text-slate-500">ゴミ箱は空です</div>
+                <div className="text-xs text-slate-500">ゴミ箱は空です</div>
               ) : (
                 trashItems.map((item) => (
                   <div key={item.id} className="bg-white border border-slate-200 rounded p-1.5 flex items-center gap-2">
                     <img src={item.image} alt="" className="w-9 h-9 rounded object-cover bg-slate-100" loading="lazy" decoding="async" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] text-slate-600">
+                      <div className="text-xs text-slate-600">
                         {new Date(item.deletedAt).toLocaleString('ja-JP', {
                           month: 'numeric',
                           day: 'numeric',
@@ -491,7 +491,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                     <button
                       type="button"
                       onClick={() => restoreFromTrash(item)}
-                      className="text-[10px] font-bold px-2 py-1 rounded bg-slate-700 text-white hover:bg-slate-800"
+                      className="text-xs font-bold px-2 py-1 rounded bg-slate-700 text-white hover:bg-slate-800"
                     >
                       復元
                     </button>

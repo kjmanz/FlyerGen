@@ -153,7 +153,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                             <IcChartBars className="h-5 w-5" />
                         </div>
                         <div className="text-sm font-bold text-slate-900">AIDA</div>
-                        <div className="text-[10px] text-slate-500 mt-1 text-center">Attention→Interest→<br />Desire→Action</div>
+                        <div className="text-xs text-slate-500 mt-1 text-center">Attention→Interest→<br />Desire→Action</div>
                     </label>
                     <label className={`flex flex-col items-center justify-center p-5 border-2 rounded-lg cursor-pointer transition-all ${salesLetterInfo.framework === 'pasona' ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}>
                         <input type="radio" name="salesFramework" className="sr-only" checked={salesLetterInfo.framework === 'pasona'} onChange={() => setSalesLetterInfo({ ...salesLetterInfo, framework: 'pasona' })} />
@@ -161,7 +161,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                             <IcHeart className="h-5 w-5" />
                         </div>
                         <div className="text-sm font-bold text-slate-900">新PASONA</div>
-                        <div className="text-[10px] text-slate-500 mt-1 text-center">Problem→Affinity→<br />Solution→Offer→N→A</div>
+                        <div className="text-xs text-slate-500 mt-1 text-center">Problem→Affinity→<br />Solution→Offer→N→A</div>
                     </label>
                 </div>
             </div>
@@ -195,7 +195,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                         )}
                     </button>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-2 ml-1">商品名を入力して「AI一括検索」を押すと、下のフィールドが自動で埋まります</p>
+                <p className="text-xs text-slate-400 mt-2 ml-1">商品名を入力して「AI一括検索」を押すと、下のフィールドが自動で埋まります</p>
             </div>
 
             {/* Headline */}
@@ -258,7 +258,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                         onChange={(e) => setSalesLetterInfo({ ...salesLetterInfo, affinity: e.target.value })}
                         className="block w-full rounded-md border-slate-200 border-2 py-3 px-4 shadow-sm focus:border-pink-500 focus:ring-0 sm:text-sm bg-white text-slate-900 font-medium placeholder:text-slate-300"
                     />
-                    <p className="text-[10px] text-pink-600 mt-2">※ 売り手でなく「理解者」として語る。ストーリー調が効果的。</p>
+                    <p className="text-xs text-pink-600 mt-2">※ 売り手でなく「理解者」として語る。ストーリー調が効果的。</p>
                 </div>
             )}
 
@@ -345,7 +345,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">実績年数</label>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">実績年数</label>
                         <input
                             type="text"
                             placeholder="例: 地域で30年の実績"
@@ -355,7 +355,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                         />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">施工件数</label>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">施工件数</label>
                         <input
                             type="text"
                             placeholder="例: 年間500件"
@@ -366,7 +366,7 @@ export const SalesLetterForm: React.FC<SalesLetterFormProps> = ({
                     </div>
                 </div>
                 <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">お客様の声</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">お客様の声</label>
                     {salesLetterInfo.socialProof.customerVoices.map((voice, idx) => (
                         <div key={idx} className="flex gap-2 mb-2">
                             <input
