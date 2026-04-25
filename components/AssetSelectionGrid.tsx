@@ -95,7 +95,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
             <button
               type="button"
               onClick={onSelectAll}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+              className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
             >
               全選択
             </button>
@@ -104,7 +104,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
             <button
               type="button"
               onClick={onClearSelection}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+              className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
             >
               解除
             </button>
@@ -113,7 +113,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
             type="button"
             onClick={() => setShowOnlySelected(prev => !prev)}
             disabled={selectedCount === 0}
-            className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+            className={`text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
               showOnlySelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             } ${selectedCount === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             title={selectedCount === 0 ? '選択中の画像がありません' : '選択中のみ表示'}
@@ -124,7 +124,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
             <button
               type="button"
               onClick={onRemoveDuplicates}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+              className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
             >
               重複削除
             </button>
@@ -133,7 +133,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
       </div>
 
       {previewOnClick && (
-        <div className="text-[10px] text-slate-500 mb-2">{previewHintLabel}</div>
+        <div className="text-xs text-slate-500 mb-2">{previewHintLabel}</div>
       )}
 
       <div className={`grid ${gridColsClass} gap-2`}>
@@ -179,7 +179,7 @@ export const AssetSelectionGrid: React.FC<AssetSelectionGridProps> = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                    <span className="text-[11px] font-bold leading-none">+</span>
+                    <span className="text-xs font-bold leading-none">+</span>
                   )}
                 </button>
               ) : (
