@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Product } from '../types';
 import { ImageUploader } from './ImageUploader';
 import { searchProductSpecs } from '../services/geminiService';
+import { SESSION_API_COST_YEN } from '../config/sessionApiCostYen';
+import { useSessionApiCost } from '../context/SessionApiCostContext';
 import { IcMagnify } from './inlineIcons';
 
 interface ProductCardProps {
@@ -16,6 +18,7 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onRemove, onDuplicate, index, apiKey }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { add: addSessionApiCost } = useSessionApiCost();
 
   const handleSearch = async () => {
     if (!product.productCode) return;
@@ -26,6 +29,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onChange, onR
     setIsSearching(true);
     try {
       const result = await searchProductSpecs(product.productCode, apiKey);
+      addSessionApiCost(SESSION_API_COST_YEN.productSpecSearch);
       const combinedSpecs = `${result.specs}\n${(result.features || []).join(', ')}`;
       onChange({
         ...product,

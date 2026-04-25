@@ -46,7 +46,10 @@ import { SidebarGenerationOptions } from './components/SidebarGenerationOptions'
 import { GenerationQueuePanel } from './components/GenerationQueuePanel';
 import { FlyerSetupChecklist } from './components/FlyerSetupChecklist';
 import { StickyGenerateBar } from './components/StickyGenerateBar';
+import { SessionApiCostBar } from './components/SessionApiCostBar';
 import { uiTierLabel } from './components/uiTokens';
+import { SESSION_API_COST_YEN } from './config/sessionApiCostYen';
+import { SessionApiCostProvider, type SessionApiCostContextValue } from './context/SessionApiCostContext';
 import { upscaleImage } from './services/upscaleService';
 import {
   initFirebase,
@@ -255,6 +258,17 @@ const App: React.FC = () => {
 
   // Text Removal State
   const [removingTextImageId, setRemovingTextImageId] = useState<string | null>(null);
+
+  const [sessionApiCostJpy, setSessionApiCostJpy] = useState(0);
+  const addSessionApiCost = useCallback((jpy: number) => {
+    if (!Number.isFinite(jpy) || jpy <= 0) return;
+    setSessionApiCostJpy((s) => Math.round((s + jpy) * 10) / 10);
+  }, []);
+  const resetSessionApiCost = useCallback(() => setSessionApiCostJpy(0), []);
+  const sessionApiCostValue = useMemo<SessionApiCostContextValue>(
+    () => ({ totalJpy: sessionApiCostJpy, add: addSessionApiCost, reset: resetSessionApiCost }),
+    [sessionApiCostJpy, addSessionApiCost, resetSessionApiCost]
+  );
 
   // Front/Back Side State (表面/裏面切り替え)
   const [flyerSide, setFlyerSide] = useState<'front' | 'back'>('back');
@@ -1304,6 +1318,7 @@ const App: React.FC = () => {
     await Promise.all(targets.map(async (item) => {
       try {
         const result = await gemini.checkFlyerQuality(item.data, effectiveApiKey);
+        addSessionApiCost(SESSION_API_COST_YEN.qualityCheck);
         const checkedAt = Date.now();
         const qualityCheck: ImageQualityCheck = {
           status: result.status,
@@ -1346,7 +1361,7 @@ const App: React.FC = () => {
         }
       }
     }));
-  }, [apiKey, firebaseEnabled, setQualityCheckForImage]);
+  }, [addSessionApiCost, apiKey, firebaseEnabled, setQualityCheckForImage]);
 
   const patchGenerationJob = useCallback((jobId: string, patch: Partial<GenerationJob>) => {
     setGenerationQueue((prev) => prev.map((job) => (
@@ -1513,6 +1528,10 @@ const App: React.FC = () => {
       }
 
       if (newItems.length > 0) {
+        const genCost =
+          SESSION_API_COST_YEN.flyerImageOut * newItems.length
+          + (snapshot.flyerSide === 'back' ? SESSION_API_COST_YEN.backTagFromProducts : 0);
+        addSessionApiCost(genCost);
         setHistory((prev) => {
           const updatedHistory = [...newItems, ...prev];
           void set(DB_KEY_HISTORY, updatedHistory);
@@ -1545,7 +1564,7 @@ const App: React.FC = () => {
       setActiveGenerationJobId((current) => (current === jobId ? null : current));
       setIsGenerating(false);
     }
-  }, [createThumbnail, patchGenerationJob, runQualityChecksForItems]);
+  }, [addSessionApiCost, createThumbnail, patchGenerationJob, runQualityChecksForItems]);
 
   useEffect(() => {
     if (activeGenerationJobId) return;
@@ -1677,6 +1696,7 @@ const App: React.FC = () => {
     try {
       const gemini = await loadGeminiService();
       const result = await gemini.generateCampaignContent(campaignInfo.campaignDescription, apiKey);
+      addSessionApiCost(SESSION_API_COST_YEN.campaignAi);
       setCampaignInfo(prev => ({
         ...prev,
         headline: result.headline,
@@ -1847,6 +1867,7 @@ const App: React.FC = () => {
       ];
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
+      addSessionApiCost(SESSION_API_COST_YEN.replicateUpscale);
       void runQualityChecksForItems([newItem]);
 
       // Save metadata to Firebase if enabled
@@ -1931,6 +1952,7 @@ const App: React.FC = () => {
       const updatedHistory = [newItem, ...history];
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
+      addSessionApiCost(SESSION_API_COST_YEN.regen4k);
       void runQualityChecksForItems([newItem]);
 
       // Save metadata to Firebase if enabled
@@ -2362,6 +2384,7 @@ ${header.length + uint8Array.length + 20}
       for (const item of itemsToTag) {
         try {
           const tags = await gemini.generateTagsFromImage(item.data, apiKey);
+          addSessionApiCost(SESSION_API_COST_YEN.tagFromImage);
           if (tags.length > 0) {
             // Update local state
             const index = updatedHistory.findIndex(h => h.id === item.id);
@@ -2465,6 +2488,7 @@ ${header.length + uint8Array.length + 20}
       const updatedHistory = [newItem, ...history];
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
+      addSessionApiCost(SESSION_API_COST_YEN.editImage);
       void runQualityChecksForItems([newItem]);
 
       // Save metadata to Firebase if enabled
@@ -2546,6 +2570,7 @@ ${header.length + uint8Array.length + 20}
       const updatedHistory = [newItem, ...history];
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
+      addSessionApiCost(SESSION_API_COST_YEN.removeText);
       void runQualityChecksForItems([newItem]);
 
       // Save metadata to Firebase if enabled
@@ -2749,6 +2774,7 @@ ${header.length + uint8Array.length + 20}
   ]);
 
   return (
+    <SessionApiCostProvider value={sessionApiCostValue}>
     <div className="min-h-screen bg-slate-50/50 pb-4">
       <AppHeader
         onOpenSidebar={() => setIsSidebarOpen(true)}
@@ -2931,6 +2957,8 @@ ${header.length + uint8Array.length + 20}
                 customIllustrations.length > 0
               }
             />
+
+            <SessionApiCostBar totalJpy={sessionApiCostJpy} onReset={resetSessionApiCost} />
 
             <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -4274,6 +4302,7 @@ ${header.length + uint8Array.length + 20}
       )}
 
     </div>
+    </SessionApiCostProvider>
   );
 };
 
