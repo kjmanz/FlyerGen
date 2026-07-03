@@ -12,8 +12,6 @@ export const SESSION_API_COST_YEN = {
   flyerImageOut: 6,
   /** 裏面: 商品一覧からのタグ生成 1 回 */
   backTagFromProducts: 0.4,
-  /** 品質チェック 1 画像あたり */
-  qualityCheck: 0.4,
   /** キャンペーン文の AI 生成 1 回 */
   campaignAi: 0.15,
   /** 履歴の画像タグ一括: 1 画像あたり */

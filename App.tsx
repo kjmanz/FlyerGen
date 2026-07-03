@@ -1,7 +1,7 @@
 import React, { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type BrandRules, type ImageQualityCheck } from './types';
+import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type BrandRules } from './types';
 import type { GenerationJob, GenerationJobSnapshot } from './generationQueue';
 import { ImageUploader } from './components/ImageUploader';
 import type { EditRegion } from './components/ImageEditModal';
@@ -18,7 +18,6 @@ import {
   IcFolder,
   IcStar,
   IcMagnify,
-  IcFlask,
   IcTag,
   IcRefresh,
   IcUpload,
@@ -61,7 +60,6 @@ import {
   deleteCloudImage,
   saveFlyerMetadata,
   updateFlyerUpscaleStatus,
-  updateFlyerQualityCheck,
   updateFlyerTags,
   updateFlyerFavorite,
   saveReferenceImages,
@@ -443,14 +441,6 @@ const App: React.FC = () => {
               isEdited: img.isEdited,
               is4KRegenerated: img.is4KRegenerated,
               imageSize: img.imageSize,
-              qualityCheck: img.qualityStatus
-                ? {
-                    status: img.qualityStatus,
-                    summary: img.qualitySummary,
-                    issues: img.qualityIssues || [],
-                    checkedAt: img.qualityCheckedAt || img.createdAt
-                  }
-                : undefined,
               createdAt: img.createdAt
             })).sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
             setHistory(historyFromCloud);
@@ -1278,88 +1268,6 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const setQualityCheckForImage = useCallback((imageId: string, qualityCheck: ImageQualityCheck) => {
-    setHistory((prev) => {
-      let changed = false;
-      const next = prev.map((item) => {
-        if (item.id !== imageId) return item;
-        changed = true;
-        return { ...item, qualityCheck };
-      });
-      if (changed) {
-        void set(DB_KEY_HISTORY, next);
-      }
-      return changed ? next : prev;
-    });
-  }, []);
-
-  const runQualityChecksForItems = useCallback(async (items: GeneratedImage[], apiKeyOverride?: string) => {
-    const effectiveApiKey = apiKeyOverride || apiKey;
-    if (!effectiveApiKey || items.length === 0) return;
-
-    const targets = items.filter((item) => !!item.data);
-    if (targets.length === 0) return;
-
-    const startedAt = Date.now();
-    targets.forEach((item) => {
-      setQualityCheckForImage(item.id, {
-        status: 'pending',
-        summary: '品質チェック中',
-        issues: [],
-        checkedAt: startedAt
-      });
-    });
-
-    const gemini = await loadGeminiService();
-
-    await Promise.all(targets.map(async (item) => {
-      try {
-        const result = await gemini.checkFlyerQuality(item.data, effectiveApiKey);
-        addSessionApiCost(SESSION_API_COST_YEN.qualityCheck);
-        const checkedAt = Date.now();
-        const qualityCheck: ImageQualityCheck = {
-          status: result.status,
-          summary: result.summary,
-          issues: result.issues,
-          checkedAt
-        };
-        setQualityCheckForImage(item.id, qualityCheck);
-
-        const canSyncToCloud = firebaseEnabled && /\.(png|jpe?g|webp)$/i.test(item.id);
-        if (canSyncToCloud) {
-          await updateFlyerQualityCheck(
-            item.id,
-            qualityCheck.status === 'pending' ? 'warn' : qualityCheck.status,
-            qualityCheck.issues,
-            qualityCheck.summary || '',
-            checkedAt
-          );
-        }
-      } catch (error) {
-        console.error(`Quality check failed for ${item.id}:`, error);
-        const checkedAt = Date.now();
-        const fallback: ImageQualityCheck = {
-          status: 'error',
-          summary: '品質判定エラー',
-          issues: ['品質チェックの実行中にエラーが発生しました'],
-          checkedAt
-        };
-        setQualityCheckForImage(item.id, fallback);
-
-        const canSyncToCloud = firebaseEnabled && /\.(png|jpe?g|webp)$/i.test(item.id);
-        if (canSyncToCloud) {
-          await updateFlyerQualityCheck(
-            item.id,
-            'error',
-            fallback.issues,
-            fallback.summary || '',
-            checkedAt
-          );
-        }
-      }
-    }));
-  }, [addSessionApiCost, apiKey, firebaseEnabled, setQualityCheckForImage]);
-
   const patchGenerationJob = useCallback((jobId: string, patch: Partial<GenerationJob>) => {
     setGenerationQueue((prev) => prev.map((job) => (
       job.id === jobId
@@ -1534,7 +1442,6 @@ const App: React.FC = () => {
           void set(DB_KEY_HISTORY, updatedHistory);
           return updatedHistory;
         });
-        void runQualityChecksForItems(newItems, snapshot.apiKey);
       }
 
       patchGenerationJob(jobId, {
@@ -1561,7 +1468,7 @@ const App: React.FC = () => {
       setActiveGenerationJobId((current) => (current === jobId ? null : current));
       setIsGenerating(false);
     }
-  }, [addSessionApiCost, createThumbnail, patchGenerationJob, runQualityChecksForItems]);
+  }, [addSessionApiCost, createThumbnail, patchGenerationJob]);
 
   useEffect(() => {
     if (activeGenerationJobId) return;
@@ -1865,7 +1772,6 @@ const App: React.FC = () => {
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
       addSessionApiCost(SESSION_API_COST_YEN.replicateUpscale);
-      void runQualityChecksForItems([newItem]);
 
       // Save metadata to Firebase if enabled
       if (firebaseEnabled) {
@@ -2405,7 +2311,6 @@ ${header.length + uint8Array.length + 20}
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
       addSessionApiCost(SESSION_API_COST_YEN.editImage);
-      void runQualityChecksForItems([newItem]);
 
       // Save metadata to Firebase if enabled
       if (firebaseEnabled) {
@@ -2487,7 +2392,6 @@ ${header.length + uint8Array.length + 20}
       setHistory(updatedHistory);
       await set(DB_KEY_HISTORY, updatedHistory);
       addSessionApiCost(SESSION_API_COST_YEN.removeText);
-      void runQualityChecksForItems([newItem]);
 
       // Save metadata to Firebase if enabled
       if (firebaseEnabled) {
@@ -2504,15 +2408,6 @@ ${header.length + uint8Array.length + 20}
     } finally {
       setRemovingTextImageId(null);
     }
-  };
-
-  const handleRecheckQuality = (item: GeneratedImage) => {
-    if (!apiKey) {
-      alert("品質チェックにはGemini APIキーが必要です。");
-      setIsSettingsOpen(true);
-      return;
-    }
-    void runQualityChecksForItems([item]);
   };
 
   const allTags = useMemo(
@@ -2597,20 +2492,6 @@ ${header.length + uint8Array.length + 20}
     if (!rect.height) return;
     setMeasuredRowHeight(prev => (prev && Math.abs(prev - rect.height) < 4 ? prev : rect.height));
   }, []);
-
-  const getQualityBadgeConfig = (qualityCheck?: ImageQualityCheck) => {
-    if (!qualityCheck || qualityCheck.status === 'pass') return null;
-    if (qualityCheck.status === 'pending') {
-      return { label: '品質チェック中', className: 'bg-sky-500 text-white' };
-    }
-    if (qualityCheck.status === 'warn') {
-      return { label: '要確認', className: 'bg-amber-500 text-white' };
-    }
-    if (qualityCheck.status === 'fail') {
-      return { label: '要修正', className: 'bg-rose-600 text-white' };
-    }
-    return { label: '判定失敗', className: 'bg-slate-500 text-white' };
-  };
 
   const generationQueueStats = useMemo(() => {
     return generationQueue.reduce((acc, job) => {
@@ -3717,15 +3598,6 @@ ${header.length + uint8Array.length + 20}
                                   編集済
                                 </span>
                               )}
-                              {(() => {
-                                const qualityBadge = getQualityBadgeConfig(item.qualityCheck);
-                                if (!qualityBadge) return null;
-                                return (
-                                  <span className={`${qualityBadge.className} px-2.5 py-1 rounded-full text-xs font-bold shadow-lg`}>
-                                    {qualityBadge.label}
-                                  </span>
-                                );
-                              })()}
                             </div>
 
                             {/* Hover Overlay */}
@@ -3769,14 +3641,6 @@ ${header.length + uint8Array.length + 20}
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleRecheckQuality(item)}
-                                  className="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-all"
-                                  title="品質チェックを再実行"
-                                >
-                                  <IcFlask className="h-4 w-4 sm:h-5 sm:w-5" />
-                                </button>
-                                <button
-                                  type="button"
                                   onClick={() => handleDeleteImage(item.id)}
                                   className="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
                                   title="削除"
@@ -3787,27 +3651,6 @@ ${header.length + uint8Array.length + 20}
                                 </button>
                               </div>
                             </div>
-
-                            {item.qualityCheck && item.qualityCheck.status !== 'pass' && (
-                              <div className={`mb-2 sm:mb-3 rounded-lg px-2.5 py-2 text-xs sm:text-xs ${
-                                item.qualityCheck.status === 'pending'
-                                  ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                                  : item.qualityCheck.status === 'warn'
-                                    ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                                    : 'bg-rose-50 text-rose-800 border border-rose-200'
-                              }`}>
-                                <div className="font-bold">
-                                  {item.qualityCheck.summary || (item.qualityCheck.status === 'pending' ? '品質チェック中' : '品質要確認')}
-                                </div>
-                                {item.qualityCheck.status !== 'pending' && item.qualityCheck.issues.length > 0 && (
-                                  <ul className="mt-1 space-y-0.5">
-                                    {item.qualityCheck.issues.slice(0, 2).map((issue, idx) => (
-                                      <li key={`${item.id}-quality-${idx}`}>• {issue}</li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            )}
 
                             {/* Action Buttons Grid */}
                             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">

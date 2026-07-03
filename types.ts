@@ -14,7 +14,6 @@ export interface Product {
 
 export type ImageSize = '1K' | '2K' | '4K';
 export type AspectRatio = '3:4' | '4:3'; // Mapping A4 Vertical/Horizontal
-export type QualityCheckStatus = 'pending' | 'pass' | 'warn' | 'fail' | 'error';
 export type BrandTone = 'friendly' | 'trust' | 'premium' | 'energetic';
 
 export interface BrandRules {
@@ -26,13 +25,6 @@ export interface BrandRules {
   requiredPhrases: string[];
   forbiddenPhrases: string[];
   strictLogoPolicy: boolean;
-}
-
-export interface ImageQualityCheck {
-  status: QualityCheckStatus;
-  summary?: string;
-  issues: string[];
-  checkedAt: number;
 }
 
 export interface FlyerSettings {
@@ -68,7 +60,6 @@ export interface GeneratedImage {
   isEdited?: boolean; // Flag to indicate if image has been edited
   is4KRegenerated?: boolean; // Flag to indicate if image has been regenerated at 4K
   flyerType?: 'front' | 'back'; // 表面 or 裏面
-  qualityCheck?: ImageQualityCheck;
 }
 
 // 表面用キャンペーン情報
