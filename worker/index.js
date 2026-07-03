@@ -90,11 +90,6 @@ export default {
                 return await handleEditImage(request, corsHeaders);
             }
 
-            // 4K再生成エンドポイント（Gemini Batch API）
-            if (path === '/api/regenerate-4k') {
-                return await handleRegenerate4K(request, corsHeaders);
-            }
-
             // デフォルト: バッチ生成エンドポイント（後方互換性）
             return await handleBatchGenerate(request, corsHeaders);
 
@@ -284,7 +279,8 @@ async function handleBatchGenerate(request, corsHeaders) {
         });
     }
 
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
+    // gemini-3.1-flash-lite-image は 1K 出力のみ対応
+    const validImageSize = '1K';
     const validAspectRatio = aspectRatio || '3:4';
 
     console.log(`Starting Batch API with ${requests.length} request(s), imageSize: ${validImageSize}, aspectRatio: ${validAspectRatio}...`);
@@ -307,7 +303,7 @@ async function handleBatchGenerate(request, corsHeaders) {
     try {
         // Step 1: バッチジョブを作成
         const batchResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:batchGenerateContent`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:batchGenerateContent`,
             {
                 method: 'POST',
                 headers: {
@@ -430,7 +426,7 @@ async function handleSyncGenerate(apiKey, requests, imageSize, aspectRatio, cors
         requests.map(async (r, index) => {
             try {
                 const response = await fetch(
-                    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
+                    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent',
                     {
                         method: 'POST',
                         headers: {
@@ -523,7 +519,8 @@ async function handleEditImage(request, corsHeaders) {
         });
     }
 
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
+    // gemini-3.1-flash-lite-image は 1K 出力のみ対応
+    const validImageSize = '1K';
     const validAspectRatio = aspectRatio || '3:4';
 
     console.log(`Starting image edit with Batch API, imageSize: ${validImageSize}...`);
@@ -537,7 +534,7 @@ async function handleEditImage(request, corsHeaders) {
     try {
         // Batch API呼び出し
         const batchResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:batchGenerateContent`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:batchGenerateContent`,
             {
                 method: 'POST',
                 headers: {
@@ -614,7 +611,7 @@ async function handleSyncEdit(apiKey, editPrompt, base64Data, imageSize, aspectR
 
     try {
         const response = await retryFetch(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent',
             {
                 method: 'POST',
                 headers: {
@@ -688,223 +685,3 @@ async function handleSyncEdit(apiKey, editPrompt, base64Data, imageSize, aspectR
     }
 }
 
-/**
- * 4K再生成処理（Gemini Batch API - 内容を変更せず解像度のみ4Kに）
- */
-async function handleRegenerate4K(request, corsHeaders) {
-    const { apiKey, imageData, aspectRatio } = await request.json();
-
-    if (!apiKey) {
-        return new Response(JSON.stringify({ error: 'API key is required' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-
-    if (!imageData) {
-        return new Response(JSON.stringify({ error: 'Image data is required' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-
-    const validAspectRatio = aspectRatio || '3:4';
-
-    console.log(`Starting 4K regeneration with Batch API, aspectRatio: ${validAspectRatio}...`);
-
-    // Base64データを抽出
-    let cleanBase64 = imageData;
-    if (imageData.includes(',')) {
-        cleanBase64 = imageData.split(',')[1];
-    }
-
-    // 4K再生成用プロンプト（内容を一切変更しない）
-    const regeneratePrompt = `
-【★最重要★ 高解像度再生成タスク - 内容変更禁止】
-あなたは画像の高解像度化の専門家です。この画像を4K解像度で高精細に再生成してください。
-
-【絶対厳守事項 - 違反は許されません】
-1. 画像の内容を一切変更してはいけません
-2. すべてのテキスト・文字・数字を完全にそのまま再現してください
-3. すべてのイラスト・キャラクター・図形を完全にそのまま再現してください
-4. すべての色・配色・グラデーションを完全にそのまま再現してください
-5. レイアウト・構図・配置を完全にそのまま再現してください
-6. ロゴ・商品画像・写真を完全にそのまま再現してください
-7. 背景・装飾・模様を完全にそのまま再現してください
-
-【行うべきこと】
-- 解像度を4Kに上げる
-- 画像の鮮明さ・シャープネスを向上させる
-- ディテールをより細かく再現する
-- 印刷品質に耐えうる高解像度化
-
-【絶対に行ってはいけないこと】
-- テキストの追加・削除・変更
-- イラストの追加・削除・変更
-- デザインの改変・アレンジ
-- 色の変更
-- 要素の移動・リサイズ
-
-【出力】
-元画像と完全に同一の内容を持つ、4K高解像度版を出力してください。
-`;
-
-    try {
-        // Batch API呼び出し
-        const batchResponse = await retryFetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:batchGenerateContent`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': apiKey
-                },
-                body: JSON.stringify({
-                    requests: [{
-                        contents: [{
-                            parts: [
-                                { text: regeneratePrompt },
-                                {
-                                    inlineData: {
-                                        mimeType: 'image/png',
-                                        data: cleanBase64
-                                    }
-                                }
-                            ]
-                        }],
-                        generationConfig: {
-                            responseModalities: ['Text', 'Image'],
-                            imageConfig: {
-                                imageSize: '4K',
-                                aspectRatio: validAspectRatio
-                            }
-                        }
-                    }]
-                })
-            },
-            3,   // maxRetries
-            2000 // initialDelayMs
-        );
-
-        if (!batchResponse.ok) {
-            const errorText = await batchResponse.text();
-            console.error('Batch API 4K regeneration failed:', errorText);
-
-            // フォールバック: 同期API
-            console.log('Falling back to synchronous API for 4K regeneration...');
-            return await handleSync4KRegenerate(apiKey, regeneratePrompt, cleanBase64, validAspectRatio, corsHeaders);
-        }
-
-        const batchResult = await batchResponse.json();
-
-        // 結果を取得
-        if (batchResult.responses) {
-            for (const response of batchResult.responses) {
-                if (response.candidates?.[0]?.content?.parts) {
-                    for (const part of response.candidates[0].content.parts) {
-                        if (part.inlineData) {
-                            console.log('4K regeneration completed successfully via Batch API');
-                            return new Response(JSON.stringify({
-                                success: true,
-                                image: `data:image/png;base64,${part.inlineData.data}`
-                            }), {
-                                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        // 結果がない場合はフォールバック
-        return await handleSync4KRegenerate(apiKey, regeneratePrompt, cleanBase64, validAspectRatio, corsHeaders);
-
-    } catch (error) {
-        console.error('4K regeneration API error:', error.message);
-        return await handleSync4KRegenerate(apiKey, regeneratePrompt, cleanBase64, validAspectRatio, corsHeaders);
-    }
-}
-
-/**
- * 同期4K再生成処理（フォールバック用）
- */
-async function handleSync4KRegenerate(apiKey, regeneratePrompt, base64Data, aspectRatio, corsHeaders) {
-    console.log('Sync 4K regeneration with retry...');
-
-    try {
-        const response = await retryFetch(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': apiKey
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: regeneratePrompt },
-                            {
-                                inlineData: {
-                                    mimeType: 'image/png',
-                                    data: base64Data
-                                }
-                            }
-                        ]
-                    }],
-                    generationConfig: {
-                        responseModalities: ['Text', 'Image'],
-                        imageConfig: {
-                            imageSize: '4K',
-                            aspectRatio: aspectRatio
-                        }
-                    }
-                })
-            },
-            3,   // maxRetries
-            2000 // initialDelayMs
-        );
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Sync 4K regeneration failed:', errorText);
-            return new Response(JSON.stringify({
-                error: '4K regeneration failed',
-                message: errorText
-            }), {
-                status: response.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
-
-        const data = await response.json();
-
-        for (const part of data.candidates?.[0]?.content?.parts || []) {
-            if (part.inlineData) {
-                console.log('4K regeneration completed successfully via Sync API');
-                return new Response(JSON.stringify({
-                    success: true,
-                    image: `data:image/png;base64,${part.inlineData.data}`
-                }), {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
-            }
-        }
-
-        return new Response(JSON.stringify({
-            error: 'No image in response'
-        }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('Sync 4K regeneration failed after retries:', error.message);
-        return new Response(JSON.stringify({
-            error: '4K regeneration failed',
-            message: error.message
-        }), {
-            status: 503,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-}

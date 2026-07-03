@@ -20,8 +20,6 @@ export const SESSION_API_COST_YEN = {
   tagFromImage: 0.35,
   /** Replicate によるアップスケール 1 回 */
   replicateUpscale: 0.3,
-  /** Gemini 4K 再生成 1 回 */
-  regen4k: 8,
   /** 範囲指定編集 1 回 */
   editImage: 5,
   /** 文字消去 1 回 */

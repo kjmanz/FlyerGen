@@ -15,10 +15,6 @@ export interface FlyerQualityCheckResult {
   issues: string[];
 }
 
-const isValidAspectRatio = (value?: string | null): value is GeminiAspectRatio => (
-  value === '3:4' || value === '4:3'
-);
-
 const readBlobAsDataUrl = (blob: Blob): Promise<string> => (
   new Promise((resolve) => {
     const reader = new FileReader();
@@ -817,49 +813,6 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
     throw new Error('画像の生成に失敗しました');
   } catch (error) {
     console.error("Image edit failed:", error);
-    throw error;
-  }
-};
-
-// Regenerate image at 4K resolution using Worker Batch API (preserves content exactly)
-export const regenerateImage4K = async (
-  imageUrl: string,
-  apiKey: string,
-  aspectRatio?: string
-): Promise<string> => {
-  try {
-    const imageData = await normalizeImageToDataUrl(imageUrl);
-    const resolvedAspectRatio = isValidAspectRatio(aspectRatio)
-      ? aspectRatio
-      : await inferAspectRatioFromDataUrl(imageData, '3:4');
-
-    // Call Worker API for 4K regeneration
-    const workerUrl = API_URL.replace('/api/batch-generate', '/api/regenerate-4k');
-
-    const response = await fetch(workerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        imageData,
-        aspectRatio: resolvedAspectRatio
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || errorData.error || '4K regeneration failed');
-    }
-
-    const result = await response.json();
-
-    if (result.image) {
-      return result.image;
-    }
-
-    throw new Error('4K再生成に失敗しました');
-  } catch (error) {
-    console.error("4K regeneration failed:", error);
     throw error;
   }
 };

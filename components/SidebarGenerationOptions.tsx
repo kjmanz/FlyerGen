@@ -59,15 +59,9 @@ export const SidebarGenerationOptions: React.FC<SidebarGenerationOptionsProps> =
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div>
           <label className={`${uiFieldLabel} mb-1`}>解像度</label>
-          <select
-            value={settings.imageSize}
-            onChange={(e) => setSettings({ ...settings, imageSize: e.target.value as FlyerSettings['imageSize'] })}
-            className="w-full text-sm border border-slate-200 rounded-md py-2 px-2 bg-white font-medium"
-          >
-            <option value="1K">1K</option>
-            <option value="2K">2K</option>
-            <option value="4K">4K</option>
-          </select>
+          <div className="w-full text-sm border border-slate-200 rounded-md py-2 px-2 bg-slate-50 font-medium text-slate-600">
+            1K
+          </div>
         </div>
         <div>
           <label className={`${uiFieldLabel} mb-1`}>パターン</label>
