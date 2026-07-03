@@ -151,7 +151,7 @@ const normalizeBrandRules = (rules?: Partial<BrandRules> | null): BrandRules => 
 
 const createDefaultSettings = (): FlyerSettings => ({
   orientation: 'vertical',
-  imageSize: '2K',
+  imageSize: '1K',
   patternCount: 1,
   backgroundMode: 'creative',
   customBackground: '',
@@ -237,9 +237,6 @@ const App: React.FC = () => {
   const [replicateApiKey, setReplicateApiKey] = useState<string>("");
   const [tempReplicateApiKey, setTempReplicateApiKey] = useState<string>("");
   const [upscalingImageId, setUpscalingImageId] = useState<string | null>(null);
-
-  // 4K Regeneration State
-  const [regenerating4KImageId, setRegenerating4KImageId] = useState<string | null>(null);
 
   // Tag Filter State
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -1890,87 +1887,6 @@ const App: React.FC = () => {
     }
   };
 
-  // 4K Regeneration handler (Gemini Batch API - preserves content)
-  const handleRegenerate4K = async (item: GeneratedImage) => {
-    if (regenerating4KImageId) return;
-
-    if (!apiKey) {
-      alert("Gemini APIキーを設定してください。");
-      setIsSettingsOpen(true);
-      return;
-    }
-
-    setRegenerating4KImageId(item.id);
-
-    try {
-      const gemini = await loadGeminiService();
-      const result = await gemini.regenerateImage4K(item.data, apiKey);
-
-      // Create new 4K image entry
-      const newId = uuidv4();
-      const timestamp = Date.now();
-
-      // Generate thumbnail for 4K image
-      const thumbnailData = await createThumbnail(result);
-
-      let finalId: string = newId;
-      let newImageData = result;
-      let newThumbnail = thumbnailData || undefined;
-
-      // Upload to Firebase if enabled
-      if (firebaseEnabled) {
-        const filename = `flyer_4k_${timestamp}_${newId}.png`;
-        const thumbFilename = `flyer_4k_${timestamp}_${newId}_thumb.jpg`;
-        finalId = filename;
-        try {
-          const [cloudUrl, thumbUrl] = await Promise.all([
-            uploadImage(result, filename),
-            thumbnailData ? uploadImage(thumbnailData, thumbFilename) : Promise.resolve(null)
-          ]);
-          if (cloudUrl) {
-            newImageData = cloudUrl;
-          }
-          if (thumbUrl) {
-            newThumbnail = thumbUrl;
-          }
-        } catch (uploadError) {
-          console.error('Failed to upload 4K image:', uploadError);
-        }
-      }
-
-      const newItem: GeneratedImage = {
-        id: finalId,
-        data: newImageData,
-        thumbnail: newThumbnail,
-        createdAt: timestamp,
-        imageSize: '4K',
-        tags: [...(item.tags || []), '#4K再生成'],
-        isFavorite: false,
-        is4KRegenerated: true
-      };
-
-      const updatedHistory = [newItem, ...history];
-      setHistory(updatedHistory);
-      await set(DB_KEY_HISTORY, updatedHistory);
-      addSessionApiCost(SESSION_API_COST_YEN.regen4k);
-      void runQualityChecksForItems([newItem]);
-
-      // Save metadata to Firebase if enabled
-      if (firebaseEnabled) {
-        await saveFlyerMetadata(finalId, newItem.tags || [], timestamp, {
-          is4KRegenerated: true,
-          imageSize: '4K'
-        });
-      }
-
-      alert("4K再生成が完了しました！高解像度版が履歴に追加されました。");
-    } catch (e: any) {
-      console.error('4K regeneration failed:', e);
-      alert(`4K再生成に失敗しました: ${e.message || '不明なエラー'}`);
-    } finally {
-      setRegenerating4KImageId(null);
-    }
-  };
 
   // Helper for robust file downloads with maximum browser compatibility
   const triggerDownload = (blob: Blob, filename: string, mimeType: string) => {
@@ -3976,31 +3892,7 @@ ${header.length + uint8Array.length + 20}
                             </div>
 
                             {/* Second Row of Buttons */}
-                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-1.5 sm:mt-2">
-                              {/* 4K Regeneration Button */}
-                              <button
-                                onClick={() => handleRegenerate4K(item)}
-                                disabled={regenerating4KImageId === item.id || item.is4KRegenerated}
-                                className={`flex items-center justify-center p-2 sm:p-2.5 rounded-lg transition-all shadow-sm ${regenerating4KImageId === item.id
-                                  ? 'bg-violet-100 text-violet-600 cursor-wait'
-                                  : item.is4KRegenerated
-                                    ? 'bg-violet-100 text-violet-600 cursor-not-allowed'
-                                    : 'bg-violet-500 hover:bg-violet-600 text-white active:scale-95'
-                                  }`}
-                                title={item.is4KRegenerated ? '4K再生成済み' : 'Gemini APIで4K再生成（内容はそのまま）'}
-                              >
-                                {regenerating4KImageId === item.id ? (
-                                  <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                ) : item.is4KRegenerated ? (
-                                  <span className="text-xs sm:text-xs font-bold">4K✓</span>
-                                ) : (
-                                  <span className="text-xs sm:text-xs font-bold">4K</span>
-                                )}
-                              </button>
-
+                            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-1.5 sm:mt-2">
                               {/* Remove Text Button */}
                               <button
                                 onClick={() => handleRemoveText(item)}

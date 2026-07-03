@@ -4,7 +4,7 @@ import cors from 'cors';
 const app = express();
 const PORT = 3001;
 
-const GEMINI_GENERATE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent';
+const GEMINI_GENERATE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent';
 const REPLICATE_PREDICTIONS_ENDPOINT = 'https://api.replicate.com/v1/predictions';
 
 app.use(cors());
@@ -73,7 +73,7 @@ const normalizeImageDataToBase64 = async (imageData) => {
   return imageData;
 };
 
-const requestGeminiImage = async (apiKey, contents, imageSize = '2K', aspectRatio = '3:4') => {
+const requestGeminiImage = async (apiKey, contents, imageSize = '1K', aspectRatio = '3:4') => {
   const response = await retryFetch(
     GEMINI_GENERATE_ENDPOINT,
     {
@@ -110,20 +110,6 @@ const requestGeminiImage = async (apiKey, contents, imageSize = '2K', aspectRati
   return image;
 };
 
-const get4KRegeneratePrompt = () => `
-【★最重要★ 高解像度再生成タスク - 内容変更禁止】
-この画像を4K解像度で高精細に再生成してください。
-
-【絶対厳守事項】
-1. 画像の内容を一切変更しない
-2. 文字・数字・ロゴ・配置を完全維持
-3. 色・背景・装飾を完全維持
-4. デザイン改変・要素追加・削除は禁止
-
-【出力】
-元画像と同じ内容の4K版を出力してください。
-`;
-
 // Batch image generation endpoint.
 app.post('/api/batch-generate', async (req, res) => {
   try {
@@ -136,7 +122,8 @@ app.post('/api/batch-generate', async (req, res) => {
       return res.status(400).json({ error: 'Requests array is required' });
     }
 
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
+    // gemini-3.1-flash-lite-image は 1K 出力のみ対応
+    const validImageSize = '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
 
     console.log(`Processing ${requests.length} generation request(s), imageSize=${validImageSize}, aspectRatio=${validAspectRatio}`);
@@ -175,7 +162,8 @@ app.post('/api/edit-image', async (req, res) => {
     if (!editPrompt) return res.status(400).json({ error: 'Edit prompt is required' });
 
     const cleanBase64 = await normalizeImageDataToBase64(imageData);
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '2K';
+    // gemini-3.1-flash-lite-image は 1K 出力のみ対応
+    const validImageSize = '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
 
     const image = await requestGeminiImage(
@@ -195,37 +183,6 @@ app.post('/api/edit-image', async (req, res) => {
     console.error('Edit image error:', error);
     return res.status(500).json({
       error: 'Image edit failed',
-      message: error.message
-    });
-  }
-});
-
-// 4K regenerate endpoint.
-app.post('/api/regenerate-4k', async (req, res) => {
-  try {
-    const { apiKey, imageData, aspectRatio } = req.body;
-    if (!apiKey) return res.status(400).json({ error: 'API key is required' });
-
-    const cleanBase64 = await normalizeImageDataToBase64(imageData);
-    const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
-
-    const image = await requestGeminiImage(
-      apiKey,
-      {
-        parts: [
-          { text: get4KRegeneratePrompt() },
-          { inlineData: { mimeType: 'image/png', data: cleanBase64 } }
-        ]
-      },
-      '4K',
-      validAspectRatio
-    );
-
-    return res.json({ success: true, image });
-  } catch (error) {
-    console.error('Regenerate 4K error:', error);
-    return res.status(500).json({
-      error: '4K regeneration failed',
       message: error.message
     });
   }
