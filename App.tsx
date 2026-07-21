@@ -3931,27 +3931,15 @@ ${header.length + uint8Array.length + 20}
             <div className="flex flex-col gap-3">
               <button
                 onClick={async () => {
-                  if (!tempOpenAiApiKey.trim()) {
-                    alert("OpenAI APIキーを入力してください。");
-                    return;
-                  }
-                  if (!tempApiKey.trim()) {
-                    alert("Gemini APIキーを入力してください。");
-                    return;
-                  }
                   setOpenAiApiKey(tempOpenAiApiKey);
                   await set(DB_KEY_OPENAI_API_KEY, tempOpenAiApiKey);
                   setApiKey(tempApiKey);
                   await set(DB_KEY_API_KEY, tempApiKey);
-
-                  // Save Replicate key if provided
-                  if (tempReplicateApiKey.trim()) {
-                    setReplicateApiKey(tempReplicateApiKey);
-                    await set(DB_KEY_REPLICATE_API_KEY, tempReplicateApiKey);
-                  }
+                  setReplicateApiKey(tempReplicateApiKey);
+                  await set(DB_KEY_REPLICATE_API_KEY, tempReplicateApiKey);
 
                   setIsSettingsOpen(false);
-                  alert("APIキーを保存しました。");
+                  alert("API設定を保存しました。");
                 }}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold tracking-wide text-xs py-4 px-6 rounded-md shadow-indigo-600/20 transition-all active:scale-95"
               >
