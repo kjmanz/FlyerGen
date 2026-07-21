@@ -111,6 +111,7 @@ type SidebarAssetSectionId = 'character' | 'illustration' | 'reference' | 'custo
 const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
+const DB_KEY_OPENAI_API_KEY = 'flyergen_openai_api_key';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
 const UPSCALE_SCALE = 4;
 
@@ -224,6 +225,8 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
+  const [openAiApiKey, setOpenAiApiKey] = useState<string>("");
+  const [tempOpenAiApiKey, setTempOpenAiApiKey] = useState<string>("");
 
   // Download Dropdown State
   const [openDownloadMenu, setOpenDownloadMenu] = useState<string | null>(null);
@@ -405,6 +408,12 @@ const App: React.FC = () => {
         if (savedApiKey) {
           setApiKey(savedApiKey);
           setTempApiKey(savedApiKey);
+        }
+
+        const savedOpenAiApiKey = await get<string>(DB_KEY_OPENAI_API_KEY);
+        if (savedOpenAiApiKey) {
+          setOpenAiApiKey(savedOpenAiApiKey);
+          setTempOpenAiApiKey(savedOpenAiApiKey);
         }
 
         // Load Replicate API Key from local storage
@@ -1309,7 +1318,7 @@ const App: React.FC = () => {
                 snapshot.selectedStoreLogoImages,
                 snapshot.selectedCustomIllustrations,
                 snapshot.selectedReferenceImages,
-                snapshot.apiKey
+                snapshot.openAiApiKey
               ),
               Promise.resolve(['表面', 'セールスレター', snapshot.salesLetterInfo.productName].filter(Boolean))
             ]);
@@ -1324,7 +1333,7 @@ const App: React.FC = () => {
                 snapshot.selectedStoreLogoImages,
                 snapshot.selectedCustomIllustrations,
                 snapshot.selectedReferenceImages,
-                snapshot.apiKey
+                snapshot.openAiApiKey
               ),
               Promise.resolve(['表面', '商品紹介', snapshot.productServiceInfo.title].filter(Boolean))
             ]);
@@ -1340,7 +1349,7 @@ const App: React.FC = () => {
               snapshot.selectedStoreLogoImages,
               snapshot.selectedCustomIllustrations,
               snapshot.selectedReferenceImages,
-              snapshot.apiKey
+              snapshot.openAiApiKey
             ),
             Promise.resolve(['表面', snapshot.campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
           ]);
@@ -1355,7 +1364,7 @@ const App: React.FC = () => {
             snapshot.selectedReferenceImages,
             snapshot.selectedStoreLogoImages,
             snapshot.selectedCustomIllustrations,
-            snapshot.apiKey
+            snapshot.openAiApiKey
           ),
           gemini.generateTagsFromProducts(snapshot.products, snapshot.apiKey)
         ]);
@@ -1525,9 +1534,14 @@ const App: React.FC = () => {
   }, []);
 
   const handleGenerate = () => {
+    if (!openAiApiKey) {
+      setIsSettingsOpen(true);
+      alert("画像生成用のOpenAI APIキーが設定されていません。");
+      return;
+    }
     if (!apiKey) {
       setIsSettingsOpen(true);
-      alert("APIキーが設定されていません。設定画面からGemini APIキーを入力してください。");
+      alert("文章・タグ生成用のGemini APIキーが設定されていません。");
       return;
     }
 
@@ -1551,6 +1565,7 @@ const App: React.FC = () => {
 
     const snapshot: GenerationJobSnapshot = {
       apiKey,
+      openAiApiKey,
       flyerSide,
       frontFlyerType,
       salesLetterMode,
@@ -2260,14 +2275,14 @@ ${header.length + uint8Array.length + 20}
 
   // Handle image editing
   const handleEditImage = async (regions: EditRegion[]) => {
-    if (!editingImage || !apiKey) return;
+    if (!editingImage || !openAiApiKey) return;
 
     setIsEditGenerating(true);
 
     try {
       const gemini = await loadGeminiService();
       // Generate edited image
-      const editedImageData = await gemini.editImage(editingImage.data, regions, apiKey);
+      const editedImageData = await gemini.editImage(editingImage.data, regions, openAiApiKey);
 
       // Create new history entry for edited image
       const id = uuidv4();
@@ -2334,8 +2349,8 @@ ${header.length + uint8Array.length + 20}
 
   // Handle text removal from image
   const handleRemoveText = async (item: GeneratedImage) => {
-    if (!apiKey) {
-      alert("APIキーが設定されていません。");
+    if (!openAiApiKey) {
+      alert("画像編集用のOpenAI APIキーが設定されていません。");
       return;
     }
 
@@ -2348,7 +2363,7 @@ ${header.length + uint8Array.length + 20}
     try {
       const gemini = await loadGeminiService();
       // Remove text from image
-      const cleanedImageData = await gemini.removeTextFromImage(item.data, apiKey);
+      const cleanedImageData = await gemini.removeTextFromImage(item.data, openAiApiKey);
 
       // Create new history entry for cleaned image
       const id = uuidv4();
@@ -2582,10 +2597,11 @@ ${header.length + uint8Array.length + 20}
         onOpenSaveModal={() => setIsSaveModalOpen(true)}
         onOpenSettings={() => {
           setTempApiKey(apiKey);
+          setTempOpenAiApiKey(openAiApiKey);
           setTempReplicateApiKey(replicateApiKey);
           setIsSettingsOpen(true);
         }}
-        apiKey={apiKey}
+        apiKey={apiKey && openAiApiKey}
       />
 
       {/* 2-Pane Layout Container */}
@@ -2733,9 +2749,10 @@ ${header.length + uint8Array.length + 20}
             </div>
 
             <FlyerSetupChecklist
-              apiKey={apiKey}
+              apiKey={apiKey && openAiApiKey}
               onOpenSettings={() => {
                 setTempApiKey(apiKey);
+                setTempOpenAiApiKey(openAiApiKey);
                 setTempReplicateApiKey(replicateApiKey);
                 setIsSettingsOpen(true);
               }}
@@ -3367,7 +3384,7 @@ ${header.length + uint8Array.length + 20}
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={!apiKey.trim()}
+                disabled={!apiKey.trim() || !openAiApiKey.trim()}
                 aria-label={
                   isGenerating
                     ? '生成ジョブをキューに追加'
@@ -3375,7 +3392,7 @@ ${header.length + uint8Array.length + 20}
                 }
                 className={`
                btn-premium inline-flex items-center px-12 py-5 border border-transparent text-xl font-semibold rounded-[24px] shadow-2xl text-white 
-               ${!apiKey.trim() ? 'cursor-not-allowed bg-slate-300 shadow-none' : isGenerating ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
+               ${!apiKey.trim() || !openAiApiKey.trim() ? 'cursor-not-allowed bg-slate-300 shadow-none' : isGenerating ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
                focus:outline-none transition-all duration-300
              `}
               >
@@ -3786,7 +3803,7 @@ ${header.length + uint8Array.length + 20}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             flyerSide={flyerSide}
-            disabled={!apiKey.trim()}
+            disabled={!apiKey.trim() || !openAiApiKey.trim()}
           />
         </main>
       </div>
@@ -3845,22 +3862,41 @@ ${header.length + uint8Array.length + 20}
       {/* Settings Modal */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full p-5 sm:p-8 animate-slide-up border border-white">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-[90%] sm:w-full max-h-[90vh] overflow-y-auto p-5 sm:p-8 animate-slide-up border border-white">
             <div className="w-12 h-12 bg-amber-50 rounded-md flex items-center justify-center text-amber-700 mb-6 shadow-inner border border-amber-100">
               <IcKey className="h-7 w-7" />
             </div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">API設定</h3>
-            <p className="text-sm font-medium text-slate-400 mb-8">Gemini AIへの接続を設定します。</p>
+            <p className="text-sm font-medium text-slate-400 mb-8">GPT Image 2とGeminiへの接続を設定します。</p>
 
             <div className="mb-8">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">Gemini API Key</label>
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">OpenAI API Key（画像生成・編集用）</label>
+              <input
+                type="password"
+                value={tempOpenAiApiKey}
+                onChange={(e) => setTempOpenAiApiKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full border-2 border-slate-100 rounded-md shadow-sm py-4 px-5 focus:ring-0 focus:border-emerald-600 bg-slate-50/50 text-slate-900 font-bold placeholder:text-slate-300 transition-all"
+                autoFocus
+              />
+              <div className="mt-4 p-4 bg-emerald-50/50 rounded-md border border-emerald-100">
+                <p className="text-xs font-bold text-emerald-700 leading-relaxed flex items-start gap-3">
+                  <IcLightbulb className="h-5 w-5 flex-shrink-0 text-emerald-600 mt-0.5" />
+                  <span>
+                    チラシの生成と編集には <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline font-semibold">OpenAI Platform</a> のAPIキーを使用します。モデルはGPT Image 2です。
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">Gemini API Key（文章・検索・タグ生成用）</label>
               <input
                 type="password"
                 value={tempApiKey}
                 onChange={(e) => setTempApiKey(e.target.value)}
                 placeholder="APIキーを貼り付け..."
                 className="w-full border-2 border-slate-100 rounded-md shadow-sm py-4 px-5 focus:ring-0 focus:border-indigo-600 bg-slate-50/50 text-slate-900 font-bold placeholder:text-slate-300 transition-all"
-                autoFocus
               />
               <div className="mt-4 p-4 bg-indigo-50/50 rounded-md border border-indigo-100">
                 <p className="text-xs font-bold text-indigo-700 leading-relaxed flex items-start gap-3">
@@ -3895,10 +3931,16 @@ ${header.length + uint8Array.length + 20}
             <div className="flex flex-col gap-3">
               <button
                 onClick={async () => {
+                  if (!tempOpenAiApiKey.trim()) {
+                    alert("OpenAI APIキーを入力してください。");
+                    return;
+                  }
                   if (!tempApiKey.trim()) {
                     alert("Gemini APIキーを入力してください。");
                     return;
                   }
+                  setOpenAiApiKey(tempOpenAiApiKey);
+                  await set(DB_KEY_OPENAI_API_KEY, tempOpenAiApiKey);
                   setApiKey(tempApiKey);
                   await set(DB_KEY_API_KEY, tempApiKey);
 

@@ -11,6 +11,7 @@ export type GenerationJobStatus = 'pending' | 'running' | 'completed' | 'failed'
 
 export type GenerationJobSnapshot = {
   apiKey: string;
+  openAiApiKey: string;
   flyerSide: 'front' | 'back';
   frontFlyerType: FrontFlyerType;
   salesLetterMode: boolean;

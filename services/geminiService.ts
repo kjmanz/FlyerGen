@@ -445,7 +445,7 @@ export const generateFlyerImage = async (
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} request(s) to API with imageSize: ${settings.imageSize}, aspectRatio: ${aspectRatio}...`);
+  console.log(`Sending ${batchRequests.length} request(s) to GPT Image 2 with imageSize: ${settings.imageSize}, aspectRatio: ${aspectRatio}...`);
 
   // API endpoint: use Worker URL in production, localhost in development
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -482,7 +482,7 @@ export const generateFlyerImage = async (
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} image(s) from Batch API`);
+  console.log(`Received ${result.images.length} image(s) from GPT Image 2`);
   return result.images;
 };
 
@@ -643,7 +643,7 @@ const getPositionDescription = (region: EditRegion): string => {
 // API URL for worker
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
 
-// Edit image using Worker Batch API (50% cost reduction)
+// Edit image using GPT Image 2 through the API proxy
 export const editImage = async (
   imageUrl: string,
   regions: EditRegion[],
@@ -682,7 +682,7 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
     const imageData = await normalizeImageToDataUrl(imageUrl);
     const aspectRatio = await inferAspectRatioFromDataUrl(imageData, '3:4');
 
-    // Call Worker API for edit (uses Batch API - 50% cost reduction)
+    // Call GPT Image 2 edit endpoint through the API proxy
     const workerUrl = API_URL.replace('/api/batch-generate', '/api/edit-image');
 
     const response = await fetch(workerUrl, {
@@ -715,7 +715,7 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
   }
 };
 
-// Remove all text from flyer image using Worker Batch API
+// Remove all text from flyer image using GPT Image 2
 export const removeTextFromImage = async (
   imageUrl: string,
   apiKey: string
@@ -751,7 +751,7 @@ export const removeTextFromImage = async (
     const imageData = await normalizeImageToDataUrl(imageUrl);
     const aspectRatio = await inferAspectRatioFromDataUrl(imageData, '3:4');
 
-    // Call Worker API for edit (uses Batch API - 50% cost reduction)
+    // Call GPT Image 2 edit endpoint through the API proxy
     const workerUrl = API_URL.replace('/api/batch-generate', '/api/edit-image');
 
     const response = await fetch(workerUrl, {
@@ -1030,7 +1030,7 @@ ${referenceImages.length > 0 ? `
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} front flyer request(s) to API...`);
+  console.log(`Sending ${batchRequests.length} front flyer request(s) to GPT Image 2...`);
 
   // API endpoint
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -1061,7 +1061,7 @@ ${referenceImages.length > 0 ? `
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} front flyer image(s) from Batch API`);
+  console.log(`Received ${result.images.length} front flyer image(s) from GPT Image 2`);
   return result.images;
 };
 
@@ -1405,7 +1405,7 @@ ${referenceImages.length > 0 ? `
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} product service flyer request(s) to API...`);
+  console.log(`Sending ${batchRequests.length} product service flyer request(s) to GPT Image 2...`);
 
   // API endpoint
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -1436,7 +1436,7 @@ ${referenceImages.length > 0 ? `
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} product service flyer image(s) from Batch API`);
+  console.log(`Received ${result.images.length} product service flyer image(s) from GPT Image 2`);
   return result.images;
 };
 
@@ -1835,7 +1835,7 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} sales letter flyer request(s) to API...`);
+  console.log(`Sending ${batchRequests.length} sales letter flyer request(s) to GPT Image 2...`);
 
   // API endpoint
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -1866,6 +1866,6 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} sales letter flyer image(s) from Batch API`);
+  console.log(`Received ${result.images.length} sales letter flyer image(s) from GPT Image 2`);
   return result.images;
 };

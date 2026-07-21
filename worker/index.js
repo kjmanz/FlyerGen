@@ -1,7 +1,11 @@
 /**
  * FlyerGen API Worker
- * Cloudflare Workerで動作するGemini API & Replicate API プロキシ
+ * Cloudflare Workerで動作するOpenAI Image API & Replicate API プロキシ
  */
+
+const OPENAI_IMAGE_MODEL = 'gpt-image-2';
+const OPENAI_GENERATE_ENDPOINT = 'https://api.openai.com/v1/images/generations';
+const OPENAI_EDIT_ENDPOINT = 'https://api.openai.com/v1/images/edits';
 
 /**
  * Convert ArrayBuffer to Base64 string (handles large files without stack overflow)
@@ -85,13 +89,13 @@ export default {
                 return await handleUpscale(request, corsHeaders);
             }
 
-            // 画像編集エンドポイント（Batch API - 50%コスト削減）
+            // GPT Image 2 image editing endpoint
             if (path === '/api/edit-image') {
-                return await handleEditImage(request, corsHeaders);
+                return await handleOpenAIEditImage(request, corsHeaders);
             }
 
-            // デフォルト: バッチ生成エンドポイント（後方互換性）
-            return await handleBatchGenerate(request, corsHeaders);
+            // Default: GPT Image 2 generation endpoint
+            return await handleOpenAIBatchGenerate(request, corsHeaders);
 
         } catch (error) {
             console.error('Worker error:', error);
@@ -255,6 +259,170 @@ async function handleUpscale(request, corsHeaders) {
         status: prediction.status
     }), {
         status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+function getOpenAIImageSize(imageSize = '1K', aspectRatio = '3:4') {
+    const portraitSizes = {
+        '1K': '768x1024',
+        '2K': '1536x2048',
+        '4K': '2448x3264'
+    };
+    const portrait = portraitSizes[imageSize] || portraitSizes['1K'];
+    if (aspectRatio === '4:3') {
+        const [width, height] = portrait.split('x');
+        return `${height}x${width}`;
+    }
+    return portrait;
+}
+
+function base64ToBlob(base64Data, mimeType = 'image/png') {
+    const binary = atob(base64Data);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+    return new Blob([bytes], { type: mimeType });
+}
+
+function parseImageRequest(contents) {
+    const promptParts = [];
+    const images = [];
+    for (const part of contents?.parts || []) {
+        if (typeof part?.text === 'string' && part.text.trim()) {
+            promptParts.push(part.text.trim());
+        }
+        if (part?.inlineData?.data) {
+            images.push({
+                data: part.inlineData.data,
+                mimeType: part.inlineData.mimeType || 'image/png'
+            });
+        }
+    }
+    return { prompt: promptParts.join('\n\n'), images };
+}
+
+async function requestOpenAIImage(apiKey, contents, imageSize = '1K', aspectRatio = '3:4') {
+    const { prompt, images } = parseImageRequest(contents);
+    if (!prompt) throw new Error('Image prompt is required');
+
+    const size = getOpenAIImageSize(imageSize, aspectRatio);
+    let response;
+
+    if (images.length > 0) {
+        const form = new FormData();
+        form.append('model', OPENAI_IMAGE_MODEL);
+        form.append('prompt', prompt);
+        form.append('size', size);
+        form.append('quality', 'high');
+        form.append('output_format', 'png');
+        images.forEach((image, index) => {
+            form.append(
+                'image[]',
+                base64ToBlob(image.data, image.mimeType),
+                `reference-${index + 1}.png`
+            );
+        });
+        response = await retryFetch(OPENAI_EDIT_ENDPOINT, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}` },
+            body: form
+        }, 3, 2000);
+    } else {
+        response = await retryFetch(OPENAI_GENERATE_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: OPENAI_IMAGE_MODEL,
+                prompt,
+                size,
+                quality: 'high',
+                output_format: 'png',
+                n: 1
+            })
+        }, 3, 2000);
+    }
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI Image API error (${response.status}): ${errorText}`);
+    }
+
+    const payload = await response.json();
+    const base64 = payload?.data?.[0]?.b64_json;
+    if (!base64) throw new Error('No image in OpenAI response');
+    return `data:image/png;base64,${base64}`;
+}
+
+async function handleOpenAIBatchGenerate(request, corsHeaders) {
+    const { apiKey, requests, imageSize, aspectRatio } = await request.json();
+    if (!apiKey) {
+        return new Response(JSON.stringify({ error: 'OpenAI API key is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    if (!Array.isArray(requests) || requests.length === 0) {
+        return new Response(JSON.stringify({ error: 'Requests array is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
+    const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
+    const results = await Promise.allSettled(
+        requests.map((item) => requestOpenAIImage(apiKey, item.contents, validImageSize, validAspectRatio))
+    );
+    const images = results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value);
+    const errors = results
+        .filter((result) => result.status === 'rejected')
+        .map((result) => result.reason?.message || 'Unknown error');
+
+    if (images.length === 0) {
+        return new Response(JSON.stringify({ error: 'All image generation requests failed', details: errors }), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    return new Response(JSON.stringify({ images, errors }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+}
+
+async function handleOpenAIEditImage(request, corsHeaders) {
+    const { apiKey, imageData, editPrompt, imageSize, aspectRatio } = await request.json();
+    if (!apiKey) {
+        return new Response(JSON.stringify({ error: 'OpenAI API key is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    if (!imageData || !editPrompt) {
+        return new Response(JSON.stringify({ error: 'Image data and edit prompt are required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    const dataUrlMatch = imageData.match(/^data:([^;]+);base64,(.+)$/);
+    const mimeType = dataUrlMatch?.[1] || 'image/png';
+    const base64 = dataUrlMatch?.[2] || imageData;
+    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
+    const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
+    const image = await requestOpenAIImage(
+        apiKey,
+        { parts: [{ text: editPrompt }, { inlineData: { mimeType, data: base64 } }] },
+        validImageSize,
+        validAspectRatio
+    );
+    return new Response(JSON.stringify({ image }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 }

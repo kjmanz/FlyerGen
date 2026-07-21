@@ -102,7 +102,7 @@ export const FlyerSetupChecklist: React.FC<FlyerSetupChecklistProps> = ({
         <CheckRow
           ok={apiOk}
           label="1. API 接続"
-          detail={apiOk ? 'Gemini API が設定されています。' : 'API キーが未設定です。生成には設定が必要です。'}
+          detail={apiOk ? 'OpenAI・Gemini API が設定されています。' : 'OpenAI・Gemini API キーの設定が必要です。'}
           action={
             !apiOk ? (
               <button

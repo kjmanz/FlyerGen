@@ -4,7 +4,9 @@ import cors from 'cors';
 const app = express();
 const PORT = 3001;
 
-const GEMINI_GENERATE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent';
+const OPENAI_IMAGE_MODEL = 'gpt-image-2';
+const OPENAI_GENERATE_ENDPOINT = 'https://api.openai.com/v1/images/generations';
+const OPENAI_EDIT_ENDPOINT = 'https://api.openai.com/v1/images/edits';
 const REPLICATE_PREDICTIONS_ENDPOINT = 'https://api.replicate.com/v1/predictions';
 
 app.use(cors());
@@ -19,15 +21,6 @@ const arrayBufferToBase64 = (buffer) => {
     binary += String.fromCharCode(...chunk);
   }
   return Buffer.from(binary, 'binary').toString('base64');
-};
-
-const extractImageFromGeminiResponse = (payload) => {
-  for (const part of payload?.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData?.data) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
-  }
-  return null;
 };
 
 const retryFetch = async (url, options, maxRetries = 3, initialDelayMs = 1000) => {
@@ -52,7 +45,7 @@ const retryFetch = async (url, options, maxRetries = 3, initialDelayMs = 1000) =
   throw lastError || new Error('Request failed');
 };
 
-const normalizeImageDataToBase64 = async (imageData) => {
+const normalizeImageData = async (imageData) => {
   if (!imageData) {
     throw new Error('Image data is required');
   }
@@ -63,51 +56,101 @@ const normalizeImageDataToBase64 = async (imageData) => {
       throw new Error(`Failed to fetch image URL: ${response.status}`);
     }
     const buffer = await response.arrayBuffer();
-    return arrayBufferToBase64(buffer);
+    return {
+      data: arrayBufferToBase64(buffer),
+      mimeType: response.headers.get('content-type') || 'image/png'
+    };
   }
 
-  if (imageData.includes(',')) {
-    return imageData.split(',')[1];
+  const dataUrlMatch = imageData.match(/^data:([^;]+);base64,(.+)$/);
+  if (dataUrlMatch) {
+    return { data: dataUrlMatch[2], mimeType: dataUrlMatch[1] };
   }
 
-  return imageData;
+  return { data: imageData, mimeType: 'image/png' };
 };
 
-const requestGeminiImage = async (apiKey, contents, imageSize = '1K', aspectRatio = '3:4') => {
-  const response = await retryFetch(
-    GEMINI_GENERATE_ENDPOINT,
-    {
+const getOpenAIImageSize = (imageSize = '1K', aspectRatio = '3:4') => {
+  const portraitSizes = {
+    '1K': '768x1024',
+    '2K': '1536x2048',
+    '4K': '2448x3264'
+  };
+  const portrait = portraitSizes[imageSize] || portraitSizes['1K'];
+  if (aspectRatio === '4:3') {
+    const [width, height] = portrait.split('x');
+    return `${height}x${width}`;
+  }
+  return portrait;
+};
+
+const parseImageRequest = (contents) => {
+  const promptParts = [];
+  const images = [];
+  for (const part of contents?.parts || []) {
+    if (typeof part?.text === 'string' && part.text.trim()) {
+      promptParts.push(part.text.trim());
+    }
+    if (part?.inlineData?.data) {
+      images.push({
+        data: part.inlineData.data,
+        mimeType: part.inlineData.mimeType || 'image/png'
+      });
+    }
+  }
+  return { prompt: promptParts.join('\n\n'), images };
+};
+
+const requestOpenAIImage = async (apiKey, contents, imageSize = '1K', aspectRatio = '3:4') => {
+  const { prompt, images } = parseImageRequest(contents);
+  if (!prompt) throw new Error('Image prompt is required');
+
+  const size = getOpenAIImageSize(imageSize, aspectRatio);
+  let response;
+
+  if (images.length > 0) {
+    const form = new FormData();
+    form.append('model', OPENAI_IMAGE_MODEL);
+    form.append('prompt', prompt);
+    form.append('size', size);
+    form.append('quality', 'high');
+    form.append('output_format', 'png');
+    images.forEach((image, index) => {
+      const bytes = Buffer.from(image.data, 'base64');
+      form.append('image[]', new Blob([bytes], { type: image.mimeType }), `reference-${index + 1}.png`);
+    });
+    response = await retryFetch(OPENAI_EDIT_ENDPOINT, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form
+    }, 3, 2000);
+  } else {
+    response = await retryFetch(OPENAI_GENERATE_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        contents: [contents],
-        generationConfig: {
-          responseModalities: ['Text', 'Image'],
-          imageConfig: {
-            imageSize,
-            aspectRatio
-          }
-        }
+        model: OPENAI_IMAGE_MODEL,
+        prompt,
+        size,
+        quality: 'high',
+        output_format: 'png',
+        n: 1
       })
-    },
-    3,
-    2000
-  );
+    }, 3, 2000);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errorText}`);
+    throw new Error(`OpenAI Image API error (${response.status}): ${errorText}`);
   }
 
   const payload = await response.json();
-  const image = extractImageFromGeminiResponse(payload);
-  if (!image) {
-    throw new Error('No image in Gemini response');
-  }
-  return image;
+  const base64 = payload?.data?.[0]?.b64_json;
+  if (!base64) throw new Error('No image in OpenAI response');
+  return `data:image/png;base64,${base64}`;
 };
 
 // Batch image generation endpoint.
@@ -122,29 +165,27 @@ app.post('/api/batch-generate', async (req, res) => {
       return res.status(400).json({ error: 'Requests array is required' });
     }
 
-    // gemini-3.1-flash-lite-image は 1K 出力のみ対応
-    const validImageSize = '1K';
+    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
 
     console.log(`Processing ${requests.length} generation request(s), imageSize=${validImageSize}, aspectRatio=${validAspectRatio}`);
 
-    const generated = await Promise.all(
-      requests.map(async (requestItem, index) => {
-        try {
-          return await requestGeminiImage(apiKey, requestItem.contents, validImageSize, validAspectRatio);
-        } catch (error) {
-          console.error(`Request ${index + 1} failed:`, error.message);
-          return null;
-        }
-      })
+    const results = await Promise.allSettled(
+      requests.map((requestItem) => (
+        requestOpenAIImage(apiKey, requestItem.contents, validImageSize, validAspectRatio)
+      ))
     );
-
-    const images = generated.filter(Boolean);
+    const images = results
+      .filter((result) => result.status === 'fulfilled')
+      .map((result) => result.value);
+    const errors = results
+      .filter((result) => result.status === 'rejected')
+      .map((result) => result.reason?.message || 'Unknown error');
     if (images.length === 0) {
-      return res.status(500).json({ error: 'All image generation requests failed' });
+      return res.status(502).json({ error: 'All image generation requests failed', details: errors });
     }
 
-    return res.json({ images });
+    return res.json({ images, errors });
   } catch (error) {
     console.error('Batch generation error:', error);
     return res.status(500).json({
@@ -161,17 +202,16 @@ app.post('/api/edit-image', async (req, res) => {
     if (!apiKey) return res.status(400).json({ error: 'API key is required' });
     if (!editPrompt) return res.status(400).json({ error: 'Edit prompt is required' });
 
-    const cleanBase64 = await normalizeImageDataToBase64(imageData);
-    // gemini-3.1-flash-lite-image は 1K 出力のみ対応
-    const validImageSize = '1K';
+    const normalizedImage = await normalizeImageData(imageData);
+    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
 
-    const image = await requestGeminiImage(
+    const image = await requestOpenAIImage(
       apiKey,
       {
         parts: [
           { text: editPrompt },
-          { inlineData: { mimeType: 'image/png', data: cleanBase64 } }
+          { inlineData: normalizedImage }
         ]
       },
       validImageSize,
