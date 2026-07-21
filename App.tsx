@@ -2745,6 +2745,7 @@ ${header.length + uint8Array.length + 20}
           <SidebarGenerationOptions
             settings={settings}
             setSettings={setSettings}
+            imageProvider={imageProvider}
             activeBrandRules={activeBrandRules}
             updateBrandRules={updateBrandRules}
             isBrandRulesDetailOpen={isBrandRulesDetailOpen}
@@ -4025,6 +4026,9 @@ ${header.length + uint8Array.length + 20}
                   await set(DB_KEY_API_KEY, tempApiKey);
                   setImageProvider(tempImageProvider);
                   await set(DB_KEY_IMAGE_PROVIDER, tempImageProvider);
+                  if (tempImageProvider === 'gemini') {
+                    setSettings((current) => ({ ...current, imageSize: '1K' }));
+                  }
                   setReplicateApiKey(tempReplicateApiKey);
                   await set(DB_KEY_REPLICATE_API_KEY, tempReplicateApiKey);
 
