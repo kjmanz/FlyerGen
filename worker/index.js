@@ -1,11 +1,12 @@
 /**
  * FlyerGen API Worker
- * Cloudflare Workerで動作するOpenAI Image API & Replicate API プロキシ
+ * Cloudflare Workerで動作するOpenAI / Gemini Image API & Replicate API プロキシ
  */
 
 const OPENAI_IMAGE_MODEL = 'gpt-image-2';
 const OPENAI_GENERATE_ENDPOINT = 'https://api.openai.com/v1/images/generations';
 const OPENAI_EDIT_ENDPOINT = 'https://api.openai.com/v1/images/edits';
+const GEMINI_GENERATE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent';
 
 /**
  * Convert ArrayBuffer to Base64 string (handles large files without stack overflow)
@@ -89,13 +90,13 @@ export default {
                 return await handleUpscale(request, corsHeaders);
             }
 
-            // GPT Image 2 image editing endpoint
+            // Selected image provider editing endpoint
             if (path === '/api/edit-image') {
-                return await handleOpenAIEditImage(request, corsHeaders);
+                return await handleImageEdit(request, corsHeaders);
             }
 
-            // Default: GPT Image 2 generation endpoint
-            return await handleOpenAIBatchGenerate(request, corsHeaders);
+            // Default: selected image provider generation endpoint
+            return await handleImageBatchGenerate(request, corsHeaders);
 
         } catch (error) {
             console.error('Worker error:', error);
@@ -358,10 +359,60 @@ async function requestOpenAIImage(apiKey, contents, imageSize = '1K', aspectRati
     return `data:image/png;base64,${base64}`;
 }
 
-async function handleOpenAIBatchGenerate(request, corsHeaders) {
-    const { apiKey, requests, imageSize, aspectRatio } = await request.json();
+function extractImageFromGeminiResponse(payload) {
+    for (const part of payload?.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData?.data) {
+            return `data:image/png;base64,${part.inlineData.data}`;
+        }
+    }
+    return null;
+}
+
+async function requestGeminiImage(apiKey, contents, _imageSize = '1K', aspectRatio = '3:4') {
+    const response = await retryFetch(GEMINI_GENERATE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+            contents: [contents],
+            generationConfig: {
+                responseModalities: ['Text', 'Image'],
+                imageConfig: {
+                    imageSize: '1K',
+                    aspectRatio
+                }
+            }
+        })
+    }, 3, 2000);
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini Image API error (${response.status}): ${errorText}`);
+    }
+
+    const payload = await response.json();
+    const image = extractImageFromGeminiResponse(payload);
+    if (!image) throw new Error('No image in Gemini response');
+    return image;
+}
+
+function normalizeImageProvider(provider) {
+    return provider === 'gemini' ? 'gemini' : 'openai';
+}
+
+function requestImage(provider, apiKey, contents, imageSize, aspectRatio) {
+    return provider === 'gemini'
+        ? requestGeminiImage(apiKey, contents, imageSize, aspectRatio)
+        : requestOpenAIImage(apiKey, contents, imageSize, aspectRatio);
+}
+
+async function handleImageBatchGenerate(request, corsHeaders) {
+    const { apiKey, provider: requestedProvider, requests, imageSize, aspectRatio } = await request.json();
+    const provider = normalizeImageProvider(requestedProvider);
     if (!apiKey) {
-        return new Response(JSON.stringify({ error: 'OpenAI API key is required' }), {
+        return new Response(JSON.stringify({ error: `${provider === 'openai' ? 'OpenAI' : 'Gemini'} API key is required` }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -373,10 +424,12 @@ async function handleOpenAIBatchGenerate(request, corsHeaders) {
         });
     }
 
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
+    const validImageSize = provider === 'gemini'
+        ? '1K'
+        : ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
     const results = await Promise.allSettled(
-        requests.map((item) => requestOpenAIImage(apiKey, item.contents, validImageSize, validAspectRatio))
+        requests.map((item) => requestImage(provider, apiKey, item.contents, validImageSize, validAspectRatio))
     );
     const images = results
         .filter((result) => result.status === 'fulfilled')
@@ -396,10 +449,11 @@ async function handleOpenAIBatchGenerate(request, corsHeaders) {
     });
 }
 
-async function handleOpenAIEditImage(request, corsHeaders) {
-    const { apiKey, imageData, editPrompt, imageSize, aspectRatio } = await request.json();
+async function handleImageEdit(request, corsHeaders) {
+    const { apiKey, provider: requestedProvider, imageData, editPrompt, imageSize, aspectRatio } = await request.json();
+    const provider = normalizeImageProvider(requestedProvider);
     if (!apiKey) {
-        return new Response(JSON.stringify({ error: 'OpenAI API key is required' }), {
+        return new Response(JSON.stringify({ error: `${provider === 'openai' ? 'OpenAI' : 'Gemini'} API key is required` }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -414,9 +468,12 @@ async function handleOpenAIEditImage(request, corsHeaders) {
     const dataUrlMatch = imageData.match(/^data:([^;]+);base64,(.+)$/);
     const mimeType = dataUrlMatch?.[1] || 'image/png';
     const base64 = dataUrlMatch?.[2] || imageData;
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
+    const validImageSize = provider === 'gemini'
+        ? '1K'
+        : ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
-    const image = await requestOpenAIImage(
+    const image = await requestImage(
+        provider,
         apiKey,
         { parts: [{ text: editPrompt }, { inlineData: { mimeType, data: base64 } }] },
         validImageSize,

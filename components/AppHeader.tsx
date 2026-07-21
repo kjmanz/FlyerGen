@@ -1,5 +1,6 @@
 import React from 'react';
 import { IcMenu, IcPlus, IcSparkles } from './inlineIcons';
+import type { ImageGenerationProvider } from '../types';
 
 export interface AppHeaderProps {
   onOpenSidebar: () => void;
@@ -7,9 +8,11 @@ export interface AppHeaderProps {
   isGenerating: boolean;
   flyerSide: 'front' | 'back';
   onTogglePresetList: () => void;
+  isPresetListOpen: boolean;
   onOpenSaveModal: () => void;
   onOpenSettings: () => void;
-  apiKey: string;
+  isImageApiConfigured: boolean;
+  imageProvider: ImageGenerationProvider;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -18,10 +21,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   isGenerating,
   flyerSide,
   onTogglePresetList,
+  isPresetListOpen,
   onOpenSaveModal,
   onOpenSettings,
-  apiKey,
+  isImageApiConfigured,
+  imageProvider,
 }) => {
+  const imageProviderLabel = imageProvider === 'openai' ? 'OpenAI' : 'Gemini';
+
   return (
     <header className="bg-white sticky top-0 z-30 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 lg:h-16 flex items-center justify-between">
@@ -43,17 +50,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             type="button"
             onClick={onGenerate}
-            disabled={!apiKey.trim()}
+            disabled={!isImageApiConfigured}
             aria-label={
-              !apiKey.trim()
-                ? 'APIキーを設定してから生成できます'
+              !isImageApiConfigured
+                ? `${imageProviderLabel} APIキーを設定してから生成できます`
                 : isGenerating
                   ? '生成ジョブをキューに追加'
                   : `${flyerSide === 'front' ? '表面' : '裏面'}チラシを生成`
             }
             title={
-              !apiKey.trim()
-                ? 'APIキー未設定'
+              !isImageApiConfigured
+                ? `${imageProviderLabel} APIキー未設定`
                 : isGenerating
                   ? 'キューに追加'
                   : `${flyerSide === 'front' ? '表面' : '裏面'}チラシを生成`
@@ -75,31 +82,35 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             type="button"
             onClick={onTogglePresetList}
-            className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-            title="プリセット読み込み"
+            aria-expanded={isPresetListOpen}
+            aria-haspopup="dialog"
+            className={`inline-flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3 ${isPresetListOpen ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'}`}
+            title="保存済みプリセットを開く"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
             </svg>
+            <span className="hidden md:inline">プリセット</span>
           </button>
           <button
             type="button"
             onClick={onOpenSaveModal}
-            className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-600 transition-all hover:bg-indigo-50 hover:text-indigo-700 sm:px-3"
             title="プリセット保存"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
             </svg>
+            <span className="hidden md:inline">保存</span>
           </button>
           <button
             type="button"
             onClick={onOpenSettings}
-            className={`p-2 rounded-full flex items-center gap-1.5 transition-all ${apiKey ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'}`}
-            title={apiKey ? 'API 接続中' : 'APIキー未設定'}
+            className={`p-2 rounded-full flex items-center gap-1.5 transition-all ${isImageApiConfigured ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50'}`}
+            title={isImageApiConfigured ? `${imageProviderLabel} 画像生成API 接続中` : `${imageProviderLabel} APIキー未設定`}
           >
-            <div className={`w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full ${apiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span className="hidden lg:inline text-xs font-bold">{apiKey ? '接続中' : '未設定'}</span>
+            <div className={`w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full ${isImageApiConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <span className="hidden lg:inline text-xs font-bold">{isImageApiConfigured ? `${imageProviderLabel} 接続中` : `${imageProviderLabel} 未設定`}</span>
           </button>
         </div>
       </div>

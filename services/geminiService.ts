@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Product, FlyerSettings, SpecSearchResult, CampaignInfo, ProductServiceInfo, ContentSections, ReviewSearchResult, SalesLetterInfo, SalesFramework, type BrandTone } from "../types";
+import { Product, FlyerSettings, SpecSearchResult, CampaignInfo, ProductServiceInfo, ContentSections, ReviewSearchResult, SalesLetterInfo, SalesFramework, type BrandTone, type ImageGenerationProvider } from "../types";
 
 // Helper to get client instance with provided API key
 const getClient = (apiKey: string) => {
@@ -7,6 +7,10 @@ const getClient = (apiKey: string) => {
 };
 
 type GeminiAspectRatio = '3:4' | '4:3';
+
+const imageProviderLabel = (provider: ImageGenerationProvider) => (
+  provider === 'openai' ? 'GPT Image 2' : 'Gemini Image'
+);
 
 const readBlobAsDataUrl = (blob: Blob): Promise<string> => (
   new Promise((resolve) => {
@@ -199,7 +203,8 @@ export const generateFlyerImage = async (
   referenceImages: string[],
   storeLogoImages: string[],
   customIllustrations: string[],
-  apiKey: string
+  apiKey: string,
+  provider: ImageGenerationProvider = 'openai'
 ): Promise<string[]> => {
   const brandRulesInstruction = buildBrandRulesInstruction(settings);
 
@@ -445,7 +450,7 @@ export const generateFlyerImage = async (
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} request(s) to GPT Image 2 with imageSize: ${settings.imageSize}, aspectRatio: ${aspectRatio}...`);
+  console.log(`Sending ${batchRequests.length} request(s) to ${imageProviderLabel(provider)} with imageSize: ${settings.imageSize}, aspectRatio: ${aspectRatio}...`);
 
   // API endpoint: use Worker URL in production, localhost in development
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -458,6 +463,7 @@ export const generateFlyerImage = async (
     },
     body: JSON.stringify({
       apiKey,
+      provider,
       requests: batchRequests,
       imageSize: settings.imageSize,
       aspectRatio: aspectRatio
@@ -482,7 +488,7 @@ export const generateFlyerImage = async (
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} image(s) from GPT Image 2`);
+  console.log(`Received ${result.images.length} image(s) from ${imageProviderLabel(provider)}`);
   return result.images;
 };
 
@@ -647,7 +653,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch
 export const editImage = async (
   imageUrl: string,
   regions: EditRegion[],
-  apiKey: string
+  apiKey: string,
+  provider: ImageGenerationProvider = 'openai'
 ): Promise<string> => {
   // Build edit prompt from regions
   const editInstructions = regions.map((region, idx) => {
@@ -690,6 +697,7 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         apiKey,
+        provider,
         imageData,
         editPrompt,
         imageSize: '2K',
@@ -718,7 +726,8 @@ ${regions.map((r, i) => `□ 編集${i + 1}: ${r.prompt} → 完了したか？`
 // Remove all text from flyer image using GPT Image 2
 export const removeTextFromImage = async (
   imageUrl: string,
-  apiKey: string
+  apiKey: string,
+  provider: ImageGenerationProvider = 'openai'
 ): Promise<string> => {
   const removeTextPrompt = `
 【★最重要★ テキスト削除タスク】
@@ -759,6 +768,7 @@ export const removeTextFromImage = async (
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         apiKey,
+        provider,
         imageData,
         editPrompt: removeTextPrompt,
         imageSize: '2K',
@@ -848,7 +858,8 @@ export const generateFrontFlyerImage = async (
   storeLogoImages: string[],
   customIllustrations: string[],
   referenceImages: string[],
-  apiKey: string
+  apiKey: string,
+  provider: ImageGenerationProvider = 'openai'
 ): Promise<string[]> => {
   const brandRulesInstruction = buildBrandRulesInstruction(settings);
 
@@ -1030,7 +1041,7 @@ ${referenceImages.length > 0 ? `
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} front flyer request(s) to GPT Image 2...`);
+  console.log(`Sending ${batchRequests.length} front flyer request(s) to ${imageProviderLabel(provider)}...`);
 
   // API endpoint
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -1040,6 +1051,7 @@ ${referenceImages.length > 0 ? `
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
+      provider,
       requests: batchRequests,
       imageSize: settings.imageSize,
       aspectRatio: aspectRatio
@@ -1061,7 +1073,7 @@ ${referenceImages.length > 0 ? `
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} front flyer image(s) from GPT Image 2`);
+  console.log(`Received ${result.images.length} front flyer image(s) from ${imageProviderLabel(provider)}`);
   return result.images;
 };
 
@@ -1190,7 +1202,8 @@ export const generateProductServiceFlyer = async (
   storeLogoImages: string[],
   customIllustrations: string[],
   referenceImages: string[],
-  apiKey: string
+  apiKey: string,
+  provider: ImageGenerationProvider = 'openai'
 ): Promise<string[]> => {
   const brandRulesInstruction = buildBrandRulesInstruction(settings);
 
@@ -1405,7 +1418,7 @@ ${referenceImages.length > 0 ? `
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} product service flyer request(s) to GPT Image 2...`);
+  console.log(`Sending ${batchRequests.length} product service flyer request(s) to ${imageProviderLabel(provider)}...`);
 
   // API endpoint
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -1415,6 +1428,7 @@ ${referenceImages.length > 0 ? `
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
+      provider,
       requests: batchRequests,
       imageSize: settings.imageSize,
       aspectRatio: aspectRatio
@@ -1436,7 +1450,7 @@ ${referenceImages.length > 0 ? `
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} product service flyer image(s) from GPT Image 2`);
+  console.log(`Received ${result.images.length} product service flyer image(s) from ${imageProviderLabel(provider)}`);
   return result.images;
 };
 
@@ -1660,7 +1674,8 @@ export const generateSalesLetterFlyer = async (
   storeLogoImages: string[],
   customIllustrations: string[],
   referenceImages: string[],
-  apiKey: string
+  apiKey: string,
+  provider: ImageGenerationProvider = 'openai'
 ): Promise<string[]> => {
   const brandRulesInstruction = buildBrandRulesInstruction(settings);
 
@@ -1835,7 +1850,7 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
     contents: { parts }
   }));
 
-  console.log(`Sending ${batchRequests.length} sales letter flyer request(s) to GPT Image 2...`);
+  console.log(`Sending ${batchRequests.length} sales letter flyer request(s) to ${imageProviderLabel(provider)}...`);
 
   // API endpoint
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/batch-generate';
@@ -1845,6 +1860,7 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
+      provider,
       requests: batchRequests,
       imageSize: settings.imageSize,
       aspectRatio: aspectRatio
@@ -1866,6 +1882,6 @@ ${referenceImages.length > 0 ? '【参考チラシ】提供された参考画像
     throw new Error("画像の生成に失敗しました。");
   }
 
-  console.log(`Received ${result.images.length} sales letter flyer image(s) from GPT Image 2`);
+  console.log(`Received ${result.images.length} sales letter flyer image(s) from ${imageProviderLabel(provider)}`);
   return result.images;
 };

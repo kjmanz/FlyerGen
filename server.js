@@ -7,6 +7,7 @@ const PORT = 3001;
 const OPENAI_IMAGE_MODEL = 'gpt-image-2';
 const OPENAI_GENERATE_ENDPOINT = 'https://api.openai.com/v1/images/generations';
 const OPENAI_EDIT_ENDPOINT = 'https://api.openai.com/v1/images/edits';
+const GEMINI_GENERATE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent';
 const REPLICATE_PREDICTIONS_ENDPOINT = 'https://api.replicate.com/v1/predictions';
 
 app.use(cors());
@@ -21,6 +22,15 @@ const arrayBufferToBase64 = (buffer) => {
     binary += String.fromCharCode(...chunk);
   }
   return Buffer.from(binary, 'binary').toString('base64');
+};
+
+const extractImageFromGeminiResponse = (payload) => {
+  for (const part of payload?.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData?.data) {
+      return `data:image/png;base64,${part.inlineData.data}`;
+    }
+  }
+  return null;
 };
 
 const retryFetch = async (url, options, maxRetries = 3, initialDelayMs = 1000) => {
@@ -153,10 +163,49 @@ const requestOpenAIImage = async (apiKey, contents, imageSize = '1K', aspectRati
   return `data:image/png;base64,${base64}`;
 };
 
+const requestGeminiImage = async (apiKey, contents, _imageSize = '1K', aspectRatio = '3:4') => {
+  const response = await retryFetch(GEMINI_GENERATE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey
+    },
+    body: JSON.stringify({
+      contents: [contents],
+      generationConfig: {
+        responseModalities: ['Text', 'Image'],
+        imageConfig: {
+          imageSize: '1K',
+          aspectRatio
+        }
+      }
+    })
+  }, 3, 2000);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini Image API error (${response.status}): ${errorText}`);
+  }
+
+  const payload = await response.json();
+  const image = extractImageFromGeminiResponse(payload);
+  if (!image) throw new Error('No image in Gemini response');
+  return image;
+};
+
+const normalizeImageProvider = (provider) => provider === 'gemini' ? 'gemini' : 'openai';
+
+const requestImage = (provider, apiKey, contents, imageSize, aspectRatio) => (
+  provider === 'gemini'
+    ? requestGeminiImage(apiKey, contents, imageSize, aspectRatio)
+    : requestOpenAIImage(apiKey, contents, imageSize, aspectRatio)
+);
+
 // Batch image generation endpoint.
 app.post('/api/batch-generate', async (req, res) => {
   try {
     const { apiKey, requests, imageSize, aspectRatio } = req.body;
+    const provider = normalizeImageProvider(req.body.provider);
 
     if (!apiKey) {
       return res.status(400).json({ error: 'API key is required' });
@@ -165,14 +214,16 @@ app.post('/api/batch-generate', async (req, res) => {
       return res.status(400).json({ error: 'Requests array is required' });
     }
 
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
+    const validImageSize = provider === 'gemini'
+      ? '1K'
+      : ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
 
-    console.log(`Processing ${requests.length} generation request(s), imageSize=${validImageSize}, aspectRatio=${validAspectRatio}`);
+    console.log(`Processing ${requests.length} ${provider} generation request(s), imageSize=${validImageSize}, aspectRatio=${validAspectRatio}`);
 
     const results = await Promise.allSettled(
       requests.map((requestItem) => (
-        requestOpenAIImage(apiKey, requestItem.contents, validImageSize, validAspectRatio)
+        requestImage(provider, apiKey, requestItem.contents, validImageSize, validAspectRatio)
       ))
     );
     const images = results
@@ -199,14 +250,18 @@ app.post('/api/batch-generate', async (req, res) => {
 app.post('/api/edit-image', async (req, res) => {
   try {
     const { apiKey, imageData, editPrompt, imageSize, aspectRatio } = req.body;
+    const provider = normalizeImageProvider(req.body.provider);
     if (!apiKey) return res.status(400).json({ error: 'API key is required' });
     if (!editPrompt) return res.status(400).json({ error: 'Edit prompt is required' });
 
     const normalizedImage = await normalizeImageData(imageData);
-    const validImageSize = ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
+    const validImageSize = provider === 'gemini'
+      ? '1K'
+      : ['1K', '2K', '4K'].includes(imageSize) ? imageSize : '1K';
     const validAspectRatio = aspectRatio === '4:3' ? '4:3' : '3:4';
 
-    const image = await requestOpenAIImage(
+    const image = await requestImage(
+      provider,
       apiKey,
       {
         parts: [

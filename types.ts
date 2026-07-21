@@ -14,6 +14,7 @@ export interface Product {
 
 export type ImageSize = '1K' | '2K' | '4K';
 export type AspectRatio = '3:4' | '4:3'; // Mapping A4 Vertical/Horizontal
+export type ImageGenerationProvider = 'openai' | 'gemini';
 export type BrandTone = 'friendly' | 'trust' | 'premium' | 'energetic';
 
 export interface BrandRules {

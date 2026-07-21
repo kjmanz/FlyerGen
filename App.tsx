@@ -1,7 +1,7 @@
 import React, { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { get, set } from 'idb-keyval';
-import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type BrandRules } from './types';
+import { Product, FlyerSettings, GeneratedImage, Preset, CampaignInfo, FrontFlyerType, ProductServiceInfo, SalesLetterInfo, type BrandRules, type ImageGenerationProvider } from './types';
 import type { GenerationJob, GenerationJobSnapshot } from './generationQueue';
 import { ImageUploader } from './components/ImageUploader';
 import type { EditRegion } from './components/ImageEditModal';
@@ -43,7 +43,6 @@ import { AssetSelectionGrid } from './components/AssetSelectionGrid';
 import { SidebarContextCard } from './components/SidebarContextCard';
 import { SidebarGenerationOptions } from './components/SidebarGenerationOptions';
 import { GenerationQueuePanel } from './components/GenerationQueuePanel';
-import { FlyerSetupChecklist } from './components/FlyerSetupChecklist';
 import { StickyGenerateBar } from './components/StickyGenerateBar';
 import { SessionApiCostBar } from './components/SessionApiCostBar';
 import { uiTierLabel } from './components/uiTokens';
@@ -112,6 +111,7 @@ const DB_KEY_HISTORY = 'flyergen_history_v1';
 const DB_KEY_PRESETS = 'flyergen_presets_v1';
 const DB_KEY_API_KEY = 'flyergen_api_key';
 const DB_KEY_OPENAI_API_KEY = 'flyergen_openai_api_key';
+const DB_KEY_IMAGE_PROVIDER = 'flyergen_image_provider';
 const DB_KEY_REPLICATE_API_KEY = 'flyergen_replicate_api_key';
 const UPSCALE_SCALE = 4;
 
@@ -227,6 +227,10 @@ const App: React.FC = () => {
   const [tempApiKey, setTempApiKey] = useState<string>("");
   const [openAiApiKey, setOpenAiApiKey] = useState<string>("");
   const [tempOpenAiApiKey, setTempOpenAiApiKey] = useState<string>("");
+  const [imageProvider, setImageProvider] = useState<ImageGenerationProvider>('openai');
+  const [tempImageProvider, setTempImageProvider] = useState<ImageGenerationProvider>('openai');
+  const selectedImageApiKey = imageProvider === 'openai' ? openAiApiKey : apiKey;
+  const selectedImageProviderLabel = imageProvider === 'openai' ? 'OpenAI' : 'Gemini';
 
   // Download Dropdown State
   const [openDownloadMenu, setOpenDownloadMenu] = useState<string | null>(null);
@@ -415,6 +419,17 @@ const App: React.FC = () => {
           setOpenAiApiKey(savedOpenAiApiKey);
           setTempOpenAiApiKey(savedOpenAiApiKey);
         }
+
+        const savedImageProvider = await get<ImageGenerationProvider>(DB_KEY_IMAGE_PROVIDER);
+        const initialImageProvider: ImageGenerationProvider = savedImageProvider === 'openai' || savedImageProvider === 'gemini'
+          ? savedImageProvider
+          : savedOpenAiApiKey
+            ? 'openai'
+            : savedApiKey
+              ? 'gemini'
+              : 'openai';
+        setImageProvider(initialImageProvider);
+        setTempImageProvider(initialImageProvider);
 
         // Load Replicate API Key from local storage
         const savedReplicateKey = await get<string>(DB_KEY_REPLICATE_API_KEY);
@@ -1318,7 +1333,8 @@ const App: React.FC = () => {
                 snapshot.selectedStoreLogoImages,
                 snapshot.selectedCustomIllustrations,
                 snapshot.selectedReferenceImages,
-                snapshot.openAiApiKey
+                snapshot.imageProvider === 'openai' ? snapshot.openAiApiKey : snapshot.apiKey,
+                snapshot.imageProvider
               ),
               Promise.resolve(['表面', 'セールスレター', snapshot.salesLetterInfo.productName].filter(Boolean))
             ]);
@@ -1333,7 +1349,8 @@ const App: React.FC = () => {
                 snapshot.selectedStoreLogoImages,
                 snapshot.selectedCustomIllustrations,
                 snapshot.selectedReferenceImages,
-                snapshot.openAiApiKey
+                snapshot.imageProvider === 'openai' ? snapshot.openAiApiKey : snapshot.apiKey,
+                snapshot.imageProvider
               ),
               Promise.resolve(['表面', '商品紹介', snapshot.productServiceInfo.title].filter(Boolean))
             ]);
@@ -1349,7 +1366,8 @@ const App: React.FC = () => {
               snapshot.selectedStoreLogoImages,
               snapshot.selectedCustomIllustrations,
               snapshot.selectedReferenceImages,
-              snapshot.openAiApiKey
+              snapshot.imageProvider === 'openai' ? snapshot.openAiApiKey : snapshot.apiKey,
+              snapshot.imageProvider
             ),
             Promise.resolve(['表面', snapshot.campaignInfo.campaignName || 'キャンペーン'].filter(Boolean))
           ]);
@@ -1364,9 +1382,12 @@ const App: React.FC = () => {
             snapshot.selectedReferenceImages,
             snapshot.selectedStoreLogoImages,
             snapshot.selectedCustomIllustrations,
-            snapshot.openAiApiKey
+            snapshot.imageProvider === 'openai' ? snapshot.openAiApiKey : snapshot.apiKey,
+            snapshot.imageProvider
           ),
-          gemini.generateTagsFromProducts(snapshot.products, snapshot.apiKey)
+          snapshot.apiKey
+            ? gemini.generateTagsFromProducts(snapshot.products, snapshot.apiKey)
+            : Promise.resolve(['商品'])
         ]);
         tags = ['裏面', ...tags];
       }
@@ -1444,7 +1465,7 @@ const App: React.FC = () => {
       if (newItems.length > 0) {
         const genCost =
           SESSION_API_COST_YEN.flyerImageOut * newItems.length
-          + (snapshot.flyerSide === 'back' ? SESSION_API_COST_YEN.backTagFromProducts : 0);
+          + (snapshot.flyerSide === 'back' && snapshot.apiKey ? SESSION_API_COST_YEN.backTagFromProducts : 0);
         addSessionApiCost(genCost);
         setHistory((prev) => {
           const updatedHistory = [...newItems, ...prev];
@@ -1534,14 +1555,10 @@ const App: React.FC = () => {
   }, []);
 
   const handleGenerate = () => {
-    if (!openAiApiKey) {
+    if (!selectedImageApiKey) {
       setIsSettingsOpen(true);
-      alert("画像生成用のOpenAI APIキーが設定されていません。");
-      return;
-    }
-    if (!apiKey) {
-      setIsSettingsOpen(true);
-      alert("文章・タグ生成用のGemini APIキーが設定されていません。");
+      setTempImageProvider(imageProvider);
+      alert(`画像生成用の${selectedImageProviderLabel} APIキーが設定されていません。`);
       return;
     }
 
@@ -1566,6 +1583,7 @@ const App: React.FC = () => {
     const snapshot: GenerationJobSnapshot = {
       apiKey,
       openAiApiKey,
+      imageProvider,
       flyerSide,
       frontFlyerType,
       salesLetterMode,
@@ -2078,6 +2096,7 @@ ${header.length + uint8Array.length + 20}
   };
 
   const handleLoadPreset = (preset: Preset) => {
+    setShowPresetList(false);
     setPresetToLoad(preset);
   };
 
@@ -2183,6 +2202,7 @@ ${header.length + uint8Array.length + 20}
       // Note: storeLogoImages are NOT cleared - they are synced independently from cloud
       setSettings(createDefaultSettings());
       setCurrentPresetIds(prev => ({ ...prev, [mainTab]: null }));
+      setShowPresetList(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -2275,14 +2295,14 @@ ${header.length + uint8Array.length + 20}
 
   // Handle image editing
   const handleEditImage = async (regions: EditRegion[]) => {
-    if (!editingImage || !openAiApiKey) return;
+    if (!editingImage || !selectedImageApiKey) return;
 
     setIsEditGenerating(true);
 
     try {
       const gemini = await loadGeminiService();
       // Generate edited image
-      const editedImageData = await gemini.editImage(editingImage.data, regions, openAiApiKey);
+      const editedImageData = await gemini.editImage(editingImage.data, regions, selectedImageApiKey, imageProvider);
 
       // Create new history entry for edited image
       const id = uuidv4();
@@ -2349,8 +2369,8 @@ ${header.length + uint8Array.length + 20}
 
   // Handle text removal from image
   const handleRemoveText = async (item: GeneratedImage) => {
-    if (!openAiApiKey) {
-      alert("画像編集用のOpenAI APIキーが設定されていません。");
+    if (!selectedImageApiKey) {
+      alert(`画像編集用の${selectedImageProviderLabel} APIキーが設定されていません。`);
       return;
     }
 
@@ -2363,7 +2383,7 @@ ${header.length + uint8Array.length + 20}
     try {
       const gemini = await loadGeminiService();
       // Remove text from image
-      const cleanedImageData = await gemini.removeTextFromImage(item.data, openAiApiKey);
+      const cleanedImageData = await gemini.removeTextFromImage(item.data, selectedImageApiKey, imageProvider);
 
       // Create new history entry for cleaned image
       const id = uuidv4();
@@ -2593,15 +2613,18 @@ ${header.length + uint8Array.length + 20}
         onGenerate={handleGenerate}
         isGenerating={isGenerating}
         flyerSide={flyerSide}
-        onTogglePresetList={() => setShowPresetList(!showPresetList)}
+        onTogglePresetList={() => setShowPresetList(current => !current)}
+        isPresetListOpen={showPresetList}
         onOpenSaveModal={() => setIsSaveModalOpen(true)}
         onOpenSettings={() => {
           setTempApiKey(apiKey);
           setTempOpenAiApiKey(openAiApiKey);
+          setTempImageProvider(imageProvider);
           setTempReplicateApiKey(replicateApiKey);
           setIsSettingsOpen(true);
         }}
-        apiKey={apiKey && openAiApiKey}
+        isImageApiConfigured={!!selectedImageApiKey.trim()}
+        imageProvider={imageProvider}
       />
 
       {/* 2-Pane Layout Container */}
@@ -2748,30 +2771,6 @@ ${header.length + uint8Array.length + 20}
               />
             </div>
 
-            <FlyerSetupChecklist
-              apiKey={apiKey && openAiApiKey}
-              onOpenSettings={() => {
-                setTempApiKey(apiKey);
-                setTempOpenAiApiKey(openAiApiKey);
-                setTempReplicateApiKey(replicateApiKey);
-                setIsSettingsOpen(true);
-              }}
-              mainTab={mainTab}
-              frontFlyerType={frontFlyerType}
-              salesLetterMode={salesLetterMode}
-              campaignDescription={campaignInfo.campaignDescription}
-              campaignHeadline={campaignInfo.headline}
-              campaignName={campaignInfo.campaignName}
-              campaignContent={campaignInfo.content}
-              productServiceTitle={productServiceInfo.title}
-              productsCount={products.length}
-              hasRecommendedAssets={
-                characterImages.length > 0 ||
-                referenceImages.length > 0 ||
-                customIllustrations.length > 0
-              }
-            />
-
             <SessionApiCostBar totalJpy={sessionApiCostJpy} onReset={resetSessionApiCost} />
 
             <div className="bg-slate-50 border border-slate-200 rounded-md p-4 mb-6 flex items-center justify-between">
@@ -2797,71 +2796,6 @@ ${header.length + uint8Array.length + 20}
                 保存
               </button>
             </div>
-
-            {/* Preset Management Section */}
-            {showPresetList && (
-              <div className="bg-white border border-indigo-100 rounded-lg p-5 sm:p-8 mb-6 sm:mb-10 animate-slide-up shadow-indigo-500/5">
-                <div className="flex justify-between items-center mb-6">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
-                      <IcFolder className="h-5 w-5" />
-                    </span>
-                    <h2 className="text-xl font-semibold text-slate-900">保存済みプリセット</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleNewProject}
-                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-full transition-all inline-flex items-center gap-1.5"
-                  >
-                    <IcPlus className="h-4 w-4 flex-shrink-0" />
-                    新規作成
-                  </button>
-                </div>
-                {presetsForSide.length === 0 ? (
-                  <div className="text-center py-10 bg-slate-50/50 rounded-md border border-dashed border-slate-200">
-                    <p className="text-slate-400 text-sm font-medium">プリセットがありません</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {presetsForSide.map(preset => (
-                      <div
-                        key={preset.id}
-                        className={`group relative w-full rounded-md border bg-white transition-all hover:scale-[1.02] active:scale-[0.98] ${activePresetId === preset.id ? 'border-indigo-500 shadow-indigo-500/10 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 shadow-sm hover:shadow-md'}`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleLoadPreset(preset)}
-                          className="w-full p-5 pr-14 text-left"
-                        >
-                          <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">{preset.name}</h3>
-                          <p className="text-xs font-bold tracking-wider text-slate-400 mt-2 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            更新: {new Date(preset.updatedAt).toLocaleDateString('ja-JP')}
-                          </p>
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {preset.side === 'back' ? (
-                              <span className="px-2 py-0.5 bg-slate-100 text-xs font-bold text-slate-500 rounded-md">{preset.products?.length || 0} 商品</span>
-                            ) : (
-                              <span className="px-2 py-0.5 bg-slate-100 text-xs font-bold text-slate-500 rounded-md">{preset.frontFlyerType === 'product-service' ? '商品/サービス' : 'キャンペーン'}</span>
-                            )}
-                            <span className="px-2 py-0.5 bg-indigo-50 text-xs font-bold text-indigo-500 rounded-md">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeletePreset(preset.id, e)}
-                          className="absolute right-3 top-3 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-500 p-2 rounded-md transition-all group-hover:opacity-100 sm:opacity-0 focus:opacity-100"
-                          title="プリセットを削除"
-                          aria-label={`プリセット「${preset.name}」を削除`}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Front Side Tab */}
             {mainTab === 'front' && (
@@ -3384,7 +3318,7 @@ ${header.length + uint8Array.length + 20}
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={!apiKey.trim() || !openAiApiKey.trim()}
+                disabled={!selectedImageApiKey.trim()}
                 aria-label={
                   isGenerating
                     ? '生成ジョブをキューに追加'
@@ -3392,7 +3326,7 @@ ${header.length + uint8Array.length + 20}
                 }
                 className={`
                btn-premium inline-flex items-center px-12 py-5 border border-transparent text-xl font-semibold rounded-[24px] shadow-2xl text-white 
-               ${!apiKey.trim() || !openAiApiKey.trim() ? 'cursor-not-allowed bg-slate-300 shadow-none' : isGenerating ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
+               ${!selectedImageApiKey.trim() ? 'cursor-not-allowed bg-slate-300 shadow-none' : isGenerating ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20' : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 hover:scale-105 active:scale-95 shadow-indigo-500/30'}
                focus:outline-none transition-all duration-300
              `}
               >
@@ -3803,10 +3737,128 @@ ${header.length + uint8Array.length + 20}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             flyerSide={flyerSide}
-            disabled={!apiKey.trim() || !openAiApiKey.trim()}
+            disabled={!selectedImageApiKey.trim()}
           />
         </main>
       </div>
+
+      {/* Preset Library Modal */}
+      {showPresetList && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm animate-fade-in sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preset-library-title"
+          onClick={() => setShowPresetList(false)}
+        >
+          <div
+            className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/80 bg-white shadow-2xl animate-slide-up"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-5 py-5 sm:px-8 sm:py-6">
+              <div className="flex min-w-0 items-center gap-4">
+                <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
+                  <IcFolder className="h-6 w-6" />
+                </span>
+                <div className="min-w-0">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <h2 id="preset-library-title" className="text-xl font-semibold text-slate-950 sm:text-2xl">プリセットを選ぶ</h2>
+                    <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
+                      {mainTab === 'front' ? '表面' : '裏面'} · {presetsForSide.length}件
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-slate-500">保存した設定を選ぶと、読み込み確認画面へ進みます。</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPresetList(false)}
+                className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white hover:text-slate-700 hover:shadow-sm"
+                aria-label="プリセット一覧を閉じる"
+              >
+                <IcX className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-8">
+              <p className="text-xs font-semibold text-slate-400">現在の入力内容は、読み込みを確定するまで変更されません。</p>
+              <button
+                type="button"
+                onClick={handleNewProject}
+                className="inline-flex flex-none items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95"
+              >
+                <IcPlus className="h-4 w-4" />
+                新規作成
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-5 sm:p-8">
+              {presetsForSide.length === 0 ? (
+                <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-100 bg-indigo-50/40 px-6 text-center">
+                  <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-indigo-500 shadow-sm">
+                    <IcSave className="h-7 w-7" />
+                  </span>
+                  <h3 className="text-base font-semibold text-slate-800">まだプリセットがありません</h3>
+                  <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">右上の「保存」から現在の設定を登録すると、次回からここですぐ読み込めます。</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPresetList(false);
+                      openSaveModal();
+                    }}
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95"
+                  >
+                    <IcSave className="h-4 w-4" />
+                    最初のプリセットを保存
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {presetsForSide.map(preset => (
+                    <div
+                      key={preset.id}
+                      className={`group relative overflow-hidden rounded-2xl border bg-white transition-all hover:-translate-y-0.5 hover:shadow-lg ${activePresetId === preset.id ? 'border-indigo-500 ring-4 ring-indigo-500/10' : 'border-slate-200 hover:border-indigo-300'}`}
+                    >
+                      {activePresetId === preset.id && (
+                        <span className="absolute left-4 top-4 z-10 rounded-full bg-indigo-600 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">使用中</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleLoadPreset(preset)}
+                        className="w-full p-5 pt-12 text-left"
+                      >
+                        <h3 className="truncate text-base font-semibold text-slate-900 transition-colors group-hover:text-indigo-700">{preset.name}</h3>
+                        <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          {new Date(preset.updatedAt).toLocaleDateString('ja-JP')} 更新
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {preset.side === 'back' ? (
+                            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{preset.products?.length || 0} 商品</span>
+                          ) : (
+                            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{preset.frontFlyerType === 'product-service' ? '商品・サービス' : 'キャンペーン'}</span>
+                          )}
+                          <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">{preset.settings?.orientation === 'vertical' ? '縦向き' : '横向き'}</span>
+                        </div>
+                        <span className="mt-5 inline-flex items-center text-xs font-bold text-indigo-600">この設定を読み込む →</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => handleDeletePreset(preset.id, event)}
+                        className="absolute right-3 top-3 rounded-lg p-2 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-500 focus:bg-rose-50 focus:text-rose-500"
+                        title="プリセットを削除"
+                        aria-label={`プリセット「${preset.name}」を削除`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Save Preset Modal */}
       {isSaveModalOpen && (
@@ -3867,7 +3919,44 @@ ${header.length + uint8Array.length + 20}
               <IcKey className="h-7 w-7" />
             </div>
             <h3 className="text-2xl font-semibold text-slate-900 mb-2">API設定</h3>
-            <p className="text-sm font-medium text-slate-400 mb-8">GPT Image 2とGeminiへの接続を設定します。</p>
+            <p className="text-sm font-medium text-slate-400 mb-8">画像生成に使うAIを選び、APIキーを設定します。</p>
+
+            <fieldset className="mb-8">
+              <legend className="block text-xs font-semibold tracking-wide text-slate-400 mb-3 ml-1">画像生成AI</legend>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all ${tempImageProvider === 'openai' ? 'border-emerald-500 bg-emerald-50/70 shadow-sm' : 'border-slate-100 bg-slate-50/60 hover:border-slate-200'}`}>
+                  <input
+                    type="radio"
+                    name="image-provider"
+                    value="openai"
+                    checked={tempImageProvider === 'openai'}
+                    onChange={() => setTempImageProvider('openai')}
+                    className="sr-only"
+                  />
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-900">OpenAI</span>
+                    {tempImageProvider === 'openai' && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">使用する</span>}
+                  </span>
+                  <span className="mt-1 block text-xs font-medium text-slate-500">GPT Image 2</span>
+                </label>
+                <label className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all ${tempImageProvider === 'gemini' ? 'border-indigo-500 bg-indigo-50/70 shadow-sm' : 'border-slate-100 bg-slate-50/60 hover:border-slate-200'}`}>
+                  <input
+                    type="radio"
+                    name="image-provider"
+                    value="gemini"
+                    checked={tempImageProvider === 'gemini'}
+                    onChange={() => setTempImageProvider('gemini')}
+                    className="sr-only"
+                  />
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-900">Gemini</span>
+                    {tempImageProvider === 'gemini' && <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">使用する</span>}
+                  </span>
+                  <span className="mt-1 block text-xs font-medium text-slate-500">Gemini Image</span>
+                </label>
+              </div>
+              <p className="mt-3 text-xs font-medium text-slate-400">選択中のAIに対応するAPIキーだけで画像生成できます。</p>
+            </fieldset>
 
             <div className="mb-8">
               <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">OpenAI API Key（画像生成・編集用）</label>
@@ -3877,7 +3966,6 @@ ${header.length + uint8Array.length + 20}
                 onChange={(e) => setTempOpenAiApiKey(e.target.value)}
                 placeholder="sk-..."
                 className="w-full border-2 border-slate-100 rounded-md shadow-sm py-4 px-5 focus:ring-0 focus:border-emerald-600 bg-slate-50/50 text-slate-900 font-bold placeholder:text-slate-300 transition-all"
-                autoFocus
               />
               <div className="mt-4 p-4 bg-emerald-50/50 rounded-md border border-emerald-100">
                 <p className="text-xs font-bold text-emerald-700 leading-relaxed flex items-start gap-3">
@@ -3890,7 +3978,7 @@ ${header.length + uint8Array.length + 20}
             </div>
 
             <div className="mb-8">
-              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">Gemini API Key（文章・検索・タグ生成用）</label>
+              <label className="block text-xs font-semibold tracking-wide text-slate-400 mb-2 ml-1">Gemini API Key（画像・文章・検索・タグ生成用）</label>
               <input
                 type="password"
                 value={tempApiKey}
@@ -3935,6 +4023,8 @@ ${header.length + uint8Array.length + 20}
                   await set(DB_KEY_OPENAI_API_KEY, tempOpenAiApiKey);
                   setApiKey(tempApiKey);
                   await set(DB_KEY_API_KEY, tempApiKey);
+                  setImageProvider(tempImageProvider);
+                  await set(DB_KEY_IMAGE_PROVIDER, tempImageProvider);
                   setReplicateApiKey(tempReplicateApiKey);
                   await set(DB_KEY_REPLICATE_API_KEY, tempReplicateApiKey);
 

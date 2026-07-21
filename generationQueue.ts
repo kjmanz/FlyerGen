@@ -5,6 +5,7 @@ import type {
   Product,
   ProductServiceInfo,
   SalesLetterInfo,
+  ImageGenerationProvider,
 } from './types';
 
 export type GenerationJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'canceled';
@@ -12,6 +13,7 @@ export type GenerationJobStatus = 'pending' | 'running' | 'completed' | 'failed'
 export type GenerationJobSnapshot = {
   apiKey: string;
   openAiApiKey: string;
+  imageProvider: ImageGenerationProvider;
   flyerSide: 'front' | 'back';
   frontFlyerType: FrontFlyerType;
   salesLetterMode: boolean;
